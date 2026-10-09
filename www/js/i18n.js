@@ -10,6 +10,7 @@
     'menu': 'Menu', 'menu.cal': 'Calendrier', 'menu.cal.s': 'Les dates du processus', 'menu.elec': 'Électeurs inscrits', 'menu.elec.s': 'Inscription par département',
     'menu.news': 'Actualités', 'menu.news.s': 'CEP et presse', 'menu.about': 'À propos, sources, installer l’appli', 'menu.about.s': 'Données, limites, apparence',
     'lang.fr': 'Français', 'lang.ht': 'Kreyòl',
+    'gov.indep': 'Initiative citoyenne indépendante', 'gov.notcep': '· non affiliée au Conseil Électoral Provisoire (CEP)', 'gov.tag': 'Suivi des élections haïtiennes 2026', 'brand.tag': 'Suivi citoyen des élections en Haïti',
 
     'home.h1': 'Qui est sur votre bulletin ?',
     'home.lede': 'Dites-nous où vous votez. Vous verrez la liste complète, du président jusqu’à l’ASEC de votre section.',
@@ -70,7 +71,7 @@
     'el.title': 'Électeurs inscrits', 'el.dept': 'Par département',
     'news.title': 'Actualités et communiqués', 'news.sub': 'Communiqués du CEP et titres de la presse. Les articles s’ouvrent sur le site du média.',
     'about.title': 'À propos de NapVote', 'about.sub': 'Un outil citoyen et indépendant pour savoir qui se présente et ce qui s’est passé aux élections précédentes.',
-    'about.theme': 'Apparence', 'theme.auto': 'Auto', 'theme.light': 'Papier', 'theme.dark': 'Tableau',
+    'about.theme': 'Apparence', 'theme.auto': 'Auto', 'theme.light': 'Clair', 'theme.dark': 'Sombre',
     'about.install': 'Installer l’application',
 
     'f.fav.add': 'Ajouter aux favoris', 'f.fav.on': 'Dans mes favoris', 'f.share': 'Partager', 'f.facts': 'Repères', 'f.sources': 'Sources', 'f.hist': 'Parcours électoral',
@@ -89,6 +90,7 @@
     'menu': 'Meni', 'menu.cal': 'Kalandriye', 'menu.cal.s': 'Dat pwosesis la', 'menu.elec': 'Elektè ki enskri', 'menu.elec.s': 'Enskripsyon pa depatman', 'menu.news': 'Nouvèl', 'menu.news.s': 'CEP ak laprès',
     'menu.about': 'Konsènan NapVote, sous, enstale aplikasyon an', 'menu.about.s': 'Done, limit, aparans',
     'lang.fr': 'Français', 'lang.ht': 'Kreyòl',
+    'gov.indep': 'Inisyativ sitwayen ki endepandan', 'gov.notcep': '· ki pa gen anyen pou wè ak Konsèy Elektoral Pwovizwa (CEP)', 'gov.tag': 'Swivi eleksyon ayisyen 2026', 'brand.tag': 'Swivi sitwayen eleksyon yo an Ayiti',
 
     'home.h1': 'Ki moun ki sou bilten w lan ?',
     'home.lede': 'Di nou kote w ap vote. W ap wè lis konplè a, depi prezidan rive nan ASEC seksyon w lan.',
@@ -149,7 +151,7 @@
     'el.title': 'Elektè ki enskri', 'el.dept': 'Pa depatman',
     'news.title': 'Nouvèl ak kominike', 'news.sub': 'Kominike CEP la ak tit jounal yo. Atik yo louvri sou sit medya a.',
     'about.title': 'Konsènan NapVote', 'about.sub': 'Yon zouti sitwayen ki endepandan pou konnen ki moun k ap kandida ak sa ki te pase nan eleksyon anvan yo.',
-    'about.theme': 'Aparans', 'theme.auto': 'Otomatik', 'theme.light': 'Papye', 'theme.dark': 'Tablo',
+    'about.theme': 'Aparans', 'theme.auto': 'Otomatik', 'theme.light': 'Klè', 'theme.dark': 'Fonse',
     'about.install': 'Enstale aplikasyon an',
 
     'f.fav.add': 'Mete nan favori', 'f.fav.on': 'Nan favori m', 'f.share': 'Pataje', 'f.facts': 'Repè', 'f.sources': 'Sous', 'f.hist': 'Pakou elektoral',

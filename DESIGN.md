@@ -1,23 +1,17 @@
-# Design : le cahier
+# Design : sobre et institutionnel
 
-Papier clair, lignes bleues, double trait de marge rouge, encre bleu-noir, stylo bleu. Le mode nuit est un tableau noir. Une seule famille de caractères : Andika (SIL), conçue pour apprendre à lire, avec les accents du kreyòl.
+Site d'information civique au ton d'un service public (références : GOV.UK, service-public.fr, Elections Canada), sans emblème ni couleur officiels : NapVote est indépendant du CEP et le dit dans un bandeau permanent.
 
 ## Principes
-- La liste de l'électeur est une page de cahier : les listes sont des lignes, jamais des cartes. Un candidat = une ligne bleue.
-- Les choix de l'électeur se marquent au stylo : coche dans la marge et cercle tracé à la main autour du nom (favori). C'est le seul moment animé (le trait se dessine, 0,3 s).
-- Le tampon rouge dit ce qui est provisoire ou non confirmé. Le surligneur jaune dit « élu ». Rien d'autre n'a de couleur.
-- Un titre n'a qu'une couleur. Pas de surtitre, pas de chiffre géant, pas de pastille.
-- Français et kreyòl à égalité : `js/i18n.js` est le seul fichier à relire pour le kreyòl.
+- Hiérarchie par la typographie, les filets et les tableaux. Pas de cartes en série, pas de pastilles, pas de chiffres géants, pas de surtitres, pas de décoration.
+- Une couleur d'action (bleu), une couleur d'alerte (ambre pour « provisoire », rouge pour les erreurs), un vert pour « élu ».
+- Une page = un titre serif, une phrase, puis des sections séparées par un filet épais.
+- Français et kreyòl à égalité (`js/i18n.js`, à faire relire).
 
 ## Jetons (css/napvote.css)
-- Papier `--paper #FBFBF8` · bureau `--desk #E6E9EE` · encre `--ink #0F1B4C` · stylo `--pen #1B3FBF` · marge/tampon `--red #C2283A` · lignes `--rule #BCCEEA` · surligneur `--hl #FFE45C`.
-- Nuit (tableau) : `--paper #12171F`, `--ink #EEF1F6`, `--pen #93B2FF`, `--red #FF8794`.
-- Texte 16 px, interligne 1,55. Échelle : 0,8125 / 0,9375 / 1 / 1,125 / 1,5 / 1,75 / 2,1–3 rem. Gras = hiérarchie.
-- Rayon 3 px. Filets : 1 px bleu pour les lignes, 2 px encre pour les séparations fortes, double filet sous les titres de section.
-- Marge : trait fixe à 46 px ; le texte commence à 60 px ; la zone de marge porte les coches.
+- Fond `--bg #FFFFFF`, panneau `--surface #F2F5F9`, filets `--line #D3DAE4`, texte `--ink #14243B`, bleu d'action `--brand #0F3D8A`, bandeau et pied de page `--band #0B2447`, focus `--focus #F5B400`.
+- Nuit : fond `#0E1624`, `--brand #8DB4FF`.
+- Titres Source Serif 4 (700), texte Source Sans 3 (400/600/700), 17 px, interligne 1,55. Rayon 4 px.
 
 ## Composants
-`.cc` ligne de candidat (coche `.mk`, nom `.nm`, parti en gras, « fiche »), `.tkc` liste d'une même équipe (maire, CASEC, ASEC), `.rows` listes simples, `.label` étiquette de couverture (sélecteur commune), `.hbox` rappel des scrutins passés, `.stamp`, `.hl`, `.pillrow` onglets en texte soulignés d'un trait rouge.
-
-## À refaire si le produit évolue
-Pas de photos de candidats (aucune donnée). Les icônes (`scripts/make_icons.py`) reprennent la page, la marge et la coche.
+Bandeau d'indépendance + en-tête + barre de navigation bleu marine (grand écran) ou barre d'onglets en bas (téléphone) ; panneau gris de sélection de commune (`.label`) ; lignes de candidat `.cc` avec marque-page (favori) ; listes d'équipes `.tkc` ; accordéons `.hbox` pour les scrutins passés ; tableaux et barres de résultats `.rk` ; étiquette ambre `.stamp` pour « provisoire / non confirmé ».

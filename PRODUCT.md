@@ -24,6 +24,7 @@ Candidatures du CEP (API publique), résultats préliminaires/définitifs 2015-2
 Mon bulletin (par commune, GPS ou liste), carte département/commune, liste des candidats avec filtres et favoris, fiches de candidats (bios vérifiées pour les présidentiels seulement), résultats passés, calendrier, électeurs inscrits, actualités. Contraintes : léger, hors ligne, lisible en plein soleil, accessible, 100 % statique côté hébergement. Aucune biographie inventée ; pas de photos de candidats. Langues : français et kreyòl ayisyen (kreyòl à relire avant mise en ligne).
 
 ## Brand Commitments
+Style demandé par l'utilisateur (10 oct. 2026) : sobre, professionnel, institutionnel. Écarté après essai : le monde « cahier d'école ». Sans imiter les emblèmes, drapeau, armoiries ni couleurs officielles du CEP ou de l'État.
 Nom : NapVote (« n ap vote », nous votons). Voix : directe, concrète, comme quelqu'un qui explique les élections à un voisin ; pas de ton marketing. Ne pas imiter le CEP ni un parti : pas de logo, couleur ou emblème officiel.
 
 ## Evidence on Hand

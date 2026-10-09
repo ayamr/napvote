@@ -1,16 +1,16 @@
 /* NapVote service worker — généré par scripts/build_sw.py (ne pas éditer à la main) */
-var VERSION = '067ebb3a44';
+var VERSION = 'b0f222f113';
 var CACHE = 'napvote-' + VERSION;
 var FILES = [
  "./",
  "css/napvote.css",
  "data/live.json",
- "fonts/andika-493d00e1.woff2",
- "fonts/andika-4ea4cee2.woff2",
- "fonts/andika-57466876.woff2",
- "fonts/andika-7e2dbeed.woff2",
- "fonts/andika-8df34559.woff2",
- "fonts/andika-bafe2871.woff2",
+ "fonts/3574b825.woff2",
+ "fonts/5b5a5c24.woff2",
+ "fonts/8012ef4d.woff2",
+ "fonts/81d71ea7.woff2",
+ "fonts/b5e287bd.woff2",
+ "fonts/cb23fde8.woff2",
  "icons/apple-touch-icon.png",
  "icons/favicon-32.png",
  "icons/icon-192.png",

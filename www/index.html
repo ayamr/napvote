@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NapVote</title>
 <meta name="description" content="Qui est sur votre bulletin ? Candidats aux élections haïtiennes 2026, de la présidence aux ASEC, et résultats de 2015 à 2017, commune par commune.">
-<meta name="theme-color" content="#FBFBF8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#12171F" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1624" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="NapVote">
@@ -18,98 +18,108 @@
 </head>
 <body>
 <!--
-THESIS: la liste de l'électeur est un cahier d'école : des lignes, une marge, un stylo. On refuse l'appli de données (cartes, pastilles, chiffres géants, titres bicolores).
-OWN-WORLD: papier clair, lignes bleues, double trait de marge rouge, encre bleu-noir, stylo bleu pour les choix de l'électeur, tampon rouge pour le provisoire, surligneur pour « élu ». Mode nuit = tableau noir. Andika partout.
-STORY: l'électeur dit où il vote, lit sa liste ligne à ligne, entoure ses favoris au stylo, retrouve les résultats d'avant. Français ou kreyòl.
-FIRST VIEWPORT: titre simple en grand, une phrase, une étiquette de couverture (département, commune, deux gestes), puis la mention d'indépendance. Aucun chiffre géant.
-FORM: cahier d'écolier (6e candidat de ma liste, tirage 0da98681), états tenus au stylo (cercle, coche) empruntés au catalogue de stands entouré au biro.
+THESIS: un site d'information civique sobre, au ton d'un service public, qui part de la commune de l'électeur. On refuse la décoration : pas de cartes en série, pas de pastilles, pas de métaphore.
+OWN-WORLD: fond blanc, bleu marine (#0B2447) pour le bandeau, la navigation et le pied de page, bleu d'action (#0F3D8A), gris froids, filets fins, tableaux et listes ; titres Source Serif 4, texte Source Sans 3 ; une couleur d'alerte et un jaune de focus. Nuit : bleu-noir.
+STORY: l'électeur dit où il vote, lit sa liste poste par poste, compare avec les scrutins passés, sait ce qui est provisoire. Français ou kreyòl.
+FIRST VIEWPORT: bandeau d'indépendance, en-tête et navigation ; titre serif, une phrase, panneau gris « département / commune », deux boutons ; à droite (grand écran), les dates clés.
+FORM: site institutionnel (GOV.UK, service-public, Elections Canada) : demande directe de l'utilisateur, exécutée à fond ; sans emblème ni couleur officiels.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 -->
 
+<div class="govbar"><div class="wrap"><span><b data-i18n="gov.indep">Initiative citoyenne indépendante</b> <span data-i18n="gov.notcep">· non affiliée au Conseil Électoral Provisoire (CEP)</span></span><span class="gb-r" data-i18n="gov.tag">Suivi des élections haïtiennes 2026</span></div></div>
 <header class="top">
-  <div class="bar">
-    <button type="button" class="brand" data-go="home" aria-label="NapVote">
-      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="sheet" x="3" y="2" width="26" height="28" rx="2"/><path class="rl" d="M3 10h26M3 16h26M3 22h26"/><path class="ml" d="M10 2v28"/><path class="ck" d="M13 17.5l4 4 8-9.5"/></svg>
-      <b>NapVote</b>
-    </button>
-    <nav class="dnav" aria-label="Sections">
-      <button type="button" data-go="home" data-i18n="nav.home">Accueil</button>
-      <button type="button" data-go="bulletin" data-i18n="nav.bulletin">Mon bulletin</button>
-      <button type="button" data-go="carte" data-i18n="nav.map">Carte</button>
-      <button type="button" data-go="cand" data-i18n="nav.cand">Candidats</button>
-      <button type="button" data-go="res" data-i18n="nav.res">Résultats passés</button>
-      <button type="button" data-go="cal" data-i18n="nav.cal">Calendrier</button>
-      <button type="button" data-go="elec" data-i18n="nav.elec">Électeurs</button>
-      <button type="button" data-go="news" data-i18n="nav.news">Actualités</button>
-    </nav>
-    <div class="tools">
-      <button type="button" id="loc-chip" class="loc-chip" hidden></button>
-      <div class="lang" role="group" aria-label="Langue">
-        <button type="button" data-lang="fr" lang="fr">Français</button>
-        <button type="button" data-lang="ht" lang="ht">Kreyòl</button>
-      </div>
-      <button type="button" class="menu-btn" id="menu-btn" aria-label="Menu" aria-haspopup="dialog">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  <div class="wrap">
+    <div class="bar">
+      <button type="button" class="brand" data-go="home" aria-label="NapVote">
+        <svg class="mark" viewBox="0 0 36 36" aria-hidden="true"><rect class="t" width="36" height="36" rx="4"/><rect class="b" x="7" y="12" width="17" height="17" rx="1"/><path class="c" d="M12 19.5l4.5 4.8L29 8.5"/></svg>
+        <span class="brand-t"><b>NapVote</b><span data-i18n="brand.tag">Suivi citoyen des élections en Haïti</span></span>
       </button>
+      <div class="tools">
+        <button type="button" id="loc-chip" class="loc-chip" hidden></button>
+        <div class="lang" role="group" aria-label="Langue">
+          <button type="button" data-lang="fr" lang="fr">Français</button>
+          <button type="button" data-lang="ht" lang="ht">Kreyòl</button>
+        </div>
+        <button type="button" class="menu-btn" id="menu-btn" aria-label="Menu" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 </header>
+<div class="mainnav"><div class="wrap">
+  <nav class="dnav" aria-label="Sections">
+    <button type="button" data-go="home" data-i18n="nav.home">Accueil</button>
+    <button type="button" data-go="bulletin" data-i18n="nav.bulletin">Mon bulletin</button>
+    <button type="button" data-go="carte" data-i18n="nav.map">Carte</button>
+    <button type="button" data-go="cand" data-i18n="nav.cand">Candidats</button>
+    <button type="button" data-go="res" data-i18n="nav.res">Résultats passés</button>
+    <button type="button" data-go="cal" data-i18n="nav.cal">Calendrier</button>
+    <button type="button" data-go="elec" data-i18n="nav.elec">Électeurs</button>
+    <button type="button" data-go="news" data-i18n="nav.news">Actualités</button>
+  </nav>
+</div></div>
 
 <main id="main">
 
   <!-- ============ ACCUEIL ============ -->
   <section id="p-home">
     <div class="wrap">
-      <div class="cover">
-        <h1 data-i18n="home.h1">Qui est sur votre bulletin ?</h1>
-        <p class="lede" data-i18n="home.lede">Dites-nous où vous votez. Vous verrez la liste complète, du président jusqu’à l’ASEC de votre section.</p>
-        <div class="label picker" data-picker="home"></div>
-        <p class="indep" data-i18n="home.indep">Initiative citoyenne, non affiliée au CEP.</p>
-      </div>
+      <div class="home-grid">
+        <div class="home-main">
+          <div class="cover">
+            <h1 data-i18n="home.h1">Qui est sur votre bulletin ?</h1>
+            <p class="lede" data-i18n="home.lede">Dites-nous où vous votez. Vous verrez la liste complète, du président jusqu’à l’ASEC de votre section.</p>
+            <div class="label picker" data-picker="home"></div>
+            <p class="indep" data-i18n="home.indep">Initiative citoyenne, non affiliée au CEP.</p>
+          </div>
 
-      <div id="h-saved"></div>
+          <div id="h-saved"></div>
 
-      <div class="search home-search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="h-search" type="search" data-i18n-ph="home.search.ph" placeholder="Candidat, parti ou commune" autocomplete="off" aria-label="Chercher" />
-        <ul id="h-results" class="results" hidden></ul>
-      </div>
+          <div class="search home-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input id="h-search" type="search" data-i18n-ph="home.search.ph" placeholder="Candidat, parti ou commune" autocomplete="off" aria-label="Chercher" />
+            <ul id="h-results" class="results" hidden></ul>
+          </div>
 
-      <div class="blk">
-        <div class="sec-h"><h2 data-i18n="home.who">Qui se présente</h2></div>
-        <ul id="h-posts" class="rows"></ul>
-        <p id="h-fem" class="note-s"></p>
-      </div>
+          <div class="blk">
+            <div class="sec-h"><h2 data-i18n="home.who">Qui se présente</h2></div>
+            <ul id="h-posts" class="rows"></ul>
+            <p id="h-fem" class="note-s"></p>
+          </div>
 
-      <div id="h-changes"></div>
+          <div class="blk">
+            <div class="sec-h"><h2 data-i18n="home.pres">Les candidats à la présidence</h2></div>
+            <ul id="h-pres" class="pres-grid"></ul>
+            <p class="note-s" id="h-pres-note"></p>
+          </div>
 
-      <div class="blk">
-        <div class="sec-h"><h2 data-i18n="home.dates">Les dates</h2><button type="button" class="lk" data-go="cal" data-i18n="home.dates.all">Tout le calendrier ›</button></div>
-        <ul id="h-agenda" class="rows dates"></ul>
-      </div>
+          <div class="blk">
+            <div class="sec-h"><h2 data-i18n="home.before">Avant 2026</h2><button type="button" class="lk" data-go="res" data-i18n="home.before.all">Tous les résultats ›</button></div>
+            <ul id="h-hist" class="rows"></ul>
+          </div>
+        </div>
 
-      <div class="blk">
-        <div class="sec-h"><h2 data-i18n="home.pres">Les candidats à la présidence</h2></div>
-        <ul id="h-pres" class="pres-grid"></ul>
-        <p class="note-s" id="h-pres-note"></p>
-      </div>
-
-      <div class="blk">
-        <div class="sec-h"><h2 data-i18n="home.before">Avant 2026</h2><button type="button" class="lk" data-go="res" data-i18n="home.before.all">Tous les résultats ›</button></div>
-        <ul id="h-hist" class="rows"></ul>
-      </div>
-
-      <div class="blk">
-        <div class="sec-h"><h2 data-i18n="home.map">Où ils se présentent</h2></div>
-        <button type="button" class="mini" data-go="carte" aria-label="Carte">
-          <svg id="h-mini" role="img" aria-label="Carte d'Haïti"></svg>
-          <span class="mini-cap"><span data-i18n="home.map.cap">Candidats à la députation par département</span> · <b data-i18n="home.map.go">Ouvrir la carte ›</b></span>
-        </button>
-      </div>
-
-      <div class="blk">
-        <div class="sec-h"><h2 data-i18n="home.news">Nouvelles du CEP</h2><button type="button" class="lk" data-go="news" data-i18n="home.news.all">Toutes les actualités ›</button></div>
-        <div id="h-feed" class="feed"></div>
+        <aside class="home-aside">
+          <div id="h-changes"></div>
+          <div class="blk">
+            <div class="sec-h"><h2 data-i18n="home.dates">Les dates</h2></div>
+            <ul id="h-agenda" class="rows dates"></ul>
+            <p class="note-s"><button type="button" class="lnk inl" data-go="cal" data-i18n="home.dates.all">Tout le calendrier ›</button></p>
+          </div>
+          <div class="blk">
+            <div class="sec-h"><h2 data-i18n="home.map">Où ils se présentent</h2></div>
+            <button type="button" class="mini" data-go="carte" aria-label="Carte">
+              <svg id="h-mini" role="img" aria-label="Carte d'Haïti"></svg>
+              <span class="mini-cap"><span data-i18n="home.map.cap">Candidats à la députation par département</span> · <b data-i18n="home.map.go">Ouvrir la carte ›</b></span>
+            </button>
+          </div>
+          <div class="blk">
+            <div class="sec-h"><h2 data-i18n="home.news">Nouvelles du CEP</h2></div>
+            <div id="h-feed" class="feed"></div>
+            <p class="note-s"><button type="button" class="lnk inl" data-go="news" data-i18n="home.news.all">Toutes les actualités ›</button></p>
+          </div>
+        </aside>
       </div>
     </div>
   </section>
@@ -281,7 +291,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         </div>
         <div class="card"><h3 data-i18n="about.theme">Apparence</h3>
           <div class="seg" id="theme-seg" role="group" aria-label="Thème">
-            <button type="button" data-theme="auto" data-i18n="theme.auto">Auto</button><button type="button" data-theme="light" data-i18n="theme.light">Papier</button><button type="button" data-theme="dark" data-i18n="theme.dark">Tableau</button>
+            <button type="button" data-theme="auto" data-i18n="theme.auto">Auto</button><button type="button" data-theme="light" data-i18n="theme.light">Clair</button><button type="button" data-theme="dark" data-i18n="theme.dark">Sombre</button>
           </div>
         </div>
       </div>

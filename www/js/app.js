@@ -81,7 +81,7 @@
     API.toast(t(i >= 0 ? 'fav.off' : 'fav.on'));
   };
   API.favList = function () { return C.filter(API.isFav); };
-  var RING = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path class="tick" d="M7.2 12.6l3.3 3.4 6.6-7.6"/></svg>';
+  var RING = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h11v17L12 16.6l-5.5 3.9z"/></svg>';
   API.mark = function (c) { return '<button type="button" class="mk" data-star="' + c.i + '" aria-pressed="' + API.isFav(c) + '" aria-label="' + esc(t('mark.aria', { n: c.pre + ' ' + c.nom })) + '">' + RING + '</button>'; };
   API.star = API.mark;
   /* une ligne de liste : marge (coche) + nom + précisions ; o.sub = texte sous le nom, o.act = html à droite */
