@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.DS_Store
+data/_build/
+data/notes_new.txt
+# pages brutes du site du CEP (recherche) : seuls les JSON d'API servent à la construction
+data/src/*
+!data/src/api_*.json
+!data/src/fetched.json
+data/bio/
+# copies du site que « cap sync » régénère
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/

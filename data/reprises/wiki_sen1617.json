@@ -1,0 +1,1068 @@
+[
+{
+"none": [],
+"pos": 77489,
+"senate": true,
+"cap": "",
+"rounds": [
+"Scrutin"
+],
+"cands": []
+},
+{
+"none": [
+2002
+],
+"pos": 96772,
+"senate": true,
+"cap": "[[Artibonite (department)|Artibonite]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "Garcia Delva",
+"p": "Haiti in Action",
+"v": [
+37323
+],
+"el": true
+},
+{
+"n": "Marc Antoine Aldorphe",
+"p": "Reseau National Bouclier",
+"v": [
+20495
+],
+"el": false
+},
+{
+"n": "[[Levaillant Louis-Jeune]]",
+"p": "Inite Patriyotik",
+"v": [
+16664
+],
+"el": false
+},
+{
+"n": "Michel Chrysostome",
+"p": "Alternative League for Haitian Progress and Emancipation",
+"v": [
+15978
+],
+"el": false
+},
+{
+"n": "Patrick Joseph",
+"p": "Platfòm Pitit Desalin",
+"v": [
+12893
+],
+"el": false
+},
+{
+"n": "Jean Willy Jean-Baptiste",
+"p": "Rally of Progressive National Democrats",
+"v": [
+8513
+],
+"el": false
+},
+{
+"n": "Patrice Israel",
+"p": "Fanmi Lavalas",
+"v": [
+5854
+],
+"el": false
+},
+{
+"n": "Carmelot F. M. Ch. Molaire",
+"p": "Renmen Ayiti",
+"v": [
+2514
+],
+"el": false
+},
+{
+"n": "Vikens Derilus",
+"p": "Struggling People's Organization",
+"v": [
+2343
+],
+"el": false
+},
+{
+"n": "Jonas Alexandre",
+"p": "Parti pour la Libération des Masses et l'Intégration Sociale",
+"v": [
+1606
+],
+"el": false
+},
+{
+"n": "Jean Charles Daniel",
+"p": "Konvansyon Inite Demokratik",
+"v": [
+1528
+],
+"el": false
+},
+{
+"n": "Mirtyl Edvard Gerard Dormevil",
+"p": "Rassemblement des Nationaux Démocrates Volontaires pour l’Unité Salvatrice",
+"v": [
+1276
+],
+"el": false
+},
+{
+"n": "Pollyx Paul",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+790
+],
+"el": false
+},
+{
+"n": "Roseline Limage",
+"p": "Kombit Liberasyon Ekonomik",
+"v": [
+652
+],
+"el": false
+},
+{
+"n": "Wesler Jean Baptiste",
+"p": "Parti Concorde Nationale",
+"v": [
+460
+],
+"el": false
+},
+{
+"n": "Thomas Eddy Dupiton",
+"p": "Consortium National des Partis Politiques Haïtiens",
+"v": [
+247
+],
+"el": false
+}
+]
+},
+{
+"none": [
+1261
+],
+"pos": 105963,
+"senate": true,
+"cap": "[[Centre (department)|Centre]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "[[Rony Célestin]]",
+"p": "Haitian Tèt Kale Party",
+"v": [
+25630
+],
+"el": true
+},
+{
+"n": "Abel Descollines",
+"p": "Konvansyon Inite Demokratik",
+"v": [
+15259
+],
+"el": false
+},
+{
+"n": "Bazelais Francois",
+"p": "Alternative League for Haitian Progress and Emancipation",
+"v": [
+9914
+],
+"el": false
+},
+{
+"n": "Joseph Joel Louis",
+"p": "Konbit Travaye Peyizan pou Libere Ayiti",
+"v": [
+7391
+],
+"el": false
+},
+{
+"n": "Romial Smith",
+"p": "Fanmi Lavalas",
+"v": [
+6708
+],
+"el": false
+},
+{
+"n": "Eddy John Marcadieu",
+"p": "Platfòm Pitit Desalin",
+"v": [
+6112
+],
+"el": false
+},
+{
+"n": "Francisco Delacruz",
+"p": "Struggling People's Organization",
+"v": [
+3853
+],
+"el": false
+},
+{
+"n": "Max Millien",
+"p": "Haiti in Action",
+"v": [
+3416
+],
+"el": false
+},
+{
+"n": "Serge Gilles",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+773
+],
+"el": false
+},
+{
+"n": "Dieulin Saint Olympe",
+"p": "CANANN",
+"v": [
+452
+],
+"el": false
+}
+]
+},
+{
+"none": [
+1501
+],
+"pos": 112750,
+"senate": true,
+"cap": "[[Grand'Anse (department)|Grand'Anse]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "Riche Andris",
+"p": "Struggling People's Organization",
+"v": [
+17350
+],
+"el": false
+},
+{
+"n": "Jean Rigaud Bélizaire",
+"p": "Consortium National des Partis Politiques Haïtiens",
+"v": [
+16045
+],
+"el": true
+},
+{
+"n": "Vincent Casseus",
+"p": "Alternative League for Haitian Progress and Emancipation",
+"v": [
+5934
+],
+"el": false
+},
+{
+"n": "Marie Roselore Aubourg",
+"p": "Konvansyon Inite Demokratik",
+"v": [
+3590
+],
+"el": false
+},
+{
+"n": "Jean Joubert Michel",
+"p": "Platfòm Pitit Desalin",
+"v": [
+2420
+],
+"el": false
+},
+{
+"n": "Frederic Cheron",
+"p": "Independent",
+"v": [
+2419
+],
+"el": false
+},
+{
+"n": "Guibert Barthelemy",
+"p": "Fanmi Lavalas",
+"v": [
+2321
+],
+"el": false
+},
+{
+"n": "Carl Antoine",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+2213
+],
+"el": false
+},
+{
+"n": "Michelet Jerome",
+"p": "Front Uni pour la Renaissance d'Haïti",
+"v": [
+968
+],
+"el": false
+},
+{
+"n": "Jean Ronald Azor",
+"p": "Federalist Party",
+"v": [
+557
+],
+"el": false
+},
+{
+"n": "Jean Patrick Saint Georges",
+"p": "Fwon Revolisyone pou Entegrasyon Mas Yo",
+"v": [
+535
+],
+"el": false
+},
+{
+"n": "Janin Leonidas",
+"p": "Rally of Progressive National Democrats",
+"v": [
+526
+],
+"el": false
+}
+]
+},
+{
+"none": [
+375
+],
+"pos": 120187,
+"senate": true,
+"cap": "[[Nippes]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "Denis Cadeau",
+"p": "Reseau National Bouclier",
+"v": [
+10320
+],
+"el": true
+},
+{
+"n": "Louberson Vilson",
+"p": "Fanmi Lavalas",
+"v": [
+10296
+],
+"el": false
+},
+{
+"n": "M. Carme Sineas Dumelfort",
+"p": "Haitian Tèt Kale Party",
+"v": [
+9358
+],
+"el": false
+},
+{
+"n": "Dieusseul Arice",
+"p": "Parti Concorde Nationale",
+"v": [
+8991
+],
+"el": false
+},
+{
+"n": "Lubern Pierre",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+6532
+],
+"el": false
+},
+{
+"n": "Michelet Casimir",
+"p": "Platfòm Pitit Desalin",
+"v": [
+2157
+],
+"el": false
+},
+{
+"n": "Nickel Pierre",
+"p": "Renmen Ayiti",
+"v": [
+747
+],
+"el": false
+},
+{
+"n": "Vladimir Yayo",
+"p": "Ansanm Patriyot pou Lavni Ayiti",
+"v": [
+186
+],
+"el": false
+}
+]
+},
+{
+"none": [
+1668
+],
+"pos": 125516,
+"senate": true,
+"cap": "[[Nord (Haitian department)|Nord]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "[[Jean Marie Ralph Féthière]]",
+"p": "Haitian Tèt Kale Party",
+"v": [
+47997
+],
+"el": true
+},
+{
+"n": "Theodore Saintilus",
+"p": "Platfòm Pitit Desalin",
+"v": [
+18891
+],
+"el": false
+},
+{
+"n": "Frandy Louis",
+"p": "Reseau National Bouclier",
+"v": [
+15558
+],
+"el": false
+},
+{
+"n": "Sergilus Docteur",
+"p": "Vérité",
+"v": [
+14495
+],
+"el": false
+},
+{
+"n": "Westner Polycarpe",
+"p": "Mouvement Revolisyone Ayisyen",
+"v": [
+6867
+],
+"el": false
+},
+{
+"n": "Hidson Nelson",
+"p": "Federalist Party",
+"v": [
+6693
+],
+"el": false
+},
+{
+"n": "Angelot Bell",
+"p": "Fanmi Lavalas",
+"v": [
+5158
+],
+"el": false
+},
+{
+"n": "John Jerome Jeanty",
+"p": "Renmen Ayiti",
+"v": [
+3400
+],
+"el": false
+},
+{
+"n": "Elvire Eugene",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+3087
+],
+"el": false
+},
+{
+"n": "Pelotat Pierre",
+"p": "Alternative League for Haitian Progress and Emancipation",
+"v": [
+2972
+],
+"el": false
+},
+{
+"n": "Jasmin Dorvil",
+"p": "Haiti in Action",
+"v": [
+2185
+],
+"el": false
+},
+{
+"n": "Cemephise Gilles",
+"p": "Ansanm Patriyot pou Lavni Ayiti",
+"v": [
+1919
+],
+"el": false
+},
+{
+"n": "Robens Marcellus",
+"p": "Rally of Progressive National Democrats",
+"v": [
+1014
+],
+"el": false
+},
+{
+"n": "Amos Zephirin",
+"p": "Consortium National des Partis Politiques Haïtiens",
+"v": [
+979
+],
+"el": false
+},
+{
+"n": "Wilfrid Jean",
+"p": "Force Démocratique Haïtien Intégré",
+"v": [
+970
+],
+"el": false
+},
+{
+"n": "Marc Andre Joseph",
+"p": "Kombit Liberasyon Ekonomik",
+"v": [
+671
+],
+"el": false
+}
+]
+},
+{
+"none": [
+558
+],
+"pos": 134302,
+"senate": true,
+"cap": "[[Nord-Est (department)|Nord Est]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "Wanique Pierre",
+"p": "Haitian Tèt Kale Party",
+"v": [
+42436
+],
+"el": true
+},
+{
+"n": "Jean-Baptistse Bien Aime",
+"p": "Fanmi Lavalas",
+"v": [
+18530
+],
+"el": false
+},
+{
+"n": "Duchene Petit Frere",
+"p": "Platfòm Pitit Desalin",
+"v": [
+5821
+],
+"el": false
+},
+{
+"n": "Enance Saint Fleur",
+"p": "Struggling People's Organization",
+"v": [
+2135
+],
+"el": false
+},
+{
+"n": "Renan Etienne",
+"p": "Alternative League for Haitian Progress and Emancipation",
+"v": [
+1987
+],
+"el": false
+},
+{
+"n": "Mona Eliacint Leandre",
+"p": "Rally of Progressive National Democrats",
+"v": [
+511
+],
+"el": false
+},
+{
+"n": "Gaston Saint Fleur",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+270
+],
+"el": false
+}
+]
+},
+{
+"none": [
+716
+],
+"pos": 139190,
+"senate": true,
+"cap": "[[Nord-Ouest (department)|Nord Ouest]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "Kedlaire Augustin",
+"p": "Haitian Tèt Kale Party",
+"v": [
+21392
+],
+"el": true
+},
+{
+"n": "Francois Lucas Sainvil",
+"p": "Mouvement de Solidarite pour l'Avancement d'une Nouvelle Haïti",
+"v": [
+10049
+],
+"el": false
+},
+{
+"n": "Elie Nicolas Plancher",
+"p": "Struggling People's Organization",
+"v": [
+8945
+],
+"el": false
+},
+{
+"n": "Jean Fritznel Bellefleur",
+"p": "Rally of Progressive National Democrats",
+"v": [
+7168
+],
+"el": false
+},
+{
+"n": "Jean-Gary Sanon",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+6515
+],
+"el": false
+},
+{
+"n": "Pierre Martin Tatoute",
+"p": "Vérité",
+"v": [
+3193
+],
+"el": false
+},
+{
+"n": "Dominique Philor",
+"p": "Independent",
+"v": [
+2250
+],
+"el": false
+},
+{
+"n": "Eddy Bastien",
+"p": "Reseau National Bouclier",
+"v": [
+1841
+],
+"el": false
+},
+{
+"n": "Amos Pierre",
+"p": "Fanmi Lavalas",
+"v": [
+1563
+],
+"el": false
+}
+]
+},
+{
+"none": [],
+"pos": 145369,
+"senate": true,
+"cap": "[[Ouest (department)|Ouest]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "Fednel Monchery",
+"p": "Haitian Tèt Kale Party",
+"v": [
+78172
+],
+"el": false
+},
+{
+"n": "Pierre Paul Patrice Dumont",
+"p": "Rassemblement des Patriotes Haïtiens",
+"v": [
+67194
+],
+"el": true
+},
+{
+"n": "Louis Gerald Gilles",
+"p": "Fanmi Lavalas",
+"v": [
+40596
+],
+"el": false
+},
+{
+"n": "Alix Didier Fils-Aime",
+"p": "Vérité",
+"v": [
+40232
+],
+"el": false
+},
+{
+"n": "Jean Myrtho Muraille",
+"p": "Platfòm Pitit Desalin",
+"v": [
+31406
+],
+"el": false
+},
+{
+"n": "Arnel Belizaire",
+"p": "Ansanm Patriyot pou Lavni Ayiti",
+"v": [
+26095
+],
+"el": false
+},
+{
+"n": "Jean Adler Gaston",
+"p": "Parti Concorde Nationale",
+"v": [
+16917
+],
+"el": false
+},
+{
+"n": "Michel Andre",
+"p": "Rally of Progressive National Democrats",
+"v": [
+14260
+],
+"el": false
+},
+{
+"n": "Marie Liliane Vedrigue Hersche",
+"p": "Mouvement Revolisyone Ayisyen",
+"v": [
+9521
+],
+"el": false
+},
+{
+"n": "Sabine Duvivier Morpeau",
+"p": "CANANN",
+"v": [
+4809
+],
+"el": false
+},
+{
+"n": "Volcy Assad",
+"p": "Entente Nationale des Travailleurs pour le Reveil d'Haïti",
+"v": [
+4318
+],
+"el": false
+},
+{
+"n": "John Miller Beauvoir",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+4080
+],
+"el": false
+},
+{
+"n": "Lucmanne Delille",
+"p": "Struggling People's Organization",
+"v": [
+3639
+],
+"el": false
+},
+{
+"n": "Tranquilor Mathieu",
+"p": "Inite Patriyotik",
+"v": [
+3533
+],
+"el": false
+},
+{
+"n": "Jean Eugene Pierre-Louis",
+"p": "Konbit pou Rekonstwi Haïti",
+"v": [
+2450
+],
+"el": false
+},
+{
+"n": "Fredely Georges",
+"p": "Front Uni pour la Renaissance d'Haïti",
+"v": [
+1412
+],
+"el": false
+},
+{
+"n": "Louis Gonzague Edner Day",
+"p": "Kombit Liberasyon Ekonomik",
+"v": [
+1345
+],
+"el": false
+},
+{
+"n": "Jean Nelson Pierre",
+"p": "Rassemblement des Nationaux Démocrates Volontaires pour l’Unité Salvatrice",
+"v": [
+1281
+],
+"el": false
+},
+{
+"n": "Amelus Gregoire",
+"p": "Federalist Party",
+"v": [
+1107
+],
+"el": false
+},
+{
+"n": "Jean Luckner Pierre",
+"p": "Independent",
+"v": [
+325
+],
+"el": false
+}
+]
+},
+{
+"none": [
+1059
+],
+"pos": 155463,
+"senate": true,
+"cap": "[[Sud (department)|Sud]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "[[Pierre François Sildor]]",
+"p": "Haitian Tèt Kale Party",
+"v": [
+21683
+],
+"el": true
+},
+{
+"n": "Fritz Carlos Lebon",
+"p": "Fanmi Lavalas",
+"v": [
+21532
+],
+"el": false
+},
+{
+"n": "Pierre Franky Exius",
+"p": "Alternative League for Haitian Progress and Emancipation",
+"v": [
+17591
+],
+"el": false
+},
+{
+"n": "Yvon Buissereth",
+"p": "Vérité",
+"v": [
+6970
+],
+"el": false
+},
+{
+"n": "Gandhy Dorfeuille",
+"p": "Ansanm Patriyot pou Lavni Ayiti",
+"v": [
+4420
+],
+"el": false
+},
+{
+"n": "Anthony Gedeon",
+"p": "Struggling People's Organization",
+"v": [
+4220
+],
+"el": false
+},
+{
+"n": "Kenol Mathieu",
+"p": "Platfòm Pitit Desalin",
+"v": [
+4060
+],
+"el": false
+},
+{
+"n": "Wilfrid Leader's Vital",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+2699
+],
+"el": false
+},
+{
+"n": "Kesnerd Edouard",
+"p": "Kombit Liberasyon Ekonomik",
+"v": [
+774
+],
+"el": false
+}
+]
+},
+{
+"none": [
+662
+],
+"pos": 161868,
+"senate": true,
+"cap": "[[Sud-Est (department)|Sud Est]]",
+"rounds": [
+"Scrutin"
+],
+"cands": [
+{
+"n": "[[Joseph Lambert (Haitian politician)|Joseph Lambert]]",
+"p": "Konbit Pou Ayiti",
+"v": [
+44131
+],
+"el": true
+},
+{
+"n": "Hebert Lahatte",
+"p": "Konvansyon Inite Demokratik",
+"v": [
+15922
+],
+"el": false
+},
+{
+"n": "Jacques Roderich Ladouceur",
+"p": "Platfòm Pitit Desalin",
+"v": [
+10331
+],
+"el": false
+},
+{
+"n": "Miralda Jameau",
+"p": "Fanmi Lavalas",
+"v": [
+2820
+],
+"el": false
+},
+{
+"n": "Marie Sylvia Fabien Moise",
+"p": "MOPANOU",
+"v": [
+2279
+],
+"el": false
+},
+{
+"n": "Joissaint Ephesien",
+"p": "Vérité",
+"v": [
+2146
+],
+"el": false
+},
+{
+"n": "Jean Renel Denis",
+"p": "Kombit Liberasyon Ekonomik",
+"v": [
+1406
+],
+"el": false
+},
+{
+"n": "Milot Fenelon Cajou",
+"p": "Fusion of Haitian Social Democrats",
+"v": [
+1361
+],
+"el": false
+},
+{
+"n": "Willy Senatus",
+"p": "Parti Concorde Nationale",
+"v": [
+1001
+],
+"el": false
+}
+]
+}
+]

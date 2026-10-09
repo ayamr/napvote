@@ -1,0 +1,99 @@
+name: Mise à jour NapVote
+
+# Toutes les 2 h : collecte des données du CEP, reconstruction, publication sur GitHub Pages.
+# Rien n'est publié si les données du CEP n'ont pas changé (sauf lancement manuel ou changement du code).
+on:
+  schedule:
+    - cron: "7 */2 * * *"       # minute 7 : évite le pic de 0 h des tâches GitHub
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Publier même sans nouveauté"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths-ignore: ["data/**", "README.md", "android/**", "ios/**"]
+
+permissions:
+  contents: write     # commit des données
+  pages: write        # déploiement
+  id-token: write
+  issues: write       # alerte « nouvelle note du CEP »
+
+concurrency:
+  group: napvote-update
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      publish: ${{ steps.decide.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - run: pip install -r requirements.txt
+
+      - name: Collecte CEP et construction
+        id: upd
+        run: python scripts/update.py
+
+      - name: Commit des données modifiées
+        id: commit
+        run: |
+          git config user.name  "napvote-bot"
+          git config user.email "napvote-bot@users.noreply.github.com"
+          git add -A data www
+          if git diff --cached --quiet; then
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Données CEP du $(TZ=America/Port-au-Prince date '+%d/%m/%Y %H:%M')"
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push
+            echo "committed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Alerte si une nouvelle page apparaît sur le site du CEP
+        if: steps.upd.outputs.notes_new != '0' && hashFiles('data/notes_new.txt') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Nouvelle page sur cephaiti.ht ($(date +%d/%m/%Y))" \
+            --body "Le site du CEP a publié de nouvelles pages (note, calendrier, communiqué). À lire avant de mettre à jour le calendrier et les actualités de NapVote :"$'\n\n'"$(cat data/notes_new.txt)" || true
+          rm -f data/notes_new.txt
+
+      - name: Faut-il publier ?
+        id: decide
+        run: |
+          if [ "${{ steps.commit.outputs.committed }}" = "true" ] || [ "${{ github.event_name }}" != "schedule" ] || [ "${{ inputs.force }}" = "true" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Aucune nouveauté du CEP : pas de publication."
+          fi
+
+      - uses: actions/configure-pages@v5
+        if: steps.decide.outputs.publish == 'true'
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.decide.outputs.publish == 'true'
+        with:
+          path: www
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

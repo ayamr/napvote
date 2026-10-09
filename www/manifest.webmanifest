@@ -1,0 +1,26 @@
+{
+  "name": "NapVote — Élections en Haïti",
+  "short_name": "NapVote",
+  "description": "Qui est sur votre bulletin ? Candidats et résultats passés des élections haïtiennes, commune par commune.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./index.html#home",
+  "scope": "./",
+  "id": "ht.napvote.app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2F4F8",
+  "theme_color": "#1640B5",
+  "categories": ["news", "government", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Mon bulletin", "short_name": "Bulletin", "url": "./index.html#bulletin", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Carte des candidats", "short_name": "Carte", "url": "./index.html#carte", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Résultats passés", "short_name": "Résultats", "url": "./index.html#res", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

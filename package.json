@@ -1,0 +1,30 @@
+{
+  "name": "napvote",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NapVote — suivi citoyen des élections en Haïti (web, PWA, Android, iOS)",
+  "scripts": {
+    "data": "python3 scripts/update.py",
+    "icons": "uv run --with pillow python scripts/make_icons.py",
+    "serve": "python3 scripts/devserver.py",
+    "assets": "capacitor-assets generate --iconBackgroundColor '#1640B5' --splashBackgroundColor '#F2F4F8' --splashBackgroundColorDark '#0A101F'",
+    "sync": "python3 scripts/build_sw.py && cap sync",
+    "ios": "npm run sync && cap open ios",
+    "android": "npm run sync && cap open android",
+    "data:offline": "python3 scripts/update.py --no-fetch"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/geolocation": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/share": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.0.0"
+  }
+}
