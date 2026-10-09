@@ -44,7 +44,7 @@
   }
   function fail(msg) {
     var m = document.getElementById('main');
-    if (m) { m.innerHTML = '<div class="wrap"><div class="card pad" style="margin:32px 0"><h2>NapVote ne peut pas démarrer</h2><p>' + (msg || 'Les données sont introuvables.') + ' Vérifiez votre connexion puis rechargez la page.</p><button type="button" class="btn" onclick="location.reload()">Recharger</button></div></div>'; }
+    if (m) { m.innerHTML = '<div class="wrap"><div style="margin:32px 0"><h2>' + (window.t ? window.t('err.boot') : 'NapVote ne peut pas démarrer') + '</h2><p>' + (msg || 'Les données sont introuvables.') + '</p><p style="margin-top:14px"><button type="button" class="btn" onclick="location.reload()">' + (window.t ? window.t('err.reload') : 'Recharger') + '</button></p></div></div>'; }
   }
 
   chooseLive().then(function (live) {

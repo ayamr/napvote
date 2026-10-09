@@ -7,8 +7,8 @@
   var C = A.C, byPlace = A.byPlace, pres = A.pres, esc = A.esc, fmt = A.fmt;
   var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var MOBILE = window.matchMedia('(max-width: 860px)');
-  var LABEL = { 1: 'Sénateurs', 2: 'Députés', 3: 'Maires', 4: 'CASEC', 5: 'ASEC' };
-  var TITLE = { 2: 'Députés', 3: 'Maires', 4: 'CASEC', 5: 'ASEC' };
+  var LABEL = { 1: t('post.1'), 2: t('post.2'), 3: t('post.3'), 4: t('post.4'), 5: t('post.5') };
+  var TITLE = { 2: t('post.2'), 3: t('post.3'), 4: t('post.4'), 5: t('post.5') };
   var HELP = { 4: 'Conseil d’administration de la section communale', 5: 'Assemblée de la section communale' };
 
   var S = { poste: 2, party: -1, sel: null, tab: null, flash: -1, hist: 'none' };
@@ -246,7 +246,7 @@
     var keys = ['dep', 'pres', 'par'].concat(HD ? ['h16'] : []);
     var tab = (S.tab && keys.indexOf(S.tab) >= 0) ? S.tab : 'dep';
     var fem = C.filter(function (c) { return c.f; }).length;
-    var h = '<div class="eyebrow">Vue nationale</div><h3>' + fmt(C.length) + ' candidats inscrits</h3><p class="sub">' + fmt(PARTIES.length) + ' partis · ' + Math.round(100 * fem / C.length) + ' % de femmes</p>' + partyNote();
+    var h = '<h3>' + fmt(C.length) + ' candidats inscrits</h3><p class="sub">Haïti · ' + fmt(PARTIES.length) + ' partis · ' + Math.round(100 * fem / C.length) + ' % de femmes</p>' + partyNote();
     h += tabsHtml([{ k: 'dep', l: 'Départements' }, { k: 'pres', l: 'Présidentielle', n: pres.length }, { k: 'par', l: 'Partis' }].concat(HD ? [{ k: 'h16', l: '2016' }] : []), tab);
     if (tab === 'dep') {
       var ds = D.map(function (d, i) { return i; }).sort(function (a, b) { return M.dv[b] - M.dv[a] || D[a].n.localeCompare(D[b].n); });

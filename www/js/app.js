@@ -32,8 +32,8 @@
     if (isNative && cap.Plugins && cap.Plugins.Share) { cap.Plugins.Share.share({ title: o.title, text: o.text, url: o.url, dialogTitle: o.title }).catch(function () { /* cancelled */ }); return; }
     if (navigator.share) { navigator.share(o).catch(function () { /* cancelled */ }); return; }
     var txt = o.text + (o.url ? '\n' + o.url : '');
-    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(function () { API.toast('Copié dans le presse-papiers'); }, function () { API.toast('Copie impossible'); }); }
-    else { API.toast('Partage non disponible sur cet appareil'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(function () { API.toast(t('copied')); }, function () { API.toast(t('copy.fail')); }); }
+    else { API.toast(t('share.none')); }
   };
 
   /* ---------- shared data ---------- */
@@ -78,18 +78,28 @@
     if (i >= 0) { favs.splice(i, 1); } else { favs.push(k); }
     API.store.set('fav', favs);
     API.emit('fav', c);
-    API.toast(i >= 0 ? 'Retiré des favoris' : 'Ajouté aux favoris ★');
+    API.toast(t(i >= 0 ? 'fav.off' : 'fav.on'));
   };
   API.favList = function () { return C.filter(API.isFav); };
-  API.star = function (c) { return '<button type="button" class="star' + (API.isFav(c) ? ' on' : '') + '" data-star="' + c.i + '" aria-pressed="' + API.isFav(c) + '" aria-label="Favori : ' + esc(c.pre + ' ' + c.nom) + '">' + (API.isFav(c) ? '★' : '☆') + '</button>'; };
+  var RING = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path class="tick" d="M7.2 12.6l3.3 3.4 6.6-7.6"/></svg>';
+  API.mark = function (c) { return '<button type="button" class="mk" data-star="' + c.i + '" aria-pressed="' + API.isFav(c) + '" aria-label="' + esc(t('mark.aria', { n: c.pre + ' ' + c.nom })) + '">' + RING + '</button>'; };
+  API.star = API.mark;
+  /* une ligne de liste : marge (coche) + nom + précisions ; o.sub = texte sous le nom, o.act = html à droite */
+  API.row = function (c, o) {
+    o = o || {};
+    return '<li class="cc' + (API.isFav(c) ? ' on' : '') + '" data-c="' + c.i + '" tabindex="0">' + API.mark(c) +
+      '<span class="cc-t"><b class="nm">' + esc(c.pre) + ' ' + esc(c.nom) + '</b><span class="cc-s"><span class="pt">' + esc(V.parties[c.pa]) + '</span>' + (o.sub ? ' · ' + esc(o.sub) : '') + API.bioBadge(c) + '</span></span>' + (o.act || '') + '</li>';
+  };
   document.addEventListener('click', function (e) {
     var s = e.target.closest ? e.target.closest('[data-star]') : null;
     if (!s) { return; }
     e.preventDefault(); e.stopPropagation();
-    API.toggleFav(C[+s.getAttribute('data-star')]);
-    document.querySelectorAll('[data-star="' + s.getAttribute('data-star') + '"]').forEach(function (b) {
-      var on = API.isFav(C[+b.getAttribute('data-star')]);
-      b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.textContent = on ? '★' : '☆';
+    var id = s.getAttribute('data-star');
+    API.toggleFav(C[+id]);
+    document.querySelectorAll('[data-star="' + id + '"]').forEach(function (b) {
+      var on = API.isFav(C[+b.getAttribute('data-star')]), row = b.closest('.cc, li');
+      b.classList.add('just'); b.setAttribute('aria-pressed', on);
+      if (row) { row.classList.toggle('on', on); row.classList.add('just'); setTimeout(function () { row.classList.remove('just'); b.classList.remove('just'); }, 500); }
     });
   }, true);
 
@@ -98,7 +108,7 @@
   var strip = function (x) { return x.normalize('NFD').replace(/[̀-ͯ]/g, ''); };
   var bkey = function (c) { return strip(c.nom).toUpperCase() + '|' + strip(c.pre).toLowerCase(); };
   API.bioOf = function (c) { return (c.po === 0 && BIOS[bkey(c)]) || null; };
-  API.bioBadge = function (c) { return API.bioOf(c) ? '<span class="bio-b">Fiche</span>' : ''; };
+  API.bioBadge = function (c) { return API.bioOf(c) ? '<span class="bio-b">fiche</span>' : ''; };
 
   /* ---------- historique 2015-2016 ---------- */
   var H = window.VVH;
@@ -112,9 +122,9 @@
   function histBadge(c) {
     var L = API.links(c);
     if (!L) { return ''; }
-    if (L.some(function (x) { return x.el; })) { return '<span class="bio-b hb elu">Élu 2015</span>'; }
-    if (L.some(function (x) { return x.k === 'p'; })) { return '<span class="bio-b hb">2016</span>'; }
-    return '<span class="bio-b hb">2015</span>';
+    if (L.some(function (x) { return x.el; })) { return '<span class="hb elu">élu</span>'; }
+    if (L.some(function (x) { return x.k === 'p'; })) { return '<span class="hb">2016</span>'; }
+    return '<span class="hb">2015</span>';
   }
   var oldBadge = API.bioBadge;
   API.bioBadge = function (c) { return oldBadge(c) + histBadge(c); };
@@ -230,15 +240,15 @@
     if (G) {
       G.requestPermissions().then(function () { return G.getCurrentPosition({ enableHighAccuracy: false, timeout: 12000 }); }).then(function (pos) {
         var pi = API.placeAt(pos.coords.longitude, pos.coords.latitude);
-        cb(pi, pi < 0 ? 'Vous semblez hors d’Haïti ou d’une commune connue.' : '');
-      }).catch(function () { cb(-1, 'Localisation refusée ou indisponible. Choisissez votre commune dans la liste.'); });
+        cb(pi, pi < 0 ? t('gps.out') : '');
+      }).catch(function () { cb(-1, t('gps.denied')); });
       return;
     }
-    if (!navigator.geolocation) { cb(-1, 'Localisation indisponible sur cet appareil.'); return; }
+    if (!navigator.geolocation) { cb(-1, t('gps.none')); return; }
     navigator.geolocation.getCurrentPosition(function (pos) {
       var pi = API.placeAt(pos.coords.longitude, pos.coords.latitude);
-      cb(pi, pi < 0 ? 'Vous semblez hors d’Haïti ou d’une commune connue.' : '');
-    }, function () { cb(-1, 'Localisation refusée ou indisponible. Choisissez votre commune dans la liste.'); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 600000 });
+      cb(pi, pi < 0 ? t('gps.out') : '');
+    }, function () { cb(-1, t('gps.denied')); }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 600000 });
   };
 
   /* ---------- search ---------- */
@@ -275,38 +285,34 @@
   };
 
   /* ---------- home ---------- */
-  var elFacts = document.getElementById('h-facts');
-  if (elFacts) {
-    var withCand = P.filter(function (p, i) { return byPlace[i].length > 0; }).length;
-    var fem = C.filter(function (c) { return c.f; }).length;
-    var facts = [
-      [fmt(C.length), 'candidats inscrits'],
-      [fmt(API.pres.length), 'à la présidentielle'],
-      [fmt(V.parties.length), 'partis politiques'],
-      [fmt(withCand), 'communes avec candidats']
-    ];
-    elFacts.innerHTML = facts.map(function (f) { return '<div class="fact"><b>' + f[0] + '</b><span>' + f[1] + '</span></div>'; }).join('');
+  var FEM = C.filter(function (c) { return c.f; }).length;
+  var elPosts = document.getElementById('h-posts');
+  if (elPosts) {
+    elPosts.innerHTML = [0, 1, 2, 3, 4, 5].map(function (po) {
+      var n = C.filter(function (c) { return c.po === po; }).length;
+      return '<li><button type="button" class="rb" data-poste="' + po + '"><span class="k">' + esc(t('post.' + po)) + '</span><span class="n">' + fmt(n) + '</span></button></li>';
+    }).join('');
+    elPosts.addEventListener('click', function (e) { var b = e.target.closest('[data-poste]'); if (b) { show('cand'); API.emit('poste', +b.getAttribute('data-poste')); } });
     var note = document.getElementById('h-fem');
-    if (note) { note.textContent = Math.round(100 * fem / C.length) + ' % de femmes parmi les candidats'; }
+    if (note) { note.textContent = t('home.fem', { n: Math.round(100 * FEM / C.length) }); }
   }
+  var ft = document.getElementById('foot-t');
+  if (ft) { ft.textContent = t('foot', { d: fdateISO(API.asof) }); }
   /* nouveautés de la dernière collecte */
   var elCh = document.getElementById('h-changes'), CH = window.VVChanges;
   if (elCh && CH && (CH.nAdded || CH.nRemoved)) {
-    var when = new Date(CH.t), dd = when.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }), hh = when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    var LB = ['président', 'sénat', 'députés', 'maires', 'CASEC', 'ASEC'], PO = ['Président', 'Sénateur', 'Député', 'Maire', 'CASEC', 'ASEC'];
-    var parts = Object.keys(CH.by).filter(function (k) { return CH.by[k].added; }).map(function (k) { return LB[PO.indexOf(k)] + ' +' + CH.by[k].added; });
-    var list = (CH.added || []).filter(function (i) { return C[i]; }).slice(0, 12);
-    elCh.innerHTML = '<details class="chg card"><summary><span class="chg-d">Nouveautés du CEP</span> <b>' + (CH.nAdded ? '+' + fmt(CH.nAdded) + ' candidats' : '') + (CH.nRemoved ? (CH.nAdded ? ', ' : '') + '−' + fmt(CH.nRemoved) + ' retirés' : '') + '</b> <span class="chg-w">au ' + esc(dd) + ' à ' + esc(hh) + '</span></summary>' +
-      '<p class="note-s">' + esc(parts.join(' · ')) + (CH.prev_total ? ' · de ' + fmt(CH.prev_total) + ' à ' + fmt(CH.total) + ' candidatures.' : '') + '</p>' +
-      (list.length ? '<ul class="chg-l">' + list.map(function (i) { var c = C[i]; return '<li data-c="' + i + '" tabindex="0"><b>' + esc(c.pre + ' ' + c.nom) + '</b> <span>' + esc(V.postes[c.po]) + ' · ' + esc(API.where(c)) + '</span></li>'; }).join('') + '</ul>' + (CH.added.length > list.length ? '<p class="note-s">et ' + (CH.nAdded - list.length) + ' autres.</p>' : '') : '') + '</details>';
+    var when = new Date(CH.t), dd = when.toLocaleDateString(window.NVLang === 'ht' ? 'fr-FR' : 'fr-FR', { day: 'numeric', month: 'long' }), hh = when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    var parts = Object.keys(CH.by).filter(function (k) { return CH.by[k].added; }).map(function (k) { return t('post.' + ['Président', 'Sénateur', 'Député', 'Maire', 'CASEC', 'ASEC'].indexOf(k)) + ' +' + CH.by[k].added; });
+    var list = (CH.added || []).filter(function (i) { return C[i]; }).slice(0, 10);
+    elCh.innerHTML = '<details class="chg"><summary><span class="chg-d">' + esc(t('home.changes')) + '</span><b>' + (CH.nAdded ? esc(t('home.changes.add', { n: fmt(CH.nAdded) })) : '') + (CH.nRemoved ? (CH.nAdded ? ', ' : '') + esc(t('home.changes.rem', { n: fmt(CH.nRemoved) })) : '') + '</b><span class="chg-w">' + esc(t('home.changes.at', { d: dd, h: hh })) + '</span></summary>' +
+      '<p class="note-s">' + esc(parts.join(' · ')) + '</p>' +
+      (list.length ? '<ul class="chg-l">' + list.map(function (i) { var c = C[i]; return '<li data-c="' + i + '" tabindex="0"><b>' + esc(c.pre + ' ' + c.nom) + '</b><span>' + esc(V.postes[c.po]) + ' · ' + esc(API.where(c)) + '</span></li>'; }).join('') + '</ul>' + (CH.nAdded > list.length ? '<p class="note-s">' + esc(t('home.changes.more', { n: CH.nAdded - list.length })) + '</p>' : '') : '') + '</details>';
   }
   var elPres = document.getElementById('h-pres');
   if (elPres) {
-    elPres.innerHTML = API.pres.map(function (c) {
-      return '<li class="pc" data-c="' + c.i + '" tabindex="0"><span class="ini" aria-hidden="true">' + esc((c.pre.charAt(0) + c.nom.charAt(0)).toUpperCase()) + '</span><span class="pc-t"><b>' + esc(c.pre) + ' ' + esc(c.nom) + '</b>' + API.bioBadge(c) + '<span class="pt">' + esc(V.parties[c.pa]) + '</span></span>' + API.star(c) + '</li>';
-    }).join('');
+    elPres.innerHTML = API.pres.map(function (c) { return API.row(c); }).join('');
     var pn = document.getElementById('h-pres-note');
-    if (pn) { pn.textContent = 'Touchez un candidat pour lire sa fiche. Liste publique du CEP (' + API.pres.length + ' candidats au ' + fdateISO(API.asof) + ') ; selon HaïtiLibre (24 sept.), l’ancien président Michel Martelly a aussi déposé une candidature, qui ne figure pas dans cette liste à ce jour.'; }
+    if (pn) { pn.textContent = t('home.pres.hint', { n: API.pres.length, d: fdateISO(API.asof) }); }
   }
   var elMini = document.getElementById('h-mini');
   if (elMini) {
@@ -322,12 +328,12 @@
   if (elH && H) {
     var st = H.stat, nat = H.pres.nat[0];
     var cards = [
-      ['Présidentielle 2016', nat.n + ' · ' + pcsA(nat.pc), fmt(nat.v) + ' voix sur ' + fmt(H.pres.tot) + ' votes (20 novembre 2016).', 'pres'],
-      ['Députés 2015-2017', fmt(st.elus) + ' élus sur ' + st.circos, fmt(st.ncand) + ' candidats en 2015. ' + st.late + ' circonscriptions n’ont eu leur élu qu’après une reprise, jusqu’en janvier 2017.', 'dep'],
-      ['Sénat 2015-2017', (st.sen_el + st.sen17) + ' sénateurs élus', 'Trois sièges par département : deux pourvus en 2015 (compléments en novembre 2016), un au renouvellement du tiers en 2016-2017.', 'sen']
+      ['Présidentielle 2016', nat.n + ', ' + pcsA(nat.pc) + ' des votes (' + fmt(nat.v) + ' voix).', 'pres'],
+      ['Députés 2015-2017', fmt(st.elus) + ' élus sur ' + st.circos + ' circonscriptions ; ' + st.late + ' n’ont eu leur élu qu’après une reprise.', 'dep'],
+      ['Sénat 2015-2017', (st.sen_el + st.sen17) + ' sénateurs élus, trois sièges par département.', 'sen']
     ];
     elH.innerHTML = cards.map(function (c) {
-      return '<div class="ag"><span class="eyebrow">' + esc(c[0]) + '</span><b class="hb-t">' + esc(c[1]) + '</b><span>' + esc(c[2]) + '</span><button type="button" class="lnk" data-res="' + c[3] + '">Voir le détail ›</button></div>';
+      return '<li><button type="button" class="rb" data-res="' + c[2] + '"><span><b class="k">' + esc(c[0]) + '</b><span class="s" style="display:block;font-size:.88rem;color:var(--ink-2)">' + esc(c[1]) + '</span></span><span class="lk">›</span></button></li>';
     }).join('');
     elH.addEventListener('click', function (e) {
       var b = e.target.closest('[data-res]');
@@ -343,13 +349,13 @@
     });
   }
 
-  /* carte « mon bulletin » sur l'accueil */
+  /* bandeau « mon bulletin » sur l'accueil */
   var elSaved = document.getElementById('h-saved');
   function renderSaved() {
     if (!elSaved) { return; }
     if (!cur) { elSaved.innerHTML = ''; return; }
     var n = (API.countFor ? API.countFor(cur) : 0);
-    elSaved.innerHTML = '<button type="button" class="saved card" data-go="bulletin"><span class="saved-pin" aria-hidden="true">📍</span><span class="saved-t"><span class="eyebrow">Mon bulletin</span><b>' + esc(P[cur.pi].n) + '</b><span>' + esc(V.deptNames[P[cur.pi].d]) + (n ? ' · ' + fmt(n) + ' candidats à départager' : '') + '</span></span><span class="saved-go">Voir ›</span></button>';
+    elSaved.innerHTML = '<button type="button" class="saved" data-go="bulletin"><span class="sv"><b>' + esc(P[cur.pi].n) + '</b><span>' + esc(V.deptNames[P[cur.pi].d]) + (n ? ' · ' + esc(t('home.saved.n', { n: fmt(n) })) : '') + '</span></span><span class="go">' + esc(t('home.saved.go')) + '</span></button>';
   }
   API.on('loc', renderSaved);
   API.renderSaved = renderSaved;
@@ -359,7 +365,7 @@
   function renderChip() {
     if (!chip) { return; }
     if (!cur) { chip.hidden = true; return; }
-    chip.hidden = false; chip.textContent = '📍 ' + P[cur.pi].n;
+    chip.hidden = false; chip.textContent = P[cur.pi].n;
   }
   API.on('loc', renderChip); renderChip();
   if (chip) { chip.addEventListener('click', function () { show('bulletin'); }); }
@@ -373,31 +379,30 @@
     var fdate = function (iso, o) { return d0(iso).toLocaleDateString('fr-FR', o || { day: 'numeric', month: 'long', year: 'numeric' }); };
     var frange = function (a, b) {
       if (a === b) { return fdate(a); }
-      var A = d0(a), B = d0(b);
-      return (A.getFullYear() === B.getFullYear() ? A.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : fdate(a)) + ' – ' + fdate(b);
+      var A2 = d0(a), B2 = d0(b);
+      return (A2.getFullYear() === B2.getFullYear() ? A2.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : fdate(a)) + ' – ' + fdate(b);
     };
     var statusOf = function (a, b) { return daysTo(b) < 0 ? 'done' : (daysTo(a) <= 0 ? 'now' : 'next'); };
     var STL = { done: 'Passée', now: 'En cours', next: 'À venir' };
-    var left = function (n) { return n === 0 ? 'Aujourd’hui' : (n === 1 ? 'Demain' : 'Dans ' + fmt(n) + ' jours'); };
+    var left = function (n) { return n === 0 ? t('days.0') : (n === 1 ? t('days.1') : t('days.n', { n: fmt(n) })); };
     API.daysTo = daysTo; API.fdate = fdate; API.left = left;
 
     var agendaItems = [
-      ['Fin prévue de l’inscription des électeurs', '2026-10-13', 'Date du calendrier du 27 juillet ; le CEP indique que l’inscription se poursuit'],
-      ['Fin de l’inscription des candidats', '2026-10-31', 'Prolongée par le CEP le 5 octobre'],
-      ['Premier tour : présidentielle et législatives', '2026-12-13', 'Date annoncée ; un calendrier actualisé doit être publié'],
-      ['Second tour et collectivités territoriales', '2027-02-21', 'Date annoncée ; un calendrier actualisé doit être publié']
+      ['date.1', '2026-10-13', 'Date du calendrier du 27 juillet ; le CEP indique que l’inscription se poursuit'],
+      ['date.2', '2026-10-31', 'Prolongée par le CEP le 5 octobre'],
+      ['date.3', '2026-12-13', 'Date annoncée ; un calendrier actualisé doit être publié'],
+      ['date.4', '2027-02-21', 'Date annoncée ; un calendrier actualisé doit être publié']
     ].filter(function (a) { return daysTo(a[1]) >= 0; }).slice(0, 4);
     var elAg = document.getElementById('h-agenda');
     if (elAg) {
       elAg.innerHTML = agendaItems.map(function (a) {
-        var n = daysTo(a[1]);
-        return '<div class="ag"><span class="ag-d">' + (n === 0 ? 'Aujourd’hui' : fmt(n) + '<small>' + (n > 1 ? 'jours' : 'jour') + '</small>') + '</span><b>' + esc(a[0]) + '</b><span>' + esc(fdate(a[1])) + ' · ' + esc(a[2]) + '</span></div>';
+        return '<li class="rl"><span><b class="d">' + esc(fdate(a[1])) + '</b><span class="s">' + esc(t(a[0])) + '. ' + esc(a[2]) + '</span></span><span class="j">' + esc(left(daysTo(a[1]))) + '</span></li>';
       }).join('');
     }
 
     function feedHtml(items) {
       return items.map(function (n) {
-        return '<article class="fi"><div class="fi-m"><span class="sb' + (n.src === 'CEP' ? '' : ' ln') + '">' + esc(n.src) + '</span><span class="mono">' + esc(fdate(n.date, { day: 'numeric', month: 'short', year: 'numeric' })) + '</span></div><div><h3><a href="' + esc(n.u) + '" target="_blank" rel="noopener noreferrer">' + esc(n.t) + '</a></h3>' + (n.s ? '<p>' + esc(n.s) + '</p>' : '') + '</div></article>';
+        return '<article class="fi"><div class="fi-m"><b>' + esc(n.src) + '</b> · ' + esc(fdate(n.date, { day: 'numeric', month: 'long', year: 'numeric' })) + '</div><h3><a href="' + esc(n.u) + '" target="_blank" rel="noopener noreferrer">' + esc(n.t) + '</a></h3>' + (n.s ? '<p>' + esc(n.s) + '</p>' : '') + '</article>';
       }).join('');
     }
     var news = E.news.slice().sort(function (a, b) { return b.date.localeCompare(a.date); });
@@ -407,12 +412,12 @@
     var elVotes = document.getElementById('c-votes');
     if (elVotes) {
       var vc = [
-        ['Premier tour', '2026-12-13', 'Présidentielle, législatives et ratification populaire des changements proposés à la Constitution.'],
-        ['Second tour', '2027-02-21', 'Présidentielle, législatives et élections des collectivités territoriales.']
+        ['cal.first', '2026-12-13', 'Présidentielle, législatives et ratification populaire des changements proposés à la Constitution.'],
+        ['cal.second', '2027-02-21', 'Présidentielle, législatives et élections des collectivités territoriales.']
       ];
       elVotes.innerHTML = vc.map(function (v) {
         var n = daysTo(v[1]);
-        return '<div class="vc"><span class="eyebrow">' + esc(v[0]) + '</span><span class="vc-d">' + esc(fdate(v[1], { day: 'numeric', month: 'long', year: 'numeric' })) + '</span><span class="vc-j">' + (n >= 0 ? left(n) : 'Date passée') + '</span><p>' + esc(v[2]) + '</p></div>';
+        return '<div class="vc"><span class="vc-k">' + esc(t(v[0])) + '</span><span class="vc-d">' + esc(fdate(v[1], { day: 'numeric', month: 'long', year: 'numeric' })) + '</span><span class="vc-j">' + (n >= 0 ? esc(left(n)) : esc(t('days.past'))) + '</span><p>' + esc(v[2]) + '</p></div>';
       }).join('');
     }
     var NOTES = {
@@ -420,15 +425,15 @@
       10: 'Reportée : le CEP communiquera de nouvelles dates dans son calendrier actualisé (note du 5 octobre). Dates initiales du calendrier du 27 juillet.',
       5: 'Ouverte le 20 juillet dans neuf départements et le 30 juillet dans l’Ouest.'
     };
-    var stepLi = function (t, a, b, key, note, pp) {
+    var stepLi = function (tt, a, b, key, note, pp) {
       if (pp) {
-        return '<li class="st ' + (key ? 'key' : '') + '"><div class="st-card"><div class="st-top"><h3>' + esc(t) + '</h3><span class="pill now">Reportée</span></div><div class="st-date">Dates à communiquer (initialement ' + esc(frange(a, b)) + ')</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</div></li>';
+        return '<li class="st"><div class="st-top"><h3>' + esc(tt) + '</h3><span class="pill now">Reportée</span></div><div class="st-date">Dates à communiquer (initialement ' + esc(frange(a, b)) + ')</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</li>';
       }
       if (!a) {
-        return '<li class="st ' + (key ? 'key' : '') + '"><div class="st-card"><div class="st-top"><h3>' + esc(t) + '</h3><span class="pill next">À confirmer</span></div><div class="st-date">Nouvelle date non communiquée</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</div></li>';
+        return '<li class="st"><div class="st-top"><h3>' + esc(tt) + '</h3><span class="pill">À confirmer</span></div><div class="st-date">Nouvelle date non communiquée</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</li>';
       }
-      var st = statusOf(a, b);
-      return '<li class="st ' + st + (key ? ' key' : '') + '"><div class="st-card"><div class="st-top"><h3>' + esc(t) + '</h3><span class="pill ' + (st === 'done' ? 'done' : st) + '">' + STL[st] + '</span></div><div class="st-date">' + esc(frange(a, b)) + '</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</div></li>';
+      var st2 = statusOf(a, b);
+      return '<li class="st ' + st2 + '"><div class="st-top"><h3>' + esc(tt) + '</h3><span class="pill ' + (st2 === 'next' ? '' : st2) + '">' + STL[st2] + '</span></div><div class="st-date">' + esc(frange(a, b)) + '</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</li>';
     };
     var elKey = document.getElementById('c-key');
     if (elKey) { elKey.innerHTML = E.cal.filter(function (c) { return c.key; }).map(function (c) { return stepLi(c.t, c.a, c.b, true, NOTES[c.n], c.pp); }).join(''); }
@@ -437,7 +442,7 @@
     var elAll = document.getElementById('c-all');
     if (elAll) {
       elAll.innerHTML = '<table class="ctab2"><thead><tr><th>N°</th><th>Étape</th><th>Dates</th></tr></thead><tbody>' + E.cal.map(function (c) {
-        return '<tr><td class="mono">' + c.n + '</td><td>' + esc(c.t) + '</td><td class="dt">' + (c.pp ? 'À communiquer' : esc(frange(c.a, c.b))) + '</td></tr>';
+        return '<tr><td>' + c.n + '</td><td>' + esc(c.t) + '</td><td class="dt">' + (c.pp ? 'À communiquer' : esc(frange(c.a, c.b))) + '</td></tr>';
       }).join('') + '</tbody></table>';
     }
 
@@ -454,7 +459,7 @@
         var r = d.v / d.cap;
         return '<li class="vb"><span class="vb-l">' + esc(d.n) + '</span><span class="vb-b"><i style="width:' + Math.round(100 * r / mxr) + '%"></i></span><span class="vb-n">' + fmt(d.v) + '</span><span class="vb-r">' + (Math.round(r * 1000) / 10).toLocaleString('fr-FR') + ' %</span></li>';
       }).join('');
-      document.getElementById('e-note').textContent = 'Taux calculé par NapVote : inscrits ÷ capacité d’inscription publiée par le CEP pour chaque département (population en âge de voter). Le CEP publie l’Ouest sous l’intitulé « Ouest 1 ». Les départements sont classés par taux d’inscription.';
+      document.getElementById('e-note').textContent = 'Taux calculé par NapVote : inscrits ÷ capacité d’inscription publiée par le CEP pour chaque département (population en âge de voter). Le CEP publie l’Ouest sous l’intitulé « Ouest 1 ». Départements classés par taux d’inscription.';
     }
   }
 
@@ -465,18 +470,18 @@
     var c = C[id];
     if (!c || !dlg) { return; }
     var b = API.bioOf(c), where = c.po === 0 ? 'Candidature nationale' : API.where(c);
-    var h = '<div class="eyebrow">' + esc(V.postes[c.po]) + ' · ' + esc(where) + '</div><h2 id="f-title">' + esc(c.pre) + ' ' + esc(c.nom) + '</h2>';
-    h += '<div class="f-chips"><span class="pt">' + esc(V.parties[c.pa]) + '</span>' + (c.po >= 3 ? '<span class="f-g">' + esc(V.pos[c.ps]) + '</span>' : '') + (b && b.group ? '<span class="f-g">' + esc(b.group) + '</span>' : '') + (b && b.born ? '<span class="f-g">Né en ' + esc(b.born) + '</span>' : '') + '</div>';
-    h += '<div class="f-acts"><button type="button" class="btn sm' + (API.isFav(c) ? ' on' : '') + '" data-ffav="' + c.i + '">' + (API.isFav(c) ? '★ Dans mes favoris' : '☆ Ajouter aux favoris') + '</button><button type="button" class="btn sm ghost" data-fshare="' + c.i + '">Partager</button></div>';
+    var h = '<h2 id="f-title">' + esc(c.pre) + ' ' + esc(c.nom) + '</h2>';
+    h += '<div class="f-chips"><span class="pt">' + esc(V.parties[c.pa]) + '</span><span class="f-g">' + esc(V.postes[c.po]) + ' · ' + esc(c.po === 0 ? t('c.national') : where) + '</span>' + (c.po >= 3 ? '<span class="f-g">' + esc(V.pos[c.ps]) + '</span>' : '') + (b && b.group ? '<span class="f-g">' + esc(b.group) + '</span>' : '') + (b && b.born ? '<span class="f-g">Né en ' + esc(b.born) + '</span>' : '') + '</div>';
+    h += '<div class="f-acts"><button type="button" class="btn sm' + (API.isFav(c) ? ' on' : '') + '" data-ffav="' + c.i + '">' + esc(t(API.isFav(c) ? 'f.fav.on' : 'f.fav.add')) + '</button><button type="button" class="btn sm ghost" data-fshare="' + c.i + '">' + esc(t('f.share')) + '</button></div>';
     if (b) {
       h += '<p class="f-sum">' + esc(b.sum) + '</p>';
       if (b.conf === 'minimal') { h += '<div class="notice">Peu d’informations publiques fiables ont été trouvées sur ce candidat.</div>'; }
       if (b.warn) { h += '<div class="notice">' + esc(b.warn) + '</div>'; }
-      h += '<h3>Repères</h3><dl class="f-facts">' + b.facts.map(function (f) { return '<dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd>'; }).join('') + '</dl>';
+      h += '<h3>' + esc(t('f.facts')) + '</h3><dl class="f-facts">' + b.facts.map(function (f) { return '<dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd>'; }).join('') + '</dl>';
       if (b.notes && b.notes.length) {
         h += '<h3>Éléments publics à connaître</h3><p class="f-intro">Faits rapportés par les sources citées. Ils ne préjugent ni des décisions de justice ni de celles du CEP.</p>' + b.notes.map(function (n) { return '<p class="f-note">' + esc(n) + '</p>'; }).join('');
       }
-      h += '<h3>Sources</h3><ul class="f-src">' + b.src.map(function (r) { return '<li><a href="' + esc(r.u) + '" target="_blank" rel="noopener noreferrer">' + esc(r.l) + '</a>' + (r.d ? '<span>' + esc(r.d) + '</span>' : '') + '</li>'; }).join('') + '</ul>';
+      h += '<h3>' + esc(t('f.sources')) + '</h3><ul class="f-src">' + b.src.map(function (r) { return '<li><a href="' + esc(r.u) + '" target="_blank" rel="noopener noreferrer">' + esc(r.l) + '</a>' + (r.d ? '<span>' + esc(r.d) + '</span>' : '') + '</li>'; }).join('') + '</ul>';
       h += '<p class="f-foot">Fiche compilée le ' + esc(longDate(VB.asof)) + ' à partir des sources publiques ci-dessus. La candidature reste soumise à la liste définitive des candidats agréés, dont la nouvelle date n’a pas encore été communiquée par le CEP.</p>';
     } else {
       h += c.po === 0
@@ -489,19 +494,19 @@
     }
     var hl = API.histLines(c);
     if (hl.length) {
-      h += '<h3>Parcours électoral</h3><ul class="f-hist">' + hl.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul><p class="f-foot">D’après les résultats préliminaires du CEP (2015-2016). Rapprochement fondé sur la correspondance des noms dans la même zone : en cas d’homonymie, vérifiez auprès du CEP.</p>';
+      h += '<h3>' + esc(t('f.hist')) + '</h3><ul class="f-hist">' + hl.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul><p class="f-foot">D’après les résultats préliminaires du CEP (2015-2016). Rapprochement fondé sur la correspondance des noms dans la même zone : en cas d’homonymie, vérifiez auprès du CEP.</p>';
     }
     var peers = [];
     if (c.po === 2 && c.lo >= 0) { peers = C.filter(function (x) { return x.po === 2 && x.lo === c.lo && x.i !== c.i; }); }
     else if (c.po === 3 && c.lo >= 0) { peers = C.filter(function (x) { return x.po === 3 && x.lo === c.lo && x.pa === c.pa && x.i !== c.i; }); }
     else if (c.po >= 4 && c.sc >= 0) { peers = C.filter(function (x) { return x.po === c.po && x.sc === c.sc && x.pa === c.pa && x.i !== c.i; }); }
     if (peers.length) {
-      var ttl = c.po === 2 ? 'Autres candidats de la circonscription' : 'Colistiers (même parti, même liste)';
+      var ttl = t(c.po === 2 ? 'f.peers.dep' : 'f.peers.list');
       h += '<h3>' + ttl + ' (' + peers.length + ')</h3><ul class="f-riv">' + peers.map(function (x) {
         return '<li><button type="button" data-cf="' + x.i + '"><span>' + esc(x.pre) + ' <b>' + esc(x.nom) + '</b></span><span class="pt">' + esc(c.po === 2 ? V.parties[x.pa] : V.pos[x.ps]) + '</span></button></li>';
       }).join('') + '</ul>';
     }
-    if (c.po > 0) { h += '<div class="f-acts2"><button type="button" class="f-map" data-fmap="' + c.i + '">Voir sur la carte ›</button>' + (c.lo >= 0 ? '<button type="button" class="f-map" data-fbul="' + c.i + '">Voir le bulletin de cette commune ›</button>' : '') + '</div>'; }
+    if (c.po > 0) { h += '<div class="f-acts2"><button type="button" class="f-map" data-fmap="' + c.i + '">' + esc(t('f.map')) + '</button>' + (c.lo >= 0 ? '<button type="button" class="f-map" data-fbul="' + c.i + '">' + esc(t('f.bul')) + '</button>' : '') + '</div>'; }
     fbody.innerHTML = h;
     if (!dlg.open) { dlg.showModal(); }
     dlg.querySelector('.f-in').scrollTop = 0;

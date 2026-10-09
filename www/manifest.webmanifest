@@ -9,8 +9,8 @@
   "id": "ht.napvote.app",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F2F4F8",
-  "theme_color": "#1640B5",
+  "background_color": "#FBFBF8",
+  "theme_color": "#FBFBF8",
   "categories": ["news", "government", "utilities"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NapVote</title>
 <meta name="description" content="Qui est sur votre bulletin ? Candidats aux élections haïtiennes 2026, de la présidence aux ASEC, et résultats de 2015 à 2017, commune par commune.">
-<meta name="theme-color" content="#F2F4F8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0A101F" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FBFBF8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12171F" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="NapVote">
@@ -14,33 +14,44 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="css/app.css">
-<link rel="stylesheet" href="css/features.css">
+<link rel="stylesheet" href="css/napvote.css">
 </head>
 <body>
-
-<div class="strip" id="strip">Initiative citoyenne indépendante · non affiliée au CEP</div>
+<!--
+THESIS: la liste de l'électeur est un cahier d'école : des lignes, une marge, un stylo. On refuse l'appli de données (cartes, pastilles, chiffres géants, titres bicolores).
+OWN-WORLD: papier clair, lignes bleues, double trait de marge rouge, encre bleu-noir, stylo bleu pour les choix de l'électeur, tampon rouge pour le provisoire, surligneur pour « élu ». Mode nuit = tableau noir. Andika partout.
+STORY: l'électeur dit où il vote, lit sa liste ligne à ligne, entoure ses favoris au stylo, retrouve les résultats d'avant. Français ou kreyòl.
+FIRST VIEWPORT: titre simple en grand, une phrase, une étiquette de couverture (département, commune, deux gestes), puis la mention d'indépendance. Aucun chiffre géant.
+FORM: cahier d'écolier (6e candidat de ma liste, tirage 0da98681), états tenus au stylo (cercle, coche) empruntés au catalogue de stands entouré au biro.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+-->
 
 <header class="top">
-  <div class="wrap">
-    <button type="button" class="brand" data-go="home" aria-label="NapVote, accueil">
-      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="m1" width="32" height="32" rx="8"/><path class="m2" d="M0 18h32v6a8 8 0 0 1-8 8H8a8 8 0 0 1-8-8z"/><path d="M9 16.5l5 5 9-10" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <b>Nap<span>Vote</span></b>
+  <div class="bar">
+    <button type="button" class="brand" data-go="home" aria-label="NapVote">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="sheet" x="3" y="2" width="26" height="28" rx="2"/><path class="rl" d="M3 10h26M3 16h26M3 22h26"/><path class="ml" d="M10 2v28"/><path class="ck" d="M13 17.5l4 4 8-9.5"/></svg>
+      <b>NapVote</b>
     </button>
     <nav class="dnav" aria-label="Sections">
-      <button type="button" data-go="home">Accueil</button>
-      <button type="button" data-go="bulletin">Mon bulletin</button>
-      <button type="button" data-go="carte">Carte</button>
-      <button type="button" data-go="cand">Candidats</button>
-      <button type="button" data-go="res">Résultats passés</button>
-      <button type="button" data-go="cal">Calendrier</button>
-      <button type="button" data-go="elec">Électeurs</button>
-      <button type="button" data-go="news">Actualités</button>
+      <button type="button" data-go="home" data-i18n="nav.home">Accueil</button>
+      <button type="button" data-go="bulletin" data-i18n="nav.bulletin">Mon bulletin</button>
+      <button type="button" data-go="carte" data-i18n="nav.map">Carte</button>
+      <button type="button" data-go="cand" data-i18n="nav.cand">Candidats</button>
+      <button type="button" data-go="res" data-i18n="nav.res">Résultats passés</button>
+      <button type="button" data-go="cal" data-i18n="nav.cal">Calendrier</button>
+      <button type="button" data-go="elec" data-i18n="nav.elec">Électeurs</button>
+      <button type="button" data-go="news" data-i18n="nav.news">Actualités</button>
     </nav>
-    <div class="hsrc"><span id="loc-chip" class="loc-chip" hidden></span></div>
-    <button type="button" class="menu-btn" id="menu-btn" aria-label="Menu" aria-haspopup="dialog">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-    </button>
+    <div class="tools">
+      <button type="button" id="loc-chip" class="loc-chip" hidden></button>
+      <div class="lang" role="group" aria-label="Langue">
+        <button type="button" data-lang="fr" lang="fr">Français</button>
+        <button type="button" data-lang="ht" lang="ht">Kreyòl</button>
+      </div>
+      <button type="button" class="menu-btn" id="menu-btn" aria-label="Menu" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -49,43 +60,57 @@
   <!-- ============ ACCUEIL ============ -->
   <section id="p-home">
     <div class="wrap">
-      <div class="hero">
-        <div class="hero-t">
-          <span class="eyebrow">Élections haïtiennes 2026</span>
-          <h1>Qui est sur <em>votre bulletin</em> ?</h1>
-          <p>Choisissez votre commune. En quelques secondes : tous les candidats, de la présidence aux ASEC, et ce qui s’est passé chez vous en 2015-2017.</p>
-          <div class="picker card" data-picker="home"></div>
-        </div>
-        <button type="button" class="mini" data-go="carte" aria-label="Ouvrir la carte des candidats">
-          <svg id="h-mini" role="img" aria-label="Carte d'Haïti : candidats aux législatives par département"></svg>
-          <span class="mini-cap"><span>Candidats à la députation, par département</span><b>Ouvrir la carte ›</b></span>
-        </button>
+      <div class="cover">
+        <h1 data-i18n="home.h1">Qui est sur votre bulletin ?</h1>
+        <p class="lede" data-i18n="home.lede">Dites-nous où vous votez. Vous verrez la liste complète, du président jusqu’à l’ASEC de votre section.</p>
+        <div class="label picker" data-picker="home"></div>
+        <p class="indep" data-i18n="home.indep">Initiative citoyenne, non affiliée au CEP.</p>
       </div>
 
       <div id="h-saved"></div>
 
       <div class="search home-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="h-search" type="search" placeholder="Chercher un candidat, un parti ou une commune" autocomplete="off" aria-label="Chercher un candidat ou une commune" />
+        <input id="h-search" type="search" data-i18n-ph="home.search.ph" placeholder="Candidat, parti ou commune" autocomplete="off" aria-label="Chercher" />
         <ul id="h-results" class="results" hidden></ul>
       </div>
 
-      <div id="h-facts" class="facts"></div>
-      <p id="h-fem" class="fem"></p>
+      <div class="blk">
+        <div class="sec-h"><h2 data-i18n="home.who">Qui se présente</h2></div>
+        <ul id="h-posts" class="rows"></ul>
+        <p id="h-fem" class="note-s"></p>
+      </div>
+
       <div id="h-changes"></div>
 
-      <div class="sec-h"><h2>À suivre</h2><button type="button" class="lk" data-go="cal">Tout le calendrier ›</button></div>
-      <div id="h-agenda" class="agenda"></div>
+      <div class="blk">
+        <div class="sec-h"><h2 data-i18n="home.dates">Les dates</h2><button type="button" class="lk" data-go="cal" data-i18n="home.dates.all">Tout le calendrier ›</button></div>
+        <ul id="h-agenda" class="rows dates"></ul>
+      </div>
 
-      <div class="sec-h"><h2>Candidats à la présidentielle</h2><button type="button" class="lk" data-go="cand">Tous les candidats ›</button></div>
-      <ul id="h-pres" class="pres-grid"></ul>
-      <p class="hint" id="h-pres-note">Touchez un candidat pour lire sa fiche.</p>
+      <div class="blk">
+        <div class="sec-h"><h2 data-i18n="home.pres">Les candidats à la présidence</h2></div>
+        <ul id="h-pres" class="pres-grid"></ul>
+        <p class="note-s" id="h-pres-note"></p>
+      </div>
 
-      <div class="sec-h"><h2>Ce qui s’est passé avant</h2><button type="button" class="lk" data-go="res">Tous les résultats ›</button></div>
-      <div id="h-hist" class="agenda"></div>
+      <div class="blk">
+        <div class="sec-h"><h2 data-i18n="home.before">Avant 2026</h2><button type="button" class="lk" data-go="res" data-i18n="home.before.all">Tous les résultats ›</button></div>
+        <ul id="h-hist" class="rows"></ul>
+      </div>
 
-      <div class="sec-h"><h2>Dernières actualités</h2><button type="button" class="lk" data-go="news">Toutes les actualités ›</button></div>
-      <div id="h-feed" class="feed"></div>
+      <div class="blk">
+        <div class="sec-h"><h2 data-i18n="home.map">Où ils se présentent</h2></div>
+        <button type="button" class="mini" data-go="carte" aria-label="Carte">
+          <svg id="h-mini" role="img" aria-label="Carte d'Haïti"></svg>
+          <span class="mini-cap"><span data-i18n="home.map.cap">Candidats à la députation par département</span> · <b data-i18n="home.map.go">Ouvrir la carte ›</b></span>
+        </button>
+      </div>
+
+      <div class="blk">
+        <div class="sec-h"><h2 data-i18n="home.news">Nouvelles du CEP</h2><button type="button" class="lk" data-go="news" data-i18n="home.news.all">Toutes les actualités ›</button></div>
+        <div id="h-feed" class="feed"></div>
+      </div>
     </div>
   </section>
 
@@ -93,15 +118,10 @@
   <section id="p-bulletin" hidden>
     <div class="wrap">
       <div class="ph">
-        <div class="ph-row">
-          <div>
-            <h1>Mon bulletin</h1>
-            <p>Tous les candidats que vous pourrez choisir dans votre commune, et les résultats de 2015 à 2017 chez vous.</p>
-          </div>
-          <span class="srcn mono">Source : CEP · <span class="js-asof"></span></span>
-        </div>
+        <h1 data-i18n="b.title">Mon bulletin</h1>
+        <p data-i18n="b.sub">Les candidats de votre commune, et ce qui s’est passé chez vous de 2015 à 2017.</p>
       </div>
-      <div class="picker card" data-picker="bulletin"></div>
+      <div class="label picker" data-picker="bulletin"></div>
       <div id="b-out" aria-live="polite"></div>
     </div>
   </section>
@@ -110,32 +130,28 @@
   <section id="p-carte" hidden>
     <div class="wrap">
       <div class="ph">
-        <div class="ph-row">
-          <div>
-            <h1>Carte des candidats</h1>
-            <p>Touchez un département pour zoomer, puis une commune pour voir ses candidats.</p>
-          </div>
-          <span class="srcn mono">Source : CEP · <span class="js-asof"></span> · <span class="js-total">0</span> candidatures</span>
-        </div>
+        <h1 data-i18n="m.title">Carte des candidats</h1>
+        <p data-i18n="m.sub">Touchez un département pour zoomer, puis une commune pour voir ses candidats.</p>
+        <span class="srcn">CEP · <span class="js-asof"></span> · <span class="js-total">0</span></span>
       </div>
 
       <div class="ctools">
         <div class="srow">
           <div class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <input id="map-search" type="search" placeholder="Candidat, commune" autocomplete="off" aria-label="Chercher un candidat ou une commune" />
+            <input id="map-search" type="search" data-i18n-ph="m.search" placeholder="Candidat, commune" autocomplete="off" aria-label="Chercher" />
             <ul id="map-results" class="results" hidden></ul>
           </div>
-          <label class="psel"><span class="sr">Parti</span><select id="map-party"></select></label>
+          <label class="psel"><span class="sr" data-i18n="m.party">Parti</span><select id="map-party"></select></label>
         </div>
-        <div id="map-postes" class="pillrow" role="group" aria-label="Poste affiché sur la carte"></div>
+        <div id="map-postes" class="pillrow" role="group" aria-label="Poste"></div>
         <div id="map-histrow" class="hrow" hidden><label class="field2">Rappel 2015-2017 <select id="map-hist"><option value="none">Inscrits 2026</option><option value="cand15">Candidats en 2015</option><option value="votes15">Voix du dernier élu</option><option value="pct15">Score du dernier élu (%)</option></select></label></div>
       </div>
 
       <div class="cgrid">
         <div class="cmain">
           <div id="map-stage" class="stage">
-            <svg id="map-svg" role="img" aria-label="Carte d'Haïti : nombre de candidats par département et par commune"></svg>
+            <svg id="map-svg" role="img" aria-label="Carte d'Haïti"></svg>
             <button type="button" id="map-back" class="mback" hidden>‹ Haïti</button>
             <div class="zctl">
               <button type="button" id="map-zin" aria-label="Zoom avant">+</button>
@@ -144,7 +160,7 @@
             <div id="map-tip" class="tip" hidden></div>
           </div>
           <div id="map-legend" class="legend"></div>
-          <p class="hint">Sur ordinateur : glisser pour déplacer, Ctrl/⌘ + molette pour zoomer. Dix communes créées après 2018 sont absentes du fond de carte (geoBoundaries) : elles restent listées dans leur département, étiquetées « hors carte ».</p>
+          <p class="hint">Dix communes créées après 2018 sont absentes du fond de carte (geoBoundaries) : elles restent listées dans leur département, étiquetées « hors carte ».</p>
         </div>
         <aside id="map-side" class="side" aria-label="Détail de la sélection"></aside>
       </div>
@@ -155,24 +171,18 @@
   <section id="p-cand" hidden>
     <div class="wrap" id="cl">
       <div class="ph">
-        <div class="ph-row">
-          <div>
-            <h1>Tous les candidats</h1>
-            <p>Les candidatures inscrites au CEP, poste par poste. Filtrez par département, parti ou nom.</p>
-          </div>
-          <span class="srcn mono">Source : CEP · <span class="js-asof"></span> · <span class="js-total">0</span> candidatures</span>
-        </div>
+        <h1 data-i18n="c.title">Tous les candidats</h1>
+        <p data-i18n="c.sub">Les candidatures inscrites au CEP, poste par poste. Filtrez par département, parti ou nom.</p>
+        <span class="srcn">CEP · <span class="js-asof"></span> · <span class="js-total">0</span></span>
       </div>
-      <div class="ctools">
-        <div id="cl-postes" class="pillrow" role="group" aria-label="Poste"></div>
-      </div>
+      <div id="cl-postes" class="pillrow" role="group" aria-label="Poste"></div>
       <div class="fbar">
         <label class="field" id="cl-dept-wrap"><span class="sr">Département</span><select id="cl-dept"></select></label>
         <label class="field"><span class="sr">Parti</span><select id="cl-party"></select></label>
-        <label class="field q"><span class="sr">Nom</span><input id="cl-q" type="search" placeholder="Chercher par nom" autocomplete="off" /></label>
-        <label class="chk"><input type="checkbox" id="cl-hist" /> Déjà candidats en 2015-2017</label>
-        <label class="chk"><input type="checkbox" id="cl-fav" /> Mes favoris ★</label>
-        <button type="button" class="reset" id="cl-reset">Réinitialiser</button>
+        <label class="field q"><span class="sr">Nom</span><input id="cl-q" type="search" data-i18n-ph="c.name" placeholder="Chercher par nom" autocomplete="off" /></label>
+        <label class="chk"><input type="checkbox" id="cl-hist" /> <span data-i18n="c.hist">Déjà candidats en 2015-2017</span></label>
+        <label class="chk"><input type="checkbox" id="cl-fav" /> <span data-i18n="c.fav">Mes favoris</span></label>
+        <button type="button" class="reset" id="cl-reset" data-i18n="c.reset">Réinitialiser</button>
       </div>
       <p id="cl-count" class="sub-count" aria-live="polite"></p>
       <div id="cl-out"></div>
@@ -183,13 +193,8 @@
   <section id="p-res" hidden>
     <div class="wrap">
       <div class="ph">
-        <div class="ph-row">
-          <div>
-            <h1>Résultats passés</h1>
-            <p>Présidentielle de 2016, sénatoriales et législatives de 2015 et de leurs reprises jusqu’en janvier 2017 : qui a gagné, avec combien de voix, dans chaque département et circonscription.</p>
-          </div>
-          <span class="srcn mono">CEP, résultats préliminaires</span>
-        </div>
+        <h1 data-i18n="r.title">Résultats passés</h1>
+        <p data-i18n="r.sub">Présidentielle de 2016, sénatoriales et législatives de 2015 et de leurs reprises jusqu’en janvier 2017.</p>
       </div>
       <div id="r-tabs" class="pillrow" role="group" aria-label="Scrutin"></div>
       <div id="r-out"></div>
@@ -200,22 +205,18 @@
   <section id="p-cal" hidden>
     <div class="wrap">
       <div class="ph">
-        <div class="ph-row">
-          <div>
-            <h1>Calendrier électoral</h1>
-            <p>Le calendrier officiel 2026-2027 publié par le CEP, en cours d'actualisation : inscriptions, campagne, scrutins et résultats.</p>
-          </div>
-          <span class="srcn mono">Source : CEP, calendrier du 27 juillet et note du 5 octobre 2026</span>
-        </div>
+        <h1 data-i18n="cal.title">Calendrier électoral</h1>
+        <p data-i18n="cal.sub">Le calendrier officiel 2026-2027 publié par le CEP, en cours d’actualisation.</p>
+        <span class="srcn">CEP, calendrier du 27 juillet et note du 5 octobre 2026</span>
       </div>
       <div id="c-votes" class="vote-cards"></div>
-      <div class="notice">Le 5 octobre, après des modifications du décret électoral adoptées en Conseil des ministres, le CEP a annoncé un calendrier actualisé : l'inscription des candidats est prolongée jusqu'au 31 octobre et la campagne électorale est reportée, avec de nouvelles dates à communiquer. Les autres dates ci-dessous sont celles du calendrier du 27 juillet. Le CEP rappelle que leur respect dépend d'un climat sécuritaire acceptable et des financements nécessaires.</div>
-      <div class="sec-h"><h2>Étapes clés</h2></div>
+      <div class="notice">Le 5 octobre, après des modifications du décret électoral adoptées en Conseil des ministres, le CEP a annoncé un calendrier actualisé : l’inscription des candidats est prolongée jusqu’au 31 octobre et la campagne électorale est reportée, avec de nouvelles dates à communiquer. Les autres dates sont celles du calendrier du 27 juillet. Le CEP rappelle que leur respect dépend d’un climat sécuritaire acceptable et des financements nécessaires.</div>
+      <div class="sec-h"><h2 data-i18n="cal.keys">Étapes clés</h2></div>
       <ol id="c-key" class="tl"></ol>
-      <div class="sec-h"><h2>Inscription des candidats</h2><span class="srcn">CEP, note du 5 octobre 2026</span></div>
+      <div class="sec-h"><h2 data-i18n="cal.reg">Inscription des candidats</h2></div>
       <ol id="c-reg" class="tl"></ol>
       <details class="allsteps">
-        <summary>Voir les 28 étapes du calendrier officiel</summary>
+        <summary data-i18n="cal.all">Voir les 28 étapes du calendrier officiel</summary>
         <div id="c-all" class="tw"></div>
       </details>
     </div>
@@ -225,16 +226,12 @@
   <section id="p-elec" hidden>
     <div class="wrap">
       <div class="ph">
-        <div class="ph-row">
-          <div>
-            <h1>Électeurs inscrits</h1>
-            <p>L'inscription sur le registre électoral avance département par département. Le CEP indique qu'elle se poursuit ; le calendrier du 27 juillet la prévoyait jusqu'au 13 octobre 2026.</p>
-          </div>
-          <span class="srcn mono" id="e-asof"></span>
-        </div>
+        <h1 data-i18n="el.title">Électeurs inscrits</h1>
+        <p>L’inscription sur le registre électoral avance département par département. Le calendrier du 27 juillet la prévoyait jusqu’au 13 octobre 2026 ; le CEP indique qu’elle se poursuit.</p>
+        <span class="srcn" id="e-asof"></span>
       </div>
       <div id="e-kpis" class="kpis"></div>
-      <div class="sec-h"><h2>Par département</h2><span class="srcn">Part de la population en âge de voter (base CEP)</span></div>
+      <div class="sec-h"><h2 data-i18n="el.dept">Par département</h2></div>
       <ul id="e-dept" class="vbars"></ul>
       <p class="hint" id="e-note"></p>
     </div>
@@ -244,13 +241,8 @@
   <section id="p-news" hidden>
     <div class="wrap">
       <div class="ph">
-        <div class="ph-row">
-          <div>
-            <h1>Actualités et communiqués</h1>
-            <p>Communiqués du CEP et titres de la presse sur le processus électoral. Les articles s’ouvrent sur le site du média.</p>
-          </div>
-          <span class="srcn">Sources : CEP, Le Nouvelliste, presse haïtienne</span>
-        </div>
+        <h1 data-i18n="news.title">Actualités et communiqués</h1>
+        <p data-i18n="news.sub">Communiqués du CEP et titres de la presse. Les articles s’ouvrent sur le site du média.</p>
       </div>
       <div id="n-feed" class="feed"></div>
     </div>
@@ -260,35 +252,36 @@
   <section id="p-about" hidden>
     <div class="wrap">
       <div class="ph">
-        <h1>À propos de NapVote</h1>
-        <p>Un outil citoyen, indépendant, pour savoir qui se présente et ce qui s’est passé aux élections précédentes.</p>
+        <h1 data-i18n="about.title">À propos de NapVote</h1>
+        <p data-i18n="about.sub">Un outil citoyen et indépendant pour savoir qui se présente et ce qui s’est passé aux élections précédentes.</p>
       </div>
       <div class="about">
-        <div class="card pad"><h3>Indépendance</h3><p>NapVote n’est affilié ni au Conseil Électoral Provisoire (CEP), ni à un parti, ni à un candidat. Les candidatures sont affichées dans l’ordre alphabétique, sans mise en avant.</p></div>
-        <div class="card pad"><h3>D’où viennent les données ?</h3>
+        <div class="card"><h3>Indépendance</h3><p>NapVote n’est affilié ni au Conseil Électoral Provisoire (CEP), ni à un parti, ni à un candidat. Les candidatures sont affichées dans l’ordre alphabétique, sans mise en avant.</p></div>
+        <div class="card"><h3>D’où viennent les données</h3>
           <ul>
-            <li><b>Candidats</b> : liste publique du CEP (tableau.cephaiti.ht), mise à jour le <span class="js-asof"></span>. Elle n’est pas encore la liste définitive des candidats agréés.</li>
+            <li><b>Candidats</b> : liste publique du CEP (tableau.cephaiti.ht), <span class="js-asof"></span>. Elle n’est pas encore la liste définitive des candidats agréés. Elle est relue toutes les 2 heures.</li>
             <li><b>Calendrier, notes, statistiques d’inscription</b> : cephaiti.ht et le tableau de bord public du CEP.</li>
             <li><b>Résultats 2015-2017</b> : législatives et sénatoriales de 2015 (résultats préliminaires du CEP), présidentielle du 20 novembre 2016, puis reprises et compléments jusqu’au 29 janvier 2017 : résultats préliminaires et définitifs partiels du CEP publiés par HaïtiLibre, et tableaux de voix de Wikipédia (marqués « non confirmé par le CEP » quand ils sont la seule source). Les résultats des maires et CASEC ne sont pas inclus.</li>
-            <li><b>Fiches des candidats à la présidence</b> : sources publiques citées dans chaque fiche (Le Nouvelliste, Haitian Times, HaïtiLibre, Juno7, Wikipédia).</li>
+            <li><b>Fiches des candidats à la présidence</b> : sources publiques citées dans chaque fiche.</li>
             <li><b>Fond de carte</b> : geoBoundaries (CC BY 4.0, 2018).</li>
           </ul>
         </div>
-        <div class="card pad"><h3>Limites à connaître</h3>
+        <div class="card"><h3>Limites</h3>
           <ul>
-            <li>Le rapprochement entre candidats 2026 et résultats passés se fait par le nom, dans la même zone : en cas d’homonymie, vérifiez auprès du CEP.</li>
-            <li>Dix communes récentes n’existent pas sur le fond de carte : elles restent consultables dans « Mon bulletin » mais ne peuvent pas être détectées par la localisation.</li>
+            <li>Le rapprochement entre candidats de 2026 et résultats passés se fait par le nom, dans la même zone : en cas d’homonymie, vérifiez auprès du CEP.</li>
+            <li>Dix communes récentes ne sont pas sur le fond de carte : elles restent dans « Mon bulletin », mais la localisation ne peut pas les trouver.</li>
+            <li>Le kreyòl de l’interface est en cours de relecture. Les textes longs (notes du CEP, fiches, actualités) restent dans la langue de leur source.</li>
             <li>Vérifiez toujours auprès du CEP avant de relayer une information.</li>
           </ul>
         </div>
-        <div class="card pad" id="install-card"><h3>Installer l’application</h3>
-          <p id="install-txt">Sur téléphone, ajoutez NapVote à votre écran d’accueil : l’appli s’ouvre en plein écran et fonctionne sans connexion.</p>
-          <button type="button" class="btn" id="install-btn" hidden>Installer NapVote</button>
+        <div class="card" id="install-card"><h3 data-i18n="about.install">Installer l’application</h3>
+          <p id="install-txt">Sur téléphone, ajoutez NapVote à votre écran d’accueil : elle s’ouvre en plein écran et marche sans connexion.</p>
+          <p style="margin-top:12px"><button type="button" class="btn" id="install-btn" hidden>Installer NapVote</button></p>
           <p class="note-s" id="install-ios" hidden>Sur iPhone : touchez le bouton Partager de Safari, puis « Sur l’écran d’accueil ».</p>
         </div>
-        <div class="card pad"><h3>Apparence</h3>
+        <div class="card"><h3 data-i18n="about.theme">Apparence</h3>
           <div class="seg" id="theme-seg" role="group" aria-label="Thème">
-            <button type="button" data-theme="auto">Auto</button><button type="button" data-theme="light">Clair</button><button type="button" data-theme="dark">Sombre</button>
+            <button type="button" data-theme="auto" data-i18n="theme.auto">Auto</button><button type="button" data-theme="light" data-i18n="theme.light">Papier</button><button type="button" data-theme="dark" data-i18n="theme.dark">Tableau</button>
           </div>
         </div>
       </div>
@@ -299,26 +292,26 @@
 
 <footer>
   <div class="wrap">
-    <p><b>Nap<span>Vote</span></b> est une initiative citoyenne indépendante, non affiliée au Conseil Électoral Provisoire (CEP). Candidats : CEP (<span class="js-asof"></span>). Résultats 2015-2017 : CEP (via HaïtiLibre) et Wikipédia. <button type="button" class="lnk" data-go="about">Sources et limites ›</button></p>
+    <p><span id="foot-t"></span> <button type="button" class="lnk inl" data-go="about" data-i18n="foot.more">Sources et limites ›</button></p>
   </div>
 </footer>
 
 <dialog id="fiche" aria-labelledby="f-title">
   <div class="f-in">
-    <button type="button" class="f-x" aria-label="Fermer la fiche">✕</button>
+    <button type="button" class="f-x" aria-label="Fermer">✕</button>
     <div id="f-body"></div>
   </div>
 </dialog>
 
 <dialog id="menu" class="sheetd" aria-label="Menu">
   <div class="f-in">
-    <button type="button" class="f-x" aria-label="Fermer le menu">✕</button>
-    <h2 class="menu-t">Menu</h2>
+    <button type="button" class="f-x" aria-label="Fermer">✕</button>
+    <h2 class="menu-t" data-i18n="menu">Menu</h2>
     <ul class="menu-l">
-      <li><button type="button" data-go="cal"><b>Calendrier</b><span>Dates clés du processus</span></button></li>
-      <li><button type="button" data-go="elec"><b>Électeurs inscrits</b><span>Inscription par département</span></button></li>
-      <li><button type="button" data-go="news"><b>Actualités</b><span>CEP et presse</span></button></li>
-      <li><button type="button" data-go="about"><b>À propos, sources, installer l’appli</b><span>Données, limites, thème</span></button></li>
+      <li><button type="button" data-go="cal"><b data-i18n="menu.cal">Calendrier</b><span data-i18n="menu.cal.s">Les dates du processus</span></button></li>
+      <li><button type="button" data-go="elec"><b data-i18n="menu.elec">Électeurs inscrits</b><span data-i18n="menu.elec.s">Inscription par département</span></button></li>
+      <li><button type="button" data-go="news"><b data-i18n="menu.news">Actualités</b><span data-i18n="menu.news.s">CEP et presse</span></button></li>
+      <li><button type="button" data-go="about"><b data-i18n="menu.about">À propos, sources, installer l’appli</b><span data-i18n="menu.about.s">Données, limites, apparence</span></button></li>
     </ul>
   </div>
 </dialog>
@@ -326,14 +319,15 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <nav class="bnav" aria-label="Navigation principale">
-  <button type="button" data-go="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Accueil</button>
-  <button type="button" data-go="bulletin" class="bn-main"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4M9 7h6M9 17h6"/></svg>Mon bulletin</button>
-  <button type="button" data-go="cand"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16.5 4.8a3.2 3.2 0 0 1 0 6.2M18.5 14.4c2 .8 3 2.6 3 5.6"/></svg>Candidats</button>
-  <button type="button" data-go="res"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-7M3 20h18"/></svg>Résultats</button>
-  <button type="button" data-go="carte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Carte</button>
+  <button type="button" data-go="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="nav.home">Accueil</span></button>
+  <button type="button" data-go="bulletin"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 12l2 2 4-4M9 7h6M9 17h6"/></svg><span data-i18n="nav.bulletin">Mon bulletin</span></button>
+  <button type="button" data-go="cand"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16.5 4.8a3.2 3.2 0 0 1 0 6.2M18.5 14.4c2 .8 3 2.6 3 5.6"/></svg><span data-i18n="nav.cand">Candidats</span></button>
+  <button type="button" data-go="res"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-7M3 20h18"/></svg><span data-i18n="nav.res.s">Résultats</span></button>
+  <button type="button" data-go="carte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg><span data-i18n="nav.map">Carte</span></button>
 </nav>
 
 <script src="js/vendor/d3.min.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
 <script src="js/bios.js"></script>

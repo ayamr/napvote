@@ -35,7 +35,7 @@
 
   // nouvelle version du code installée : on prévient, sans recharger de force
   if (!native && 'serviceWorker' in navigator && !dev && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.addEventListener('controllerchange', function () { A.toast('NapVote a été mis à jour. Rechargez pour en profiter.'); });
+    navigator.serviceWorker.addEventListener('controllerchange', function () { A.toast(t('update')); });
   }
 
   // installation

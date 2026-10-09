@@ -2,11 +2,11 @@
   "appId": "ht.napvote.app",
   "appName": "NapVote",
   "webDir": "www",
-  "backgroundColor": "#F2F4F8",
+  "backgroundColor": "#FBFBF8",
   "ios": { "contentInset": "never", "scrollEnabled": true, "limitsNavigationsToAppBoundDomains": false },
   "android": { "allowMixedContent": false },
   "plugins": {
-    "SplashScreen": { "launchShowDuration": 600, "launchAutoHide": true, "backgroundColor": "#F2F4F8", "showSpinner": false },
+    "SplashScreen": { "launchShowDuration": 600, "launchAutoHide": true, "backgroundColor": "#FBFBF8", "showSpinner": false },
     "StatusBar": { "style": "DEFAULT", "overlaysWebView": false }
   }
 }

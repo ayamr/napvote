@@ -6,13 +6,12 @@ shutil.rmtree(O,ignore_errors=True); os.makedirs(O+"/css"); os.makedirs(O+"/js")
 h=open(W+"/index.html",encoding="utf-8").read()
 body=h[h.index("<body>")+6:h.index("</body>")]
 body=re.sub(r'<script src="js/vendor/d3.min.js"></script>','<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>',body)
-page=('<title>NapVote</title>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">\n'
-      '<link rel="stylesheet" href="css/app.css">\n<link rel="stylesheet" href="css/features.css">\n'+body.replace('<script src="js/pwa.js"></script>','<script src="js/pwa.js"></script>'))
+page=('<title>NapVote</title>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:ital,wght@0,400;0,700;1,400&display=swap">\n'
+      '<link rel="stylesheet" href="css/napvote.css">\n'+body.replace('<script src="js/pwa.js"></script>','<script src="js/pwa.js"></script>'))
 open(O+"/artifact.html","w",encoding="utf-8").write(page)
-css=open(W+"/css/app.css",encoding="utf-8").read()
+css=open(W+"/css/napvote.css",encoding="utf-8").read()
 css=re.sub(r"@font-face \{.*?\}\n","",css,flags=re.S)
-open(O+"/css/app.css","w",encoding="utf-8").write(css)
-shutil.copy(W+"/css/features.css",O+"/css/features.css")
+open(O+"/css/napvote.css","w",encoding="utf-8").write(css)
 for f in os.listdir(W+"/js"):
     if f.endswith(".js"): shutil.copy(W+"/js/"+f,O+"/js/"+f)
 shutil.copy(W+"/data/live.json",O+"/data/live.json")

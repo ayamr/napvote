@@ -5,7 +5,9 @@
   var esc = A.esc, fmt = A.fmt, pcs = A.pcs;
   var U = A.hui = {};
 
-  U.STAT = { r1: 'Élu au 1er tour', r2: 'Élu au 2e tour', late: 'Élu à la reprise', qualif: '2e tour sans résultat', annule: 'Scrutin annulé', reprise1: 'À reprendre', reprise2: '2e tour à reprendre', inconnu: 'Résultat non publié' };
+  var STK = ['r1', 'r2', 'late', 'qualif', 'annule', 'reprise1', 'reprise2', 'inconnu'];
+  U.STAT = {};
+  STK.forEach(function (k) { Object.defineProperty(U.STAT, k, { get: function () { return t('st.' + k); }, enumerable: true }); });
   var SRC = {
     def: 'Résultats définitifs partiels du CEP (30 décembre 2016)',
     prel: 'Résultats préliminaires du CEP (5 décembre 2016)',
@@ -25,22 +27,22 @@
   /* carte d'une circonscription ; ctx = { now: candidats 2026 de la circonscription, back: ceux déjà en lice, nowLabel: bool } */
   U.circoCard = function (c, ctx) {
     ctx = ctx || {};
-    var late = c.st === 'late', h = '<div class="hc"><div class="hc-h"><b>' + esc(c.n) + '</b><span class="status ' + (c.e ? 'ok' : 'pend') + '">' + esc(U.STAT[c.st] || c.st) + '</span></div>';
+    var late = c.st === 'late', h = '<div class="hc"><div class="hc-h"><b>' + esc(c.n) + '</b><span class="status ' + (c.e ? 'ok' : 'pend') + '">' + esc(U.STAT[c.st] || c.st) + '</span></div>' + (late && c.e.src && c.e.src !== 'def' ? '<p><span class="stamp">' + esc(t(c.e.src === 'wiki' ? 'hx.wiki' : 'hx.prov')) + '</span></p>' : '');
     if (ctx.now) {
-      h += '<div class="stats"><div><b>' + fmt(c.nc || 0) + '</b><span>candidats en 2015</span></div><div><b>' + fmt(ctx.now.length) + '</b><span>inscrits en 2026</span></div></div>';
+      h += '<div class="stats"><div><b>' + fmt(c.nc || 0) + '</b><span>' + esc(t('hx.c15')) + '</span></div><div><b>' + fmt(ctx.now.length) + '</b><span>' + esc(t('hx.c26')) + '</span></div></div>';
     } else if (c.nc) {
       h += '<p class="note-s">' + esc(V.deptNames[c.d]) + ' · ' + fmt(c.nc) + ' candidats en 2015</p>';
     }
     if (c.e) {
-      h += '<p class="hc-l"><span>Dernier élu</span><b>' + esc(c.e.n) + ' <em class="off">' + esc(c.e.p) + '</em></b></p>' +
-        '<p class="hc-l"><span>Voix · part</span><b>' + fmt(c.e.v) + ' · ' + pcs(c.e.pc) + '</b></p>';
-      if (late) { h += '<p class="hc-l"><span>Scrutin décisif</span><b>' + esc(U.roundLbl(c.e)) + (c.e.rd === 1 ? ' (repris)' : '') + '</b></p>'; }
+      h += '<p class="hc-l"><span>' + esc(t('hx.last')) + '</span><b>' + esc(c.e.n) + ' <em class="off">' + esc(c.e.p) + '</em></b></p>' +
+        '<p class="hc-l"><span>' + esc(t('hx.votes')) + '</span><b>' + fmt(c.e.v) + ' · ' + pcs(c.e.pc) + '</b></p>';
+      if (late) { h += '<p class="hc-l"><span>' + esc(t('hx.decisive')) + '</span><b>' + esc(U.roundLbl(c.e)) + (c.e.rd === 1 ? ' (repris)' : '') + '</b></p>'; }
     } else {
       h += '<p class="note-s">' + esc(c.why || 'Pas d’élu dans nos sources.') + '</p>';
       if (c.w) { h += '<p class="hc-l"><span>En tête au 1er tour</span><b>' + esc(c.w.n) + ' <em class="off">' + esc(c.w.p) + '</em> · ' + pcs(c.w.pc) + '</b></p>'; }
     }
     var vv = c.rp ? c.rp.vv : (c.r2 ? c.r2.vv : c.vv);
-    h += '<p class="hc-l"><span>Votes valides</span><b>' + fmt(vv) + (c.rp ? ' (scrutin décisif)' : (c.r2 ? ' (2e tour)' : ' (1er tour)')) + '</b></p>';
+    h += '<p class="hc-l"><span>' + esc(t('hx.valid')) + '</span><b>' + fmt(vv) + (c.rp ? ' (scrutin décisif)' : (c.r2 ? ' (2e tour)' : ' (1er tour)')) + '</b></p>';
     if (c.rp && c.rp.top.length > 1) {
       h += '<details class="sec"><summary><span>Scrutin décisif : les ' + c.rp.top.length + ' premiers</span></summary>' + table(c.rp.top) + '</details>';
     }

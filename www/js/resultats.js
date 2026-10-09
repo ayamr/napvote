@@ -5,7 +5,7 @@
   if (!V || !A || !H || !out || !tabs) { return; }
   var esc = A.esc, fmt = A.fmt, pcs = A.pcs;
   var STAT15 = A.hui.STAT;
-  var TABS = [['pres', 'Présidentielle 2016'], ['sen', 'Sénat 2015-17'], ['dep', 'Députés 2015-17'], ['fait', 'Faits marquants']];
+  var TABS = [['pres', t('r.t.pres')], ['sen', t('r.t.sen')], ['dep', t('r.t.dep')], ['fait', t('r.t.fait')]];
   var S = { tab: 'pres', d: -1, q: '', all: false, late: false };
   var src = A.hui.srcNote();
 
@@ -72,15 +72,15 @@
     var late = cs.filter(function (c) { return c.st === 'late'; }), rcount = {};
     late.forEach(function (c) { var k = c.e.dt + (c.e.rd === 1 ? ' (1er tour repris)' : ' (2e tour)'); rcount[k] = (rcount[k] || 0) + 1; });
     var tightL = late.filter(function (c) { return c.rp.top.length > 1; }).map(function (c) { return { c: c, gap: c.rp.top[0].v - c.rp.top[1].v }; }).sort(function (a, b) { return a.gap - b.gap; })[0];
-    function card(t, big, sub) { return '<div class="ag"><span class="eyebrow">' + esc(t) + '</span><b class="hb-t">' + big + '</b><span>' + sub + '</span></div>'; }
-    var h = '<p class="lead">Calculé par NapVote à partir des résultats des législatives de 2015 et de leurs reprises (députés).</p><div class="agenda">' +
+    function card(tt, big, sub) { return '<li class="rl"><span><b class="k">' + esc(tt) + '</b><span class="s" style="display:block;font-size:.85rem;color:var(--ink-2)">' + sub + '</span></span><span class="n">' + big + '</span></li>'; }
+    var h = '<p class="lead">Calculé par NapVote à partir des résultats des législatives de 2015 et de leurs reprises (députés).</p><ul class="rows">' +
       card('Élu avec le plus de voix', fmt(maxV.e.v) + ' voix', esc(maxV.e.n) + ' (' + esc(maxV.e.p) + '), ' + esc(maxV.n)) +
       card('Élu avec le moins de voix', fmt(minV.e.v) + ' voix', esc(minV.e.n) + ' (' + esc(minV.e.p) + '), ' + esc(minV.n)) +
       card('Meilleur score', pcs(maxPc.e.pc), esc(maxPc.e.n) + ', ' + esc(maxPc.n)) +
       card('Plus faible part de voix d’un élu', pcs(minPc.e.pc), esc(minPc.e.n) + ', ' + esc(minPc.n)) +
       (tightL ? card('Reprise la plus serrée', fmt(tightL.gap) + ' voix', esc(tightL.c.rp.top[0].n) + ' devant ' + esc(tightL.c.rp.top[1].n) + ', ' + esc(tightL.c.n) + ' (' + esc(tightL.c.rp.dt) + ')') : '') +
       card('Circonscription la plus disputée', (crowd.nc) + ' candidats', esc(crowd.n)) +
-      (tight ? card('Écart le plus serré au 1er tour', fmt(tight.gap) + ' voix', esc(tight.c.top[0].n) + ' devant ' + esc(tight.c.top[1].n) + ', ' + esc(tight.c.n)) : '') + '</div>';
+      (tight ? card('Écart le plus serré au 1er tour', fmt(tight.gap) + ' voix', esc(tight.c.top[0].n) + ' devant ' + esc(tight.c.top[1].n) + ', ' + esc(tight.c.n)) : '') + '</ul>';
     h += '<div class="sec-h sm"><h2>Partis des députés élus en 2015</h2></div><ul class="rank">' + pk.map(function (p) { return bar(esc(p), parties[p], parties[pk[0]], parties[p] + ' élu' + (parties[p] > 1 ? 's' : '')); }).join('') + '</ul>';
     h += '<div class="sec-h sm"><h2>Circonscriptions pourvues après reprise</h2></div><ul class="rank">' + Object.keys(rcount).sort().map(function (k) { return bar(esc(k), rcount[k], late.length, String(rcount[k])); }).join('') + '</ul><p class="note-s">Les ' + late.length + ' circonscriptions dont le scrutin d’août 2015 avait été annulé ou était à reprendre.</p>';
     return h + src;

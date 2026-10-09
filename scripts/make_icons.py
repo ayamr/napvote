@@ -1,53 +1,46 @@
-"""Génère les icônes PNG (PWA, iOS, Android) — uv run --with pillow python scripts/make_icons.py"""
+"""Icônes NapVote (PWA, iOS, Android) : une page de cahier, une marge rouge, une coche au stylo bleu.
+uv run --with pillow python scripts/make_icons.py"""
 from PIL import Image, ImageDraw
 import os
 ROOT=os.path.join(os.path.dirname(__file__),"..")
-BLUE=(22,64,181); RED=(200,32,59); WHITE=(255,255,255)
+PAPER=(251,251,248); RULE=(188,206,234); MARGIN=(227,134,143); PEN=(27,63,191); INK=(15,27,76); NIGHT=(18,23,31)
 
-def draw_icon(size, rounded=True, scale=1.0, bg=None):
+def paper(size, scale=1.0, bg=None, rounded=False):
     S=4; n=size*S
-    im=Image.new("RGBA",(n,n),bg or (0,0,0,0))
+    im=Image.new("RGBA",(n,n),bg or PAPER+(255,))
     d=ImageDraw.Draw(im)
-    u=n/32.0
-    # artwork occupies a centered square of side 'scale'*n
-    off=n*(1-scale)/2; a=u*scale
-    def P(x,y): return (off+x*a, off+y*a)
+    a=n*scale; off=(n-a)/2
+    # lignes bleues
+    for k in range(1,7):
+        y=off+a*(k/7.0)*1.0
+        d.line([(0,y),(n,y)],fill=RULE,width=max(2,int(n*0.008)))
+    # double trait de marge
+    x=off+a*0.24
+    for dx in (0,a*0.022):
+        d.line([(x+dx,0),(x+dx,n)],fill=MARGIN,width=max(2,int(n*0.009)))
+    # coche au stylo
+    w=int(a*0.085)
+    pts=[(off+a*0.40,off+a*0.54),(off+a*0.52,off+a*0.67),(off+a*0.80,off+a*0.30)]
+    d.line(pts,fill=PEN,width=w,joint="curve")
+    for p in pts: d.ellipse([p[0]-w/2,p[1]-w/2,p[0]+w/2,p[1]+w/2],fill=PEN)
     if rounded:
-        d.rounded_rectangle([off,off,off+32*a-1,off+32*a-1], radius=8*a, fill=BLUE)
-    else:
-        d.rectangle([0,0,n,n], fill=BLUE)
-    # bande rouge
-    top=18
-    mask=Image.new("L",(n,n),0); md=ImageDraw.Draw(mask)
-    if rounded:
-        md.rounded_rectangle([off,off,off+32*a-1,off+32*a-1], radius=8*a, fill=255)
-    else:
-        md.rectangle([0,0,n,n], fill=255)
-    band=Image.new("RGBA",(n,n),(0,0,0,0)); bd=ImageDraw.Draw(band)
-    y0=off+top*a if rounded else n*(top/32.0)
-    bd.rectangle([0,y0,n,n], fill=RED)
-    im.paste(band,(0,0),Image.composite(band.split()[3],Image.new("L",(n,n),0),mask))
-    # coche
-    w=3.2*a
-    pts=[P(9,16.5),P(14,21.5),P(23,11.5)]
-    d=ImageDraw.Draw(im)
-    d.line(pts,fill=WHITE,width=int(w),joint="curve")
-    for p in pts:
-        d.ellipse([p[0]-w/2,p[1]-w/2,p[0]+w/2,p[1]+w/2],fill=WHITE)
+        m=Image.new("L",(n,n),0); ImageDraw.Draw(m).rounded_rectangle([0,0,n-1,n-1],radius=int(n*0.22),fill=255)
+        out=Image.new("RGBA",(n,n),(0,0,0,0)); out.paste(im,(0,0),m); im=out
     return im.resize((size,size),Image.LANCZOS)
 
 out=os.path.join(ROOT,"www","icons")
-draw_icon(192).save(f"{out}/icon-192.png")
-draw_icon(512).save(f"{out}/icon-512.png")
-draw_icon(512,rounded=False,scale=0.74).save(f"{out}/icon-maskable-512.png")
-# iOS : fond plein, sans transparence ni coins arrondis (iOS arrondit lui-même)
-draw_icon(180,rounded=False,scale=1.0).convert("RGB").save(f"{out}/apple-touch-icon.png")
-draw_icon(32).save(f"{out}/favicon-32.png")
-# sources pour @capacitor/assets
-draw_icon(1024,rounded=False,scale=1.0).convert("RGB").save(f"{ROOT}/assets/icon-only.png")
-fg=draw_icon(1024,rounded=False,scale=0.62); fg.save(f"{ROOT}/assets/icon-foreground.png")
-Image.new("RGB",(1024,1024),BLUE).save(f"{ROOT}/assets/icon-background.png")
-# splash 2732x2732 : fond clair, logo centré
-sp=Image.new("RGB",(2732,2732),(242,244,248)); lg=draw_icon(820); sp.paste(lg,((2732-820)//2,(2732-820)//2),lg); sp.save(f"{ROOT}/assets/splash.png")
-spd=Image.new("RGB",(2732,2732),(10,16,31)); spd.paste(lg,((2732-820)//2,(2732-820)//2),lg); spd.save(f"{ROOT}/assets/splash-dark.png")
+paper(192,rounded=True).save(f"{out}/icon-192.png")
+paper(512,rounded=True).save(f"{out}/icon-512.png")
+paper(512,scale=0.74).save(f"{out}/icon-maskable-512.png")       # zone de sécurité Android
+paper(180).convert("RGB").save(f"{out}/apple-touch-icon.png")
+paper(32,rounded=True).save(f"{out}/favicon-32.png")
+os.makedirs(f"{ROOT}/assets",exist_ok=True)
+paper(1024).convert("RGB").save(f"{ROOT}/assets/icon-only.png")
+fg=Image.new("RGBA",(1024,1024),(0,0,0,0))
+tick=paper(1024,scale=0.62); 
+fg=tick; fg.save(f"{ROOT}/assets/icon-foreground.png")
+Image.new("RGB",(1024,1024),PAPER).save(f"{ROOT}/assets/icon-background.png")
+lg=paper(760,rounded=True)
+sp=Image.new("RGB",(2732,2732),PAPER); sp.paste(lg,((2732-760)//2,(2732-760)//2),lg); sp.save(f"{ROOT}/assets/splash.png")
+spd=Image.new("RGB",(2732,2732),NIGHT); spd.paste(lg,((2732-760)//2,(2732-760)//2),lg); spd.save(f"{ROOT}/assets/splash-dark.png")
 print("ok")
