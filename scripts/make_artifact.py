@@ -2,7 +2,7 @@
 import re, os, shutil
 ROOT=os.path.join(os.path.dirname(__file__),"..")
 W=os.path.join(ROOT,"www"); O=os.path.join(ROOT,"dist","artifact")
-shutil.rmtree(O,ignore_errors=True); os.makedirs(O+"/css"); os.makedirs(O+"/js")
+shutil.rmtree(O,ignore_errors=True); os.makedirs(O+"/css"); os.makedirs(O+"/js"); os.makedirs(O+"/data")
 h=open(W+"/index.html",encoding="utf-8").read()
 body=h[h.index("<body>")+6:h.index("</body>")]
 body=re.sub(r'<script src="js/vendor/d3.min.js"></script>','<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>',body)
@@ -15,4 +15,5 @@ open(O+"/css/app.css","w",encoding="utf-8").write(css)
 shutil.copy(W+"/css/features.css",O+"/css/features.css")
 for f in os.listdir(W+"/js"):
     if f.endswith(".js"): shutil.copy(W+"/js/"+f,O+"/js/"+f)
+shutil.copy(W+"/data/live.json",O+"/data/live.json")
 print("ok",len(page))
