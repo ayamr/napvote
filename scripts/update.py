@@ -15,4 +15,5 @@ if "--no-fetch" not in sys.argv:
 os.makedirs(os.path.join(D, "_build"), exist_ok=True)
 for s in ["build.py", "build_hist.py", "build_election.py", "build_bios.py", "assemble_live.py"]:
     run(s, D)
+run("build_photos.py", ROOT)
 run("build_sw.py", ROOT)

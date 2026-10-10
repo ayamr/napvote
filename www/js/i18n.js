@@ -76,7 +76,7 @@
 
     'f.fav.add': 'Ajouter aux favoris', 'f.fav.on': 'Dans mes favoris', 'f.share': 'Partager', 'f.facts': 'Repères', 'f.sources': 'Sources', 'f.hist': 'Parcours électoral',
     'f.map': 'Voir sur la carte ›', 'f.bul': 'Voir le bulletin de cette commune ›', 'f.peers.dep': 'Autres candidats de la circonscription', 'f.peers.list': 'Colistiers (même parti, même liste)',
-    'fav.on': 'Ajouté aux favoris', 'fav.off': 'Retiré des favoris', 'copied': 'Copié dans le presse-papiers', 'copy.fail': 'Copie impossible', 'share.none': 'Partage non disponible sur cet appareil',
+    'fav.on': 'Ajouté aux favoris', 'fav.off': 'Retiré des favoris', 'copied': 'Copié dans le presse-papiers', 'copy.fail': 'Copie impossible', 'photo.credit': 'Photo :', 'share.none': 'Partage non disponible sur cet appareil',
     'mark.aria': 'Mettre en favori : {n}',
     'days.0': 'aujourd’hui', 'days.1': 'demain', 'days.n': 'dans {n} jours', 'days.past': 'passée',
     'date.1': 'Fin de l’inscription des électeurs', 'date.2': 'Fin de l’inscription des candidats', 'date.3': 'Premier tour : présidentielle et législatives', 'date.4': 'Second tour et collectivités territoriales',
@@ -156,7 +156,7 @@
 
     'f.fav.add': 'Mete nan favori', 'f.fav.on': 'Nan favori m', 'f.share': 'Pataje', 'f.facts': 'Repè', 'f.sources': 'Sous', 'f.hist': 'Pakou elektoral',
     'f.map': 'Gade sou kat la ›', 'f.bul': 'Wè bilten komin sa a ›', 'f.peers.dep': 'Lòt kandida nan sikonskripsyon an', 'f.peers.list': 'Kolistye (menm pati, menm lis)',
-    'fav.on': 'Mete nan favori', 'fav.off': 'Retire nan favori', 'copied': 'Kopye', 'copy.fail': 'Pa kapab kopye', 'share.none': 'Telefòn sa a pa kapab pataje',
+    'fav.on': 'Mete nan favori', 'fav.off': 'Retire nan favori', 'copied': 'Kopye', 'copy.fail': 'Pa kapab kopye', 'photo.credit': 'Foto :', 'share.none': 'Telefòn sa a pa kapab pataje',
     'mark.aria': 'Mete nan favori : {n}',
     'days.0': 'jodi a', 'days.1': 'demen', 'days.n': 'nan {n} jou', 'days.past': 'pase',
     'date.1': 'Dènye jou pou enskri elektè', 'date.2': 'Dènye jou pou enskri kandida', 'date.3': 'Premye tou : prezidansyèl ak lejislativ', 'date.4': 'Dezyèm tou ak kolektivite teritoryal',

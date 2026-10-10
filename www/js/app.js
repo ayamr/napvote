@@ -84,10 +84,18 @@
   var RING = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h11v17L12 16.6l-5.5 3.9z"/></svg>';
   API.mark = function (c) { return '<button type="button" class="mk" data-star="' + c.i + '" aria-pressed="' + API.isFav(c) + '" aria-label="' + esc(t('mark.aria', { n: c.pre + ' ' + c.nom })) + '">' + RING + '</button>'; };
   API.star = API.mark;
+  /* initiales identiques pour tous ; photo seulement si une source libre et vérifiée existe (js/photos.js) */
+  var PH = window.VVPhotos || {};
+  API.photoOf = function (c) { return PH[strip(c.nom).toLowerCase() + '|' + strip(c.pre).toLowerCase() + '|' + c.po] || null; };
+  API.avatar = function (c, big) {
+    var ph = API.photoOf(c), cls = 'av' + (big ? ' big' : '');
+    if (ph) { return '<img class="' + cls + ' ph" src="' + esc(ph.f) + '" alt="" loading="lazy" width="' + (big ? 96 : 44) + '" height="' + (big ? 96 : 44) + '">'; }
+    return '<span class="' + cls + '" aria-hidden="true">' + esc((c.pre.charAt(0) + c.nom.charAt(0)).toUpperCase()) + '</span>';
+  };
   /* une ligne de liste : marge (coche) + nom + précisions ; o.sub = texte sous le nom, o.act = html à droite */
   API.row = function (c, o) {
     o = o || {};
-    return '<li class="cc' + (API.isFav(c) ? ' on' : '') + '" data-c="' + c.i + '" tabindex="0">' + API.mark(c) +
+    return '<li class="cc' + (API.isFav(c) ? ' on' : '') + '" data-c="' + c.i + '" tabindex="0">' + API.mark(c) + API.avatar(c) +
       '<span class="cc-t"><b class="nm">' + esc(c.pre) + ' ' + esc(c.nom) + '</b><span class="cc-s"><span class="pt">' + esc(V.parties[c.pa]) + '</span>' + (o.sub ? ' · ' + esc(o.sub) : '') + API.bioBadge(c) + '</span></span>' + (o.act || '') + '</li>';
   };
   document.addEventListener('click', function (e) {
@@ -470,7 +478,9 @@
     var c = C[id];
     if (!c || !dlg) { return; }
     var b = API.bioOf(c), where = c.po === 0 ? 'Candidature nationale' : API.where(c);
-    var h = '<h2 id="f-title">' + esc(c.pre) + ' ' + esc(c.nom) + '</h2>';
+    var phc = API.photoOf(c);
+    var h = '<div class="f-head">' + API.avatar(c, true) + '<h2 id="f-title">' + esc(c.pre) + ' ' + esc(c.nom) + '</h2></div>';
+    if (phc) { h += '<p class="f-credit">' + esc(t('photo.credit')) + ' ' + esc(phc.a) + ', ' + esc(phc.l) + ' · <a href="' + esc(phc.u) + '" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a></p>'; }
     h += '<div class="f-chips"><span class="pt">' + esc(V.parties[c.pa]) + '</span><span class="f-g">' + esc(V.postes[c.po]) + ' · ' + esc(c.po === 0 ? t('c.national') : where) + '</span>' + (c.po >= 3 ? '<span class="f-g">' + esc(V.pos[c.ps]) + '</span>' : '') + (b && b.group ? '<span class="f-g">' + esc(b.group) + '</span>' : '') + (b && b.born ? '<span class="f-g">Né en ' + esc(b.born) + '</span>' : '') + '</div>';
     h += '<div class="f-acts"><button type="button" class="btn sm' + (API.isFav(c) ? ' on' : '') + '" data-ffav="' + c.i + '">' + esc(t(API.isFav(c) ? 'f.fav.on' : 'f.fav.add')) + '</button><button type="button" class="btn sm ghost" data-fshare="' + c.i + '">' + esc(t('f.share')) + '</button></div>';
     if (b) {

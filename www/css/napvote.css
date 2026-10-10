@@ -629,3 +629,12 @@ footer .lnk{ color:var(--on-band); }
   .hbox, .tkc, .cc{ break-inside:avoid; } details > *{ display:block; }
 }
 @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
+
+/* ---------- initiales et photos ---------- */
+.av{ flex:none; width:44px; height:44px; border-radius:50%; background:var(--surface-2); color:var(--ink-2); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.9375rem; letter-spacing:.02em; order:0; }
+.av.ph{ object-fit:cover; background:var(--surface-2); }
+.av.big{ width:72px; height:72px; font-size:1.5rem; }
+.av.big.ph{ width:96px; height:96px; }
+.f-head{ display:flex; align-items:center; gap:16px; margin-right:48px; }
+.f-head h2{ margin:0 !important; }
+.f-credit{ font-size:.8125rem; color:var(--ink-3); margin:8px 0 0; }

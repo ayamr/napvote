@@ -1,0 +1,90 @@
+[
+ {
+  "i": 3200,
+  "name": "Gary BODEAU",
+  "po": 0,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Gary Bodeau",
+  "image": "Gary_Bodeau_(cropped).jpg",
+  "orig": "https://upload.wikimedia.org/wikipedia/commons/b/b9/Gary_Bodeau_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=original",
+  "extract": "Gary Bodeau (né le 18 novembre 1977 . est un homme politique haïtien qui a occupé le poste de président de la Chambre des députés d'Haïti  du 10 janvier 2018 au 13 janvier 2020 ."
+ },
+ {
+  "i": 3201,
+  "name": "Deus DERONNETH",
+  "po": 0,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Déus Deronneth",
+  "image": null,
+  "orig": null,
+  "extract": "Déus Deronneth est né à Marigot, dans le département du Sud-Est de la République d'Haïti.\n\nDéus Deronneth est Doctorant en sciences économiques et diplômé de l'École Nationale d'Administration Financière (ENAF) ; il est titulaire de deux maîtrises : l'une en Administration Publique et Gouvernance de"
+ },
+ {
+  "i": 3207,
+  "name": "Claude JOSEPH",
+  "po": 0,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Claude Joseph (homme d'État)",
+  "image": "Claude_Joseph,_chancelier_haïtien_en_2020_(cropped_4x3).jpg",
+  "orig": "https://upload.wikimedia.org/wikipedia/commons/0/09/Claude_Joseph%2C_chancelier_ha%C3%AFtien_en_2020_%28cropped_4x3%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=original",
+  "extract": "Claude Joseph est un homme d'État haïtien. Il est ministre des Affaires étrangères du 5 mars 2020 au 24 novembre 2021 et Premier ministre par intérim du 14 avril au 20 juillet 2021. À partir du 7 juillet 2021, son gouvernement assure l'intérim de la présidence de la République à la suite de l'assass"
+ },
+ {
+  "i": 3211,
+  "name": "Jean Ernest MUSCADIN",
+  "po": 0,
+  "elu": false,
+  "host": "en.wikipedia.org",
+  "title": "Jean Ernest Muscadin",
+  "image": null,
+  "orig": null,
+  "extract": "Jean Ernest Muscadin is a Haitian public prosecutor in Miragoâne."
+ },
+ {
+  "i": 3212,
+  "name": "Jocelerme PRIVERT",
+  "po": 0,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Jocelerme Privert",
+  "image": "Jocelerme_Privert_Cine_Triomphe_(cropped).jpg",
+  "orig": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Jocelerme_Privert_Cine_Triomphe_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=original",
+  "extract": "Jocelerme Privert, né le 1er février 1953 à Petit-Trou-de-Nippes, est un homme d'État haïtien, membre du parti Inite et président provisoire de la république d'Haïti du 14 février 2016 au 7 février 2017.\nD'abord membre du gouvernement sous la présidence de Jean-Bertrand Aristide entre 2001 et 2004, "
+ },
+ {
+  "i": 3251,
+  "name": "Carl Murat CANTAVE",
+  "po": 1,
+  "elu": true,
+  "host": "en.wikipedia.org",
+  "title": "Carl Murat Cantave",
+  "image": null,
+  "orig": null,
+  "extract": "Carl Murat Cantave is a Haitian politician who served as President of the Haitian Senate from 17 January 2019 to 14 January 2020. He is a member of the KID party, and represents the Artibonite department. Cantave was first elected to the Senate in the 2015–16 Haitian parliamentary election, one of t"
+ },
+ {
+  "i": 3329,
+  "name": "Sorel JACINTHE",
+  "po": 1,
+  "elu": true,
+  "host": "en.wikipedia.org",
+  "title": "Sorel Jacinthe",
+  "image": null,
+  "orig": null,
+  "extract": "Sorel Jacinthe is a politician in Haiti. He was born in 1955.\nJacinthe served as the president of the Chamber of Deputies from 26 April 2011 to January 2012. A former ally of Haiti's president, Jovenel Moise, and a senator in 2019 he was part of the opposition calling for his resignation."
+ },
+ {
+  "i": 3373,
+  "name": "Ronald LARECHE",
+  "po": 1,
+  "elu": true,
+  "host": "fr.wikipedia.org",
+  "title": "Ronald Larêche",
+  "image": null,
+  "orig": null,
+  "extract": "Ronald Larêche est un homme d'État haïtien, président du Sénat du 14 février 2016 au 13 janvier 2017, précédemment vice-président du Sénat du 14 janvier au 21 juillet 2016. Il est sénateur du Nord-Est."
+ }
+]

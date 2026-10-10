@@ -1,5 +1,5 @@
 /* NapVote service worker — généré par scripts/build_sw.py (ne pas éditer à la main) */
-var VERSION = '6320b1cbf9';
+var VERSION = 'a9734468ca';
 var CACHE = 'napvote-' + VERSION;
 var FILES = [
  "./",
@@ -29,10 +29,14 @@ var FILES = [
  "js/hist.js",
  "js/i18n.js",
  "js/map.js",
+ "js/photos.js",
  "js/pwa.js",
  "js/resultats.js",
  "js/vendor/d3.min.js",
- "manifest.webmanifest"
+ "manifest.webmanifest",
+ "photos/bodeau-gary.jpg",
+ "photos/joseph-claude.jpg",
+ "photos/privert-jocelerme.jpg"
 ];
 
 self.addEventListener('install', function (e) {
