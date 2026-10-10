@@ -1,5 +1,5 @@
 /* NapVote service worker — généré par scripts/build_sw.py (ne pas éditer à la main) */
-var VERSION = '6320b1cbf9';
+var VERSION = '2d1dce7eb1';
 var CACHE = 'napvote-' + VERSION;
 var FILES = [
  "./",
