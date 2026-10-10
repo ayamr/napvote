@@ -89,7 +89,7 @@
   API.photoOf = function (c) { return PH[strip(c.nom).toLowerCase() + '|' + strip(c.pre).toLowerCase() + '|' + c.po] || null; };
   API.avatar = function (c, big) {
     var ph = API.photoOf(c), cls = 'av' + (big ? ' big' : '');
-    if (ph) { return '<img class="' + cls + ' ph" src="' + esc(ph.f) + '" alt="" loading="lazy" width="' + (big ? 96 : 44) + '" height="' + (big ? 96 : 44) + '">'; }
+    if (ph) { return '<img class="' + cls + ' ph" src="' + esc(ph.f) + '" alt="" decoding="async" width="' + (big ? 112 : 44) + '" height="' + (big ? 112 : 44) + '">'; }
     return '<span class="' + cls + '" aria-hidden="true">' + esc((c.pre.charAt(0) + c.nom.charAt(0)).toUpperCase()) + '</span>';
   };
   /* une ligne de liste : marge (coche) + nom + précisions ; o.sub = texte sous le nom, o.act = html à droite */
