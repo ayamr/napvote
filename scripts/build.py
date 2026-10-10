@@ -44,10 +44,12 @@ def dept_of(g):
 alias={"cayes":"les cayes","petion ville":"petionville","del mas":"delmas","cornillon (grand bois)":"cornillon","anse a pitre":"anse a pitres","roche a bateau":"roche a bateaux",
 "lavallee":"la vallee de jacmel","fond des negres":"fonds des negres","irois":"les irois","port au prince 1":"port au prince","port au prince 2":"port au prince","port au prince 3":"port au prince"}
 OFF=["BAPTISTE","CAHOANNE","DUCIS","FONDS DES BLANCS","GRAND-BASSIN","ILES CAYEMITES","LAPOINTE","LIANCOURT","MARFRANC","MONTROUIS"]
+OFFN={norm(o):o for o in OFF}
+alias.update({"fond des blancs":"fonds des blancs","fonds des blancs":"fonds des blancs","grand bassin":"grand bassin","iles cayemites":"iles cayemites"})
 def key_of(part):
-    n=norm(part)
-    if part.strip() in OFF: return "off:"+part.strip()
-    return alias.get(n,n)
+    n=alias.get(norm(part),norm(part))
+    if n in OFFN: return "off:"+OFFN[n]
+    return n
 
 # ---- CSV-side info per place key
 csv_dept=collections.defaultdict(set); csv_name={}
@@ -120,6 +122,18 @@ for o in OFF:
     k="off:"+o; d=list(csv_dept[k])
     places.append({"n":csv_name[k],"d":DEPTS.index(d[0]),"off":1})
     key_idx[k]=len(places)-1
+
+# communes inconnues du fond de carte (nouvelle orthographe du CEP, nouvelle commune) : rapprochement approché, sinon « hors carte »
+import difflib
+for k in sorted(csv_dept):
+    if k in key_idx: continue
+    cand=difflib.get_close_matches(k,[x for x in key_idx if not x.startswith("off:")],n=1,cutoff=0.86)
+    if cand:
+        key_idx[k]=key_idx[cand[0]]; print("AVERTISSEMENT commune rapprochée :",k,"->",cand[0])
+    else:
+        d=sorted(csv_dept[k])[0]
+        places.append({"n":csv_name[k],"d":DEPTS.index(d) if d in DEPTS else 0,"off":1}); key_idx[k]=len(places)-1
+        print("AVERTISSEMENT commune ajoutée hors carte :",csv_name[k],d)
 
 # dept outlines from dissolved communes
 depts=[]
