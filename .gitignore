@@ -22,3 +22,7 @@ ios/App/App/capacitor.config.json
 ios/App/Pods/
 ios/App/build/
 ios/DerivedData/
+
+# fichiers dérivés : fabriqués à chaque publication par le robot, jamais sauvegardés (évite les conflits)
+www/sw.js
+www/data/live.json
