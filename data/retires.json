@@ -1,0 +1,223 @@
+[
+ {
+  "statut": "RETIRÉ",
+  "poste": "Député",
+  "nom": "JN PIERRE",
+  "prenom": "BELIN",
+  "position": "Titulaire",
+  "parti": "VIKTWA",
+  "lieu": [
+   "NORD",
+   "QUARTIER-MORIN"
+  ],
+  "detail": ""
+ },
+ {
+  "statut": "RETIRÉ",
+  "poste": "Député",
+  "nom": "MARCELLUS",
+  "prenom": "LEKENDY",
+  "position": "Titulaire",
+  "parti": "VIKTWA",
+  "lieu": [
+   "NORD",
+   "SAINT-RAPHAËL"
+  ],
+  "detail": ""
+ },
+ {
+  "statut": "RETIRÉ",
+  "poste": "Maire",
+  "nom": "CASIMIR",
+  "prenom": "VILADIA",
+  "position": "1er Adjoint",
+  "parti": "VAR",
+  "lieu": [
+   "NORD-OUEST",
+   "BASSIN BLEU"
+  ],
+  "detail": ""
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "Maire",
+  "nom": "GEORGES",
+  "prenom": "EMANOT",
+  "position": "Titulaire",
+  "parti": "PPGA",
+  "lieu": [
+   "OUEST",
+   "CABARET"
+  ],
+  "detail": "position Titulaire -> 1er Adjoint"
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "Maire",
+  "nom": "JEAN",
+  "prenom": "ROSEBERLINE PIERRE",
+  "position": "2ème Adjoint",
+  "parti": "PPGA",
+  "lieu": [
+   "OUEST",
+   "CABARET"
+  ],
+  "detail": "position 2ème Adjoint -> Titulaire"
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "Maire",
+  "nom": "JOSEPH",
+  "prenom": "ROMELUS",
+  "position": "Titulaire",
+  "parti": "VAR",
+  "lieu": [
+   "ARTIBONITE",
+   "SAINT-MICHEL-DE-L'ATTALAYE"
+  ],
+  "detail": "position Titulaire -> 2ème Adjoint"
+ },
+ {
+  "statut": "RETIRÉ",
+  "poste": "Maire",
+  "nom": "LUBERICE",
+  "prenom": "ESPERION",
+  "position": "2ème Adjoint",
+  "parti": "PPGA",
+  "lieu": [
+   "CENTRE",
+   "BELLADÈRE"
+  ],
+  "detail": ""
+ },
+ {
+  "statut": "RETIRÉ",
+  "poste": "Maire",
+  "nom": "SIMEON",
+  "prenom": "WEDNEL",
+  "position": "1er Adjoint",
+  "parti": "PPGA",
+  "lieu": [
+   "OUEST",
+   "CABARET"
+  ],
+  "detail": ""
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "CASEC",
+  "nom": "JEANTY",
+  "prenom": "BERTRAND",
+  "position": "1er Adjoint",
+  "parti": "PFSDH",
+  "lieu": [
+   "CENTRE",
+   "SAVANETTE"
+  ],
+  "detail": "position 1er Adjoint -> Titulaire; section modifiée"
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "CASEC",
+  "nom": "MEZIDOR",
+  "prenom": "SINCIANA",
+  "position": "1er Adjoint",
+  "parti": "AYITI TRANSFOME",
+  "lieu": [
+   "SUD",
+   "SAINT-LOUIS-DU-SUD"
+  ],
+  "detail": "position 1er Adjoint -> Titulaire; section modifiée"
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "CASEC",
+  "nom": "VILME",
+  "prenom": "BECHEREL",
+  "position": "Titulaire",
+  "parti": "AYITI TRANSFOME",
+  "lieu": [
+   "SUD",
+   "SAINT-LOUIS-DU-SUD"
+  ],
+  "detail": "position Titulaire -> 1er Adjoint; section modifiée"
+ },
+ {
+  "statut": "RETIRÉ",
+  "poste": "ASEC",
+  "nom": "CETOUTE",
+  "prenom": "LOUIS DONEXE",
+  "position": "Titulaire",
+  "parti": "CHA",
+  "lieu": [
+   "OUEST",
+   "PORT-AU-PRINCE"
+  ],
+  "detail": ""
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "ASEC",
+  "nom": "DEBRE",
+  "prenom": "WISLOT",
+  "position": "6ème Adjoint",
+  "parti": "CHA",
+  "lieu": [
+   "OUEST",
+   "PÉTION-VILLE"
+  ],
+  "detail": "position 6ème Adjoint -> Titulaire; section modifiée"
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "ASEC",
+  "nom": "ETIENNE",
+  "prenom": "DANIEL",
+  "position": "Titulaire",
+  "parti": "EAPH",
+  "lieu": [
+   "ARTIBONITE",
+   "SAINT-MICHEL-DE-L'ATTALAYE"
+  ],
+  "detail": "position Titulaire -> 4ème Adjoint; section modifiée"
+ },
+ {
+  "statut": "RETIRÉ",
+  "poste": "ASEC",
+  "nom": "LOUIS",
+  "prenom": "MURAT",
+  "position": "1er Adjoint",
+  "parti": "CHA",
+  "lieu": [
+   "OUEST",
+   "PORT-AU-PRINCE"
+  ],
+  "detail": ""
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "ASEC",
+  "nom": "LUC",
+  "prenom": "WIDMIAR",
+  "position": "1er Adjoint",
+  "parti": "CHA",
+  "lieu": [
+   "OUEST",
+   "PÉTION-VILLE"
+  ],
+  "detail": "position 1er Adjoint -> Titulaire; section modifiée"
+ },
+ {
+  "statut": "MODIFIÉ",
+  "poste": "ASEC",
+  "nom": "PETIT",
+  "prenom": "JEFF RALPH",
+  "position": "1er Adjoint",
+  "parti": "CHA",
+  "lieu": [
+   "OUEST",
+   "PÉTION-VILLE"
+  ],
+  "detail": "position 1er Adjoint -> Titulaire; section modifiée"
+ }
+]
