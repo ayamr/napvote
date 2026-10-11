@@ -78,6 +78,7 @@
       casAll: cas, asecAll: asec
     };
   }
+  A.parts = parts;
   A.countFor = function (loc) { var p = parts(loc); return p.pres.length + p.sen.length + p.dep.length + p.may.length + (loc.sec >= 0 ? p.cas.length + p.asec.length : 0); };
 
   /* =============== rendu =============== */

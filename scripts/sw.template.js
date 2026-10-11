@@ -21,15 +21,15 @@ self.addEventListener('fetch', function (e) {
     }).catch(function () { return caches.match('index.html'); }));
     return;
   }
-  // données live : réseau d'abord (toujours fraîches), dernière copie en secours hors ligne
-  if (/\/data\/live\.json$/.test(new URL(req.url).pathname)) {
+  // code, styles et données : réseau d'abord (jamais de version périmée), copie en secours hors ligne
+  if (/\.(?:js|css|json|webmanifest)$/.test(new URL(req.url).pathname)) {
     e.respondWith(fetch(req).then(function (r) {
-      if (r.ok) { var copy = r.clone(); caches.open(CACHE).then(function (c) { c.put('data/live.json', copy); }); }
+      if (r.ok) { var copy = r.clone(); caches.open(CACHE).then(function (c) { c.put(req, copy); }); }
       return r;
-    }).catch(function () { return caches.match('data/live.json'); }));
+    }).catch(function () { return caches.match(req, { ignoreSearch: true }); }));
     return;
   }
-  // ressources : cache d'abord
+  // polices, images, icônes : cache d'abord
   e.respondWith(caches.match(req, { ignoreSearch: true }).then(function (hit) {
     return hit || fetch(req).then(function (r) {
       if (r.ok) { var copy = r.clone(); caches.open(CACHE).then(function (c) { c.put(req, copy); }); }

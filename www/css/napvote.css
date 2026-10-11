@@ -656,3 +656,12 @@ img.av:not(.big){ border-radius:50%; }
 .poll-h{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-top:24px; padding-top:14px; border-top:3px solid var(--ink); }
 .poll-h h2{ font-size:1.5rem; }
 .poll-me{ color:var(--ok); font-weight:700; font-size:.8125rem; margin-left:6px; }
+
+.poll-f{ margin-top:28px; }
+.poll-o.fx{ color:var(--ink-2); }
+.poll-o.fx .poll-t b{ font-weight:600; }
+.poll-rt{ font-size:1.5rem; margin-top:28px; }
+.poll-r{ margin-top:28px; }
+.poll-r .poll-h{ margin-top:0; padding-top:12px; }
+.poll-r .poll-h h3{ font-size:1.25rem; font-family:'Source Serif 4', Georgia, serif; }
+.poll-sec{ margin-top:28px; padding:16px; background:var(--surface); border-radius:var(--r); }

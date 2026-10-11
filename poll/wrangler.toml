@@ -10,7 +10,7 @@ ALLOWED_ORIGINS = "https://napvote-ht.com,https://www.napvote-ht.com"
 # liste des candidats autorisés, publiée par le site (régénérée toutes les 2 h)
 OPTIONS_URL = "https://napvote-ht.com/data/poll-options.json"
 # nombre maximal de votes enregistrés par jour et par empreinte réseau (réseaux mobiles partagés)
-RATE_LIMIT = "60"
+RATE_LIMIT = "120"
 
 [[d1_databases]]
 binding = "DB"
