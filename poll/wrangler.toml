@@ -1,6 +1,8 @@
 name = "napvote-poll"
 main = "src/worker.js"
 compatibility_date = "2025-01-01"
+workers_dev = true
+preview_urls = false
 
 [vars]
 # sites autorisés à appeler le service (le premier sert de valeur par défaut)
@@ -13,7 +15,7 @@ RATE_LIMIT = "60"
 [[d1_databases]]
 binding = "DB"
 database_name = "napvote-poll"
-database_id = "A_REMPLACER_APRES_wrangler_d1_create"
+database_id = "93049d53-7caa-44ec-9bd7-90465cdf5629"
 
 # Secrets à créer avec « npx wrangler secret put » :
 #   SALT              : chaîne aléatoire longue (obligatoire)
