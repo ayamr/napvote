@@ -54,6 +54,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     <button type="button" data-go="carte" data-i18n="nav.map">Carte</button>
     <button type="button" data-go="cand" data-i18n="nav.cand">Candidats</button>
     <button type="button" data-go="res" data-i18n="nav.res">Résultats passés</button>
+    <button type="button" data-go="poll" data-i18n="nav.poll">Sondage</button>
     <button type="button" data-go="cal" data-i18n="nav.cal">Calendrier</button>
     <button type="button" data-go="elec" data-i18n="nav.elec">Électeurs</button>
     <button type="button" data-go="news" data-i18n="nav.news">Actualités</button>
@@ -106,6 +107,11 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
             <div class="sec-h"><h2 data-i18n="home.dates">Les dates</h2></div>
             <ul id="h-agenda" class="rows dates"></ul>
             <p class="note-s"><button type="button" class="lnk inl" data-go="cal" data-i18n="home.dates.all">Tout le calendrier ›</button></p>
+          </div>
+          <div class="blk" data-poll-home>
+            <div class="sec-h"><h2 data-i18n="poll.home">Sondage : pour qui comptez-vous voter ?</h2></div>
+            <p class="note-s" data-i18n="poll.home.s">Ouvert à tous, anonyme, non scientifique.</p>
+            <p style="margin-top:14px"><button type="button" class="btn" data-i18n="poll.vote">Répondre au sondage</button></p>
           </div>
           <div class="blk">
             <div class="sec-h"><h2 data-i18n="home.map">Où ils se présentent</h2></div>
@@ -211,6 +217,17 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     </div>
   </section>
 
+  <!-- ============ SONDAGE ============ -->
+  <section id="p-poll" hidden>
+    <div class="wrap">
+      <div class="ph">
+        <h1 data-i18n="poll.title">Sondage : pour qui comptez-vous voter ?</h1>
+        <p data-i18n="poll.sub">Répondez en dix secondes, sans compte.</p>
+      </div>
+      <div id="poll-out" aria-live="polite"></div>
+    </div>
+  </section>
+
   <!-- ============ CALENDRIER ============ -->
   <section id="p-cal" hidden>
     <div class="wrap">
@@ -282,6 +299,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
             <li>Le rapprochement entre candidats de 2026 et résultats passés se fait par le nom, dans la même zone : en cas d’homonymie, vérifiez auprès du CEP.</li>
             <li>Dix communes récentes ne sont pas sur le fond de carte : elles restent dans « Mon bulletin », mais la localisation ne peut pas les trouver.</li>
             <li>Le kreyòl de l’interface est en cours de relecture. Les textes longs (notes du CEP, fiches, actualités) restent dans la langue de leur source.</li>
+            <li>Le sondage « pour qui comptez-vous voter ? » est ouvert à tous et non scientifique : il ne mesure que l’avis de ceux qui y répondent et ne prédit rien.</li>
             <li>Vérifiez toujours auprès du CEP avant de relayer une information.</li>
           </ul>
         </div>
@@ -319,6 +337,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     <button type="button" class="f-x" aria-label="Fermer">✕</button>
     <h2 class="menu-t" data-i18n="menu">Menu</h2>
     <ul class="menu-l">
+      <li><button type="button" data-go="poll"><b data-i18n="menu.poll">Sondage</b><span data-i18n="menu.poll.s">Pour qui comptez-vous voter ?</span></button></li>
       <li><button type="button" data-go="cal"><b data-i18n="menu.cal">Calendrier</b><span data-i18n="menu.cal.s">Les dates du processus</span></button></li>
       <li><button type="button" data-go="elec"><b data-i18n="menu.elec">Électeurs inscrits</b><span data-i18n="menu.elec.s">Inscription par département</span></button></li>
       <li><button type="button" data-go="news"><b data-i18n="menu.news">Actualités</b><span data-i18n="menu.news.s">CEP et presse</span></button></li>

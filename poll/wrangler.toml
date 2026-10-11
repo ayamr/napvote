@@ -1,0 +1,20 @@
+name = "napvote-poll"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# sites autorisés à appeler le service (le premier sert de valeur par défaut)
+ALLOWED_ORIGINS = "https://napvote-ht.com,https://www.napvote-ht.com"
+# liste des candidats autorisés, publiée par le site (régénérée toutes les 2 h)
+OPTIONS_URL = "https://napvote-ht.com/data/poll-options.json"
+# nombre maximal de votes enregistrés par jour et par empreinte réseau (réseaux mobiles partagés)
+RATE_LIMIT = "60"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "napvote-poll"
+database_id = "A_REMPLACER_APRES_wrangler_d1_create"
+
+# Secrets à créer avec « npx wrangler secret put » :
+#   SALT              : chaîne aléatoire longue (obligatoire)
+#   TURNSTILE_SECRET  : clé secrète Cloudflare Turnstile (facultatif, active l'anti-robot)

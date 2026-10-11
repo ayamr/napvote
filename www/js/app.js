@@ -155,7 +155,7 @@
   };
 
   /* ---------- pages ---------- */
-  var PAGES = ['home', 'bulletin', 'carte', 'cand', 'res', 'cal', 'elec', 'news', 'about'];
+  var PAGES = ['home', 'bulletin', 'carte', 'cand', 'res', 'poll', 'cal', 'elec', 'news', 'about'];
   var NAVMAP = { cal: 'cal', elec: 'elec', news: 'news', about: 'about' };
   var hooks = [];
   API.onPage = function (fn) { hooks.push(fn); };

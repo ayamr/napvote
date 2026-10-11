@@ -640,3 +640,19 @@ img.av:not(.big){ border-radius:50%; }
 @media (max-width:480px){ .av.big.ph{ width:88px; height:88px; } }
 .f-head h2{ margin:0 !important; }
 .f-credit{ font-size:.8125rem; color:var(--ink-3); margin:8px 0 0; }
+
+/* ---------- sondage ---------- */
+.poll-f{ border:0; padding:0; margin:20px 0 0; min-width:0; }
+.poll-f legend{ font-family:'Source Serif 4', Georgia, serif; font-weight:700; font-size:1.375rem; line-height:1.25; padding:0 0 10px; }
+.poll-l{ margin-top:4px; }
+.poll-o{ display:flex; align-items:center; gap:14px; min-height:60px; padding:8px 4px; cursor:pointer; }
+.poll-o:hover{ background:var(--surface); }
+.poll-o input{ width:24px; height:24px; accent-color:var(--brand); flex:none; margin:0; }
+.poll-t{ display:flex; flex-direction:column; }
+.poll-t b{ font-weight:700; }
+.poll-t span{ font-size:.875rem; color:var(--ink-2); }
+.poll-d{ margin-top:24px; max-width:420px; }
+.poll-ts{ margin-top:16px; }
+.poll-h{ display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-top:24px; padding-top:14px; border-top:3px solid var(--ink); }
+.poll-h h2{ font-size:1.5rem; }
+.poll-me{ color:var(--ok); font-weight:700; font-size:.8125rem; margin-left:6px; }

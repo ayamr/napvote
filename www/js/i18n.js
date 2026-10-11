@@ -25,6 +25,16 @@
     'home.news': 'Nouvelles du CEP', 'home.news.all': 'Toutes les actualités ›',
     'home.saved': 'Mon bulletin', 'home.saved.go': 'Ouvrir ›', 'home.saved.n': '{n} candidats sur votre bulletin',
 
+    'nav.poll': 'Sondage', 'menu.poll': 'Sondage', 'menu.poll.s': 'Pour qui comptez-vous voter ?',
+    'poll.home': 'Sondage : pour qui comptez-vous voter ?', 'poll.home.s': 'Ouvert à tous, anonyme, non scientifique.',
+    'poll.title': 'Sondage : pour qui comptez-vous voter ?', 'poll.sub': 'Répondez en dix secondes, sans compte. Les résultats montrent ce que pensent ceux qui ont répondu, rien de plus.',
+    'poll.warn.t': 'Sondage ouvert à tous, non scientifique.', 'poll.warn': 'Il ne représente pas l’opinion des Haïtiens et ne prédit pas le résultat de l’élection. NapVote ne soutient aucun candidat.',
+    'poll.q': 'Si le premier tour avait lieu aujourd’hui, pour qui voteriez-vous à la présidence ?', 'poll.undecided': 'Je ne sais pas encore', 'poll.abstain': 'Je ne voterai pas',
+    'poll.dept': 'Votre département (facultatif)', 'poll.send': 'Enregistrer mon choix', 'poll.cancel': 'Annuler', 'poll.change': 'Modifier mon choix', 'poll.vote': 'Répondre au sondage',
+    'poll.thanks': 'Merci, votre choix est enregistré.', 'poll.results': 'Résultats', 'poll.seeResults': 'Voir les résultats sans répondre', 'poll.total': '{n} réponses', 'poll.total1': '{n} réponse', 'poll.all': 'Toute Haïti', 'poll.mine': 'votre choix',
+    'poll.few': 'Peu de réponses dans ce département : à lire avec prudence.', 'poll.none': 'Aucune réponse pour le moment.',
+    'poll.how': 'Un choix par appareil, modifiable. Aucun nom, e-mail ni numéro de téléphone n’est demandé, et votre adresse IP n’est pas conservée. Les réponses ne sont pas vérifiées.',
+    'poll.err': 'Le sondage est indisponible pour le moment. Réessayez plus tard.', 'poll.limit': 'Trop de réponses ont été envoyées depuis ce réseau aujourd’hui. Réessayez demain.', 'poll.bot': 'La vérification anti-robot a échoué. Rechargez la page et réessayez.', 'poll.soon': 'Le sondage ouvrira bientôt.',
     'post.0': 'Président', 'post.1': 'Sénat', 'post.2': 'Députés', 'post.3': 'Maires', 'post.4': 'CASEC', 'post.5': 'ASEC',
     'postl.0': 'Présidentielle', 'postl.1': 'Sénat', 'postl.2': 'Députés', 'postl.3': 'Maires', 'postl.4': 'CASEC', 'postl.5': 'ASEC',
 
@@ -105,6 +115,16 @@
     'home.news': 'Nouvèl CEP la', 'home.news.all': 'Tout nouvèl yo ›',
     'home.saved': 'Bilten mwen', 'home.saved.go': 'Louvri ›', 'home.saved.n': '{n} kandida sou bilten ou',
 
+    'nav.poll': 'Sondaj', 'menu.poll': 'Sondaj', 'menu.poll.s': 'Pou ki moun w ap vote ?',
+    'poll.home': 'Sondaj : pou ki moun w ap vote ?', 'poll.home.s': 'Louvri pou tout moun, san non, pa syantifik.',
+    'poll.title': 'Sondaj : pou ki moun w ap vote ?', 'poll.sub': 'Reponn nan dis segonn, san kont. Rezilta yo montre sa moun ki reponn yo panse, pa plis.',
+    'poll.warn.t': 'Sondaj sa a louvri pou tout moun, li pa syantifik.', 'poll.warn': 'Li pa reprezante opinyon tout Ayisyen e li pa predi rezilta eleksyon an. NapVote pa soutni okenn kandida.',
+    'poll.q': 'Si premye tou a te fèt jodi a, pou ki moun w t ap vote pou prezidan ?', 'poll.undecided': 'Mwen poko konnen', 'poll.abstain': 'M p ap vote',
+    'poll.dept': 'Depatman ou (si w vle)', 'poll.send': 'Anrejistre chwa m', 'poll.cancel': 'Anile', 'poll.change': 'Chanje chwa m', 'poll.vote': 'Reponn sondaj la',
+    'poll.thanks': 'Mèsi, nou anrejistre chwa w la.', 'poll.results': 'Rezilta', 'poll.seeResults': 'Gade rezilta yo san m pa reponn', 'poll.total': '{n} repons', 'poll.total1': '{n} repons', 'poll.all': 'Tout Ayiti', 'poll.mine': 'chwa w',
+    'poll.few': 'Pa gen anpil repons nan depatman sa a : li ak prekosyon.', 'poll.none': 'Poko gen repons.',
+    'poll.how': 'Yon chwa pou chak aparèy, ou ka chanje l. Nou pa mande non, imèl ni nimewo telefòn, e nou pa kenbe adrès IP ou. Nou pa verifye repons yo.',
+    'poll.err': 'Sondaj la pa disponib pou kounye a. Eseye ankò pita.', 'poll.limit': 'Gen twòp repons ki soti sou rezo sa a jodi a. Eseye demen.', 'poll.bot': 'Verifikasyon anti-robo a echwe. Rechaje paj la epi eseye ankò.', 'poll.soon': 'Sondaj la ap louvri talè konsa.',
     'post.0': 'Prezidan', 'post.1': 'Senatè', 'post.2': 'Depite', 'post.3': 'Majistra', 'post.4': 'CASEC', 'post.5': 'ASEC',
     'postl.0': 'Prezidansyèl', 'postl.1': 'Sena', 'postl.2': 'Depite', 'postl.3': 'Majistra', 'postl.4': 'CASEC', 'postl.5': 'ASEC',
 

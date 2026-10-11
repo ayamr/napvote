@@ -5,7 +5,7 @@
   'use strict';
   var V = window.VV, CFG = window.NAPVOTE || {};
   var cap = window.Capacitor, native = !!(cap && cap.isNativePlatform && cap.isNativePlatform());
-  var APP = ['js/app.js', 'js/hist-ui.js', 'js/bulletin.js', 'js/resultats.js', 'js/map.js', 'js/candidats.js', 'js/pwa.js'];
+  var APP = ['js/app.js', 'js/hist-ui.js', 'js/bulletin.js', 'js/resultats.js', 'js/map.js', 'js/candidats.js', 'js/sondage.js', 'js/pwa.js'];
 
   function getJSON(url, ms) {
     return new Promise(function (res, rej) {
