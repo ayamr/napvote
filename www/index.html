@@ -51,10 +51,10 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
   <nav class="dnav" aria-label="Sections">
     <button type="button" data-go="home" data-i18n="nav.home">Accueil</button>
     <button type="button" data-go="bulletin" data-i18n="nav.bulletin">Mon bulletin</button>
+    <button type="button" data-go="poll" class="nav-hl" data-i18n="nav.poll">Sondage</button>
     <button type="button" data-go="carte" data-i18n="nav.map">Carte</button>
     <button type="button" data-go="cand" data-i18n="nav.cand">Candidats</button>
     <button type="button" data-go="res" data-i18n="nav.res">Résultats passés</button>
-    <button type="button" data-go="poll" data-i18n="nav.poll">Sondage</button>
     <button type="button" data-go="cal" data-i18n="nav.cal">Calendrier</button>
     <button type="button" data-go="elec" data-i18n="nav.elec">Électeurs</button>
     <button type="button" data-go="news" data-i18n="nav.news">Actualités</button>
@@ -83,6 +83,12 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
             <ul id="h-results" class="results" hidden></ul>
           </div>
 
+          <div class="pollcta" data-poll-home>
+            <h2 data-i18n="poll.home">Sondage : pour qui comptez-vous voter ?</h2>
+            <p data-i18n="poll.home.s">Ouvert à tous, anonyme, non scientifique.</p>
+            <button type="button" class="btn primary" data-i18n="poll.vote">Répondre au sondage</button>
+          </div>
+
           <div class="blk">
             <div class="sec-h"><h2 data-i18n="home.who">Qui se présente</h2></div>
             <ul id="h-posts" class="rows"></ul>
@@ -107,11 +113,6 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
             <div class="sec-h"><h2 data-i18n="home.dates">Les dates</h2></div>
             <ul id="h-agenda" class="rows dates"></ul>
             <p class="note-s"><button type="button" class="lnk inl" data-go="cal" data-i18n="home.dates.all">Tout le calendrier ›</button></p>
-          </div>
-          <div class="blk" data-poll-home>
-            <div class="sec-h"><h2 data-i18n="poll.home">Sondage : pour qui comptez-vous voter ?</h2></div>
-            <p class="note-s" data-i18n="poll.home.s">Ouvert à tous, anonyme, non scientifique.</p>
-            <p style="margin-top:14px"><button type="button" class="btn" data-i18n="poll.vote">Répondre au sondage</button></p>
           </div>
           <div class="blk">
             <div class="sec-h"><h2 data-i18n="home.map">Où ils se présentent</h2></div>
@@ -338,6 +339,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     <button type="button" class="f-x" aria-label="Fermer">✕</button>
     <h2 class="menu-t" data-i18n="menu">Menu</h2>
     <ul class="menu-l">
+      <li><button type="button" data-go="res"><b data-i18n="nav.res">Résultats passés</b><span data-i18n="menu.res.s">Présidentielle 2016, Sénat et députés 2015-2017</span></button></li>
       <li><button type="button" data-go="poll"><b data-i18n="menu.poll">Sondage</b><span data-i18n="menu.poll.s">Pour qui comptez-vous voter ?</span></button></li>
       <li><button type="button" data-go="cal"><b data-i18n="menu.cal">Calendrier</b><span data-i18n="menu.cal.s">Les dates du processus</span></button></li>
       <li><button type="button" data-go="elec"><b data-i18n="menu.elec">Électeurs inscrits</b><span data-i18n="menu.elec.s">Inscription par département</span></button></li>
@@ -353,7 +355,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
   <button type="button" data-go="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="nav.home">Accueil</span></button>
   <button type="button" data-go="bulletin"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 12l2 2 4-4M9 7h6M9 17h6"/></svg><span data-i18n="nav.bulletin">Mon bulletin</span></button>
   <button type="button" data-go="cand"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16.5 4.8a3.2 3.2 0 0 1 0 6.2M18.5 14.4c2 .8 3 2.6 3 5.6"/></svg><span data-i18n="nav.cand">Candidats</span></button>
-  <button type="button" data-go="res"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-7M3 20h18"/></svg><span data-i18n="nav.res.s">Résultats</span></button>
+  <button type="button" data-go="poll"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="12" width="18" height="8" rx="1.5"/><path d="M9 15.5h6M8.5 12V3.5h7V12"/><path d="M10.5 7.5l1.2 1.2 2-2.4"/></svg><span data-i18n="nav.poll">Sondage</span></button>
   <button type="button" data-go="carte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg><span data-i18n="nav.map">Carte</span></button>
 </nav>
 

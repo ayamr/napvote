@@ -8,7 +8,8 @@ Gratuit : le plan gratuit de Cloudflare couvre largement ce volume (100 000 requ
 - Un choix par appareil, modifiable (empreinte salée de l'identifiant de l'appareil).
 - Choix autorisés : les candidats à la présidence de la liste du CEP (fichier `https://napvote-ht.com/data/poll-options.json`, régénéré toutes les 2 h), « je ne sais pas encore », « je ne voterai pas ».
 - Limite de 60 votes par jour et par réseau (réseaux mobiles partagés). Anti-robot facultatif : Cloudflare Turnstile.
-- Résultats mis en cache 30 s. Mention « non scientifique » affichée partout.
+- Sénat : jusqu'à 3 candidats par électeur (les pourcentages ne s'additionnent donc pas à 100 %) ; chaque scrutin propose aussi « Aucun candidat », « Je ne sais pas encore » et « Je ne voterai pas » (exclusifs).
+- Anti-robot Cloudflare Turnstile actif (clé secrète dans les secrets du service, clé publique dans `www/js/config.js`). Mention « non scientifique » affichée partout.
 
 ## Déploiement (une fois)
 ```bash

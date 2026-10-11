@@ -8,6 +8,7 @@
   var CFG = window.NAPVOTE || {}, base = CFG.pollUrl || '';
   var dev = /^(localhost|127\.0\.0\.1)$/.test(location.hostname), q = /[?&]poll=([^&]+)/.exec(location.search);
   if (dev && q) { base = decodeURIComponent(q[1]); }
+  var qt = /[?&]ts=([^&]+)/.exec(location.search); if (dev && qt) { CFG.turnstileKey = decodeURIComponent(qt[1]); }
   base = base.replace(/\/$/, '');
   if (!base) {
     document.querySelectorAll('[data-go="poll"], [data-poll-home]').forEach(function (el) { (el.closest('li') || el).hidden = true; });
@@ -26,7 +27,7 @@
   mine.answers = mine.answers || {}; mine.dept = mine.dept || '';
   delete mine.choice;
   A.store.set('poll', mine);
-  var view = '', token = '';
+  var view = '', token = '', onToken = function () {}, tsId = null;
 
   /* ---- scrutins proposés selon la commune enregistrée ---- */
   function cOpt(c) { return { c: norm(c.nom + ' ' + c.pre), n: c.pre + ' ' + c.nom, s: V.parties[c.pa] }; }
@@ -40,7 +41,7 @@
     var out = [{ scope: 'pres', title: t('b.pres'), opts: A.pres.map(cOpt) }], loc = A.loc();
     if (!loc) { return { list: out, loc: null }; }
     var p = A.parts(loc), dn = V.deptNames[V.places[loc.pi].d];
-    if (p.sen.length) { out.push({ scope: 'sen|' + norm(dn), title: t('b.sen', { d: dn }), opts: p.sen.map(cOpt) }); }
+    if (p.sen.length) { out.push({ scope: 'sen|' + norm(dn), title: t('b.sen', { d: dn }), opts: p.sen.map(cOpt), multi: 3 }); }
     var byLo = {};
     p.dep.forEach(function (c) { (byLo[c.lo] = byLo[c.lo] || []).push(c); });
     Object.keys(byLo).map(Number).sort(function (a, b) { return V.locs[a].l.localeCompare(V.locs[b].l, 'fr'); }).forEach(function (lo) {
@@ -79,11 +80,11 @@
     if (!S.loc) { h += '<p class="note-s">' + esc(t('poll.needCommune')) + '</p>'; }
     h += '<form id="poll-form">';
     S.list.forEach(function (sc, i) {
-      var cur = (mine.answers[sc.scope] || {}).c;
-      if (S.needSec && sc.scope.indexOf('may|') === 0) { /* la section se choisit après le maire */ }
-      h += '<fieldset class="poll-f" data-scope="' + esc(sc.scope) + '"><legend>' + esc(sc.title) + '</legend><ul class="rows poll-l">' +
+      var cur = [].concat((mine.answers[sc.scope] || {}).c || []), type = sc.multi ? 'checkbox' : 'radio';
+      h += '<fieldset class="poll-f" data-scope="' + esc(sc.scope) + '"' + (sc.multi ? ' data-max="' + sc.multi + '"' : '') + '><legend>' + esc(sc.title) + '</legend>' +
+        (sc.multi ? '<p class="note-s poll-max">' + esc(t('poll.multi', { n: sc.multi })) + ' <b class="poll-cnt"></b></p>' : '') + '<ul class="rows poll-l">' +
         shuffled(sc).concat(FIXED.map(function (f) { return { c: f.c, n: f.n, s: '', fixed: true }; })).map(function (x) {
-          return '<li><label class="poll-o' + (x.fixed ? ' fx' : '') + '"><input type="radio" name="r' + i + '" value="' + esc(x.c) + '"' + (x.c === cur ? ' checked' : '') + '><span class="poll-t"><b>' + esc(x.n) + '</b>' + (x.s ? '<span>' + esc(x.s) + '</span>' : '') + '</span></label></li>';
+          return '<li><label class="poll-o' + (x.fixed ? ' fx' : '') + '"><input type="' + type + '" name="r' + i + '" value="' + esc(x.c) + '"' + (x.fixed ? ' data-fixed="1"' : '') + (cur.indexOf(x.c) >= 0 ? ' checked' : '') + '><span class="poll-t"><b>' + esc(x.n) + '</b>' + (x.s ? '<span>' + esc(x.s) + '</span>' : '') + '</span></label></li>';
         }).join('') + '</ul></fieldset>';
     });
     if (S.needSec) {
@@ -98,12 +99,28 @@
       '<p class="note-s">' + esc(t('poll.how')) + '</p></form>';
     root.innerHTML = h;
     var f = document.getElementById('poll-form'), btn = document.getElementById('poll-send');
-    function upd() { btn.disabled = !f.querySelector('input[type=radio]:checked'); }
-    f.addEventListener('change', upd); upd();
-    if (CFG.turnstileKey) { mountTurnstile(); }
+    function limit(fs) { // Sénat : 3 choix au maximum ; « aucun / ne sait pas / ne votera pas » exclut les candidats
+      var max = +fs.getAttribute('data-max'), boxes = fs.querySelectorAll('input[type=checkbox]'), n = fs.querySelectorAll('input[type=checkbox]:checked:not([data-fixed])').length;
+      boxes.forEach(function (b) { if (!b.getAttribute('data-fixed')) { b.disabled = !b.checked && n >= max; } });
+      var c = fs.querySelector('.poll-cnt'); if (c) { c.textContent = n + ' / ' + max; }
+    }
+    function upd() { btn.disabled = !f.querySelector('input:checked') || (!!CFG.turnstileKey && !token); }
+    f.addEventListener('change', function (e) {
+      var fs = e.target.closest('fieldset[data-max]');
+      if (fs) {
+        if (e.target.checked) {
+          fs.querySelectorAll('input[type=checkbox]').forEach(function (b) { if (b !== e.target && (e.target.getAttribute('data-fixed') ? true : b.getAttribute('data-fixed'))) { b.checked = false; } });
+        }
+        limit(fs);
+      }
+      upd();
+    });
+    f.querySelectorAll('fieldset[data-max]').forEach(limit); upd();
+    onToken = upd;
+    if (CFG.turnstileKey) { token = ''; mountTurnstile(); }
   }
   function mountTurnstile() {
-    function draw() { if (window.turnstile && document.getElementById('poll-ts')) { window.turnstile.render('#poll-ts', { sitekey: CFG.turnstileKey, callback: function (tk) { token = tk; } }); } }
+    function draw() { if (window.turnstile && document.getElementById('poll-ts')) { tsId = window.turnstile.render('#poll-ts', { sitekey: CFG.turnstileKey, language: window.NVLang === 'ht' ? 'fr' : 'fr', callback: function (tk) { token = tk; onToken(); }, 'expired-callback': function () { token = ''; onToken(); }, 'error-callback': function () { token = ''; onToken(); } }); } }
     if (window.turnstile) { draw(); return; }
     var s = document.createElement('script'); s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true; s.onload = draw; document.head.appendChild(s);
   }
@@ -125,15 +142,16 @@
     h += '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2>';
     S.list.forEach(function (sc) {
       var d = data.scopes[sc.scope] || { total: 0, choices: {} }, rows = Object.keys(d.choices).map(function (k) { return { c: k, n: d.choices[k] }; }).sort(function (a, b) { return b.n - a.n; });
-      var mx = rows.length ? rows[0].n : 1, mineC = (mine.answers[sc.scope] || {}).c;
+      var mx = rows.length ? rows[0].n : 1, mineC = [].concat((mine.answers[sc.scope] || {}).c || []);
       h += '<section class="poll-r"><div class="poll-h"><h3>' + esc(sc.title) + '</h3>' + (sc.scope === 'pres' ? '<label class="field2">' + esc(t('pk.dept')) + ' <select id="poll-fdept">' + deptOptions(dept, true) + '</select></label>' : '') + '</div>' +
         '<p class="note-s" style="margin-top:4px">' + esc(t(d.total > 1 ? 'poll.total' : 'poll.total1', { n: fmt(d.total) })) + (sc.scope === 'pres' && dept ? ' · ' + esc(dept) : '') + '</p>';
       if (sc.scope === 'pres' && dept && d.total > 0 && d.total < FEW) { h += '<p class="note-s">' + esc(t('poll.few')) + '</p>'; }
+      if (sc.multi && d.total) { h += '<p class="note-s">' + esc(t('poll.multiNote', { n: sc.multi })) + '</p>'; }
       if (!d.total) { h += '<p class="empty">' + esc(t('poll.none')) + '</p>'; }
       else {
         h += '<ul class="rank">' + rows.map(function (r) {
           var pc = Math.round(1000 * r.n / d.total) / 10;
-          return '<li><div class="rk hist-r"><span class="rk-l">' + esc(nameOf(sc, r.c)) + (mineC === r.c ? ' <span class="poll-me">✓ ' + esc(t('poll.mine')) + '</span>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pc.toLocaleString('fr-FR') + ' % <small>' + fmt(r.n) + '</small></span></div></li>';
+          return '<li><div class="rk hist-r"><span class="rk-l">' + esc(nameOf(sc, r.c)) + (mineC.indexOf(r.c) >= 0 ? ' <span class="poll-me">✓ ' + esc(t('poll.mine')) + '</span>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pc.toLocaleString('fr-FR') + ' % <small>' + fmt(r.n) + '</small></span></div></li>';
         }).join('') + '</ul>';
       }
       h += '</section>';
@@ -158,17 +176,19 @@
     e.preventDefault();
     var f = e.target, btn = document.getElementById('poll-send'), msg = document.getElementById('poll-msg'), votes = [];
     f.querySelectorAll('fieldset[data-scope]').forEach(function (fs) {
-      var ch = fs.querySelector('input[type=radio]:checked'); if (ch) { votes.push({ scope: fs.getAttribute('data-scope'), choice: ch.value }); }
+      var chs = [].slice.call(fs.querySelectorAll('input:checked')).map(function (i) { return i.value; });
+      if (chs.length) { votes.push({ scope: fs.getAttribute('data-scope'), choices: chs }); }
     });
     if (!votes.length) { msg.textContent = t('poll.nosel'); return; }
     var dept = document.getElementById('poll-dept').value;
     btn.disabled = true; msg.textContent = '';
     post('/vote', { device: mine.device, dept: dept, votes: votes, token: token }).then(function () {
-      votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choice }; });
+      votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices }; });
       mine.dept = dept; A.store.set('poll', mine); token = '';
       A.toast(t('poll.thanks')); showResults('', true);
     }, function (er) {
-      btn.disabled = false;
+      token = ''; if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } }
+      btn.disabled = !!CFG.turnstileKey;
       msg.textContent = er.status === 429 ? t('poll.limit') : (er.status === 403 ? t('poll.bot') : t('poll.err'));
     });
   });

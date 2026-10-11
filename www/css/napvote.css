@@ -665,3 +665,16 @@ img.av:not(.big){ border-radius:50%; }
 .poll-r .poll-h{ margin-top:0; padding-top:12px; }
 .poll-r .poll-h h3{ font-size:1.25rem; font-family:'Source Serif 4', Georgia, serif; }
 .poll-sec{ margin-top:28px; padding:16px; background:var(--surface); border-radius:var(--r); }
+
+/* ---------- sondage mis en avant ---------- */
+.dnav button.nav-hl{ opacity:1; font-weight:700; background:rgba(255,255,255,.16); }
+.dnav button.nav-hl:hover{ background:rgba(255,255,255,.26); }
+.pollcta{ margin-top:28px; padding:22px 24px; background:var(--surface); border-top:3px solid var(--brand); }
+.pollcta h2{ font-size:1.5rem; }
+.pollcta p{ margin:8px 0 16px; color:var(--ink-2); max-width:52ch; }
+@media (max-width:560px){ .pollcta{ padding:18px; } .pollcta .btn{ width:100%; } }
+
+.poll-max{ margin:0 0 6px; }
+.poll-cnt{ color:var(--brand); margin-left:6px; }
+.poll-o input:disabled{ opacity:.45; }
+.poll-o:has(input:disabled){ cursor:not-allowed; color:var(--ink-3); }

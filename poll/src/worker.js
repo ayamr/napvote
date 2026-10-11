@@ -4,6 +4,7 @@
 const DEPTS = ["Artibonite", "Centre", "Grand'Anse", "Nippes", "Nord", "Nord-Est", "Nord-Ouest", "Ouest", "Sud", "Sud-Est"];
 const FIXED = ["~aucun", "~indecis", "~abstention"];
 const MAX_SCOPES = 12;
+const maxChoices = (scope) => (scope.startsWith("sen|") ? 3 : 1);
 let optCache = { at: 0, keys: null, scopes: null };
 
 const enc = new TextEncoder();
@@ -63,10 +64,13 @@ async function vote(req, env) {
   if (!votes.length || votes.length > MAX_SCOPES) throw new HttpError(400, "votes invalides");
   const opt = await options(env), seen = new Set(), clean = [];
   for (const v of votes) {
-    const scope = String(v.scope || ""), choice = String(v.choice || "");
+    const scope = String(v.scope || "");
+    const list = (Array.isArray(v.choices) ? v.choices : [v.choice]).map((x) => String(x || ""));
     if (seen.has(scope) || !opt.scopes.has(scope)) throw new HttpError(400, "scrutin invalide");
-    if (!(FIXED.includes(choice) || opt.keys.has(scope + "|" + choice))) throw new HttpError(400, "choix invalide");
-    seen.add(scope); clean.push([scope, choice]);
+    if (!list.length || list.length > maxChoices(scope) || new Set(list).size !== list.length) throw new HttpError(400, "nombre de choix invalide");
+    for (const choice of list) if (!(FIXED.includes(choice) || opt.keys.has(scope + "|" + choice))) throw new HttpError(400, "choix invalide");
+    if (list.some((c) => FIXED.includes(c)) && list.length > 1) throw new HttpError(400, "choix incompatibles");
+    seen.add(scope); for (const c of list) clean.push([scope, c]);
   }
   const ip = req.headers.get("CF-Connecting-IP") || "";
   if (!(await turnstileOk(env, b.token, ip))) throw new HttpError(403, "vérification anti-robot refusée");
@@ -79,9 +83,10 @@ async function vote(req, env) {
   if (row && row.n > limit) throw new HttpError(429, "trop de votes depuis ce réseau aujourd'hui");
 
   const dh = await sha256(device + "|" + env.SALT);
-  const st = env.DB.prepare("INSERT INTO ballots(device,scope,choice,dept,created,updated) VALUES(?,?,?,?,?,?) ON CONFLICT(device,scope) DO UPDATE SET choice=excluded.choice, dept=excluded.dept, updated=excluded.updated");
-  await env.DB.batch(clean.map(([scope, choice]) => st.bind(dh, scope, choice, dept, now, now)));
-  return { ok: true, saved: clean.length };
+  const del = env.DB.prepare("DELETE FROM ballots WHERE device=? AND scope=?");
+  const ins = env.DB.prepare("INSERT INTO ballots(device,scope,choice,dept,created,updated) VALUES(?,?,?,?,?,?)");
+  await env.DB.batch([...[...seen].map((sc) => del.bind(dh, sc)), ...clean.map(([scope, choice]) => ins.bind(dh, scope, choice, dept, now, now))]);
+  return { ok: true, saved: seen.size };
 }
 
 async function results(req, env) {
@@ -91,18 +96,24 @@ async function results(req, env) {
   const dept = String(b.dept || "");
   if (!scopes.length || scopes.length > MAX_SCOPES) throw new HttpError(400, "scrutins invalides");
   if (dept && !DEPTS.includes(dept)) throw new HttpError(400, "département invalide");
-  const stmts = scopes.map((s) => (dept && s === "pres")
-    ? env.DB.prepare("SELECT choice, COUNT(*) n FROM ballots WHERE scope=? AND dept=? GROUP BY choice").bind(s, dept)
-    : env.DB.prepare("SELECT choice, COUNT(*) n FROM ballots WHERE scope=? GROUP BY choice").bind(s));
-  stmts.push(env.DB.prepare("SELECT dept, COUNT(*) n FROM ballots WHERE scope='pres' AND dept<>'' GROUP BY dept"));
+  // total = nombre d'électeurs ayant répondu (au Sénat, chacun peut avoir jusqu'à 3 choix)
+  const stmts = [];
+  for (const s of scopes) {
+    const f = dept && s === "pres";
+    stmts.push(f ? env.DB.prepare("SELECT choice, COUNT(*) n FROM ballots WHERE scope=? AND dept=? GROUP BY choice").bind(s, dept)
+                 : env.DB.prepare("SELECT choice, COUNT(*) n FROM ballots WHERE scope=? GROUP BY choice").bind(s));
+    stmts.push(f ? env.DB.prepare("SELECT COUNT(DISTINCT device) n FROM ballots WHERE scope=? AND dept=?").bind(s, dept)
+                 : env.DB.prepare("SELECT COUNT(DISTINCT device) n FROM ballots WHERE scope=?").bind(s));
+  }
+  stmts.push(env.DB.prepare("SELECT dept, COUNT(DISTINCT device) n FROM ballots WHERE scope='pres' AND dept<>'' GROUP BY dept"));
   const res = await env.DB.batch(stmts);
   const out = {};
   scopes.forEach((s, i) => {
-    const choices = {}; let total = 0;
-    for (const r of res[i].results) { choices[r.choice] = r.n; total += r.n; }
-    out[s] = { total, choices };
+    const choices = {};
+    for (const r of res[2 * i].results) choices[r.choice] = r.n;
+    out[s] = { total: (res[2 * i + 1].results[0] || {}).n || 0, choices };
   });
-  const depts = {}; for (const r of res[scopes.length].results) depts[r.dept] = r.n;
+  const depts = {}; for (const r of res[2 * scopes.length].results) depts[r.dept] = r.n;
   return { scopes: out, depts, dept };
 }
 
@@ -114,7 +125,7 @@ export default {
     try {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 2 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 3 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);
