@@ -678,3 +678,6 @@ img.av:not(.big){ border-radius:50%; }
 .poll-cnt{ color:var(--brand); margin-left:6px; }
 .poll-o input:disabled{ opacity:.45; }
 .poll-o:has(input:disabled){ cursor:not-allowed; color:var(--ink-3); }
+
+/* partage du bulletin */
+.pshare-img{ display:block; width:100%; max-height:62vh; object-fit:contain; border:1px solid var(--line); background:var(--surface); margin:12px 0 4px; }

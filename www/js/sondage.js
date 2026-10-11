@@ -136,6 +136,16 @@
     var f = FIXED.filter(function (x) { return x.c === c; })[0];
     return f ? f.n : c;
   }
+  A.pollSummary = function () { // choix de l'électeur, du président jusqu'au maire, pour la carte de partage
+    var S = scopes(), items = [];
+    S.list.forEach(function (sc) {
+      var a = mine.answers[sc.scope];
+      if (!a || ['pres', 'sen', 'dep', 'may'].indexOf(sc.scope.split('|')[0]) < 0) { return; }
+      items.push({ title: sc.title, names: [].concat(a.c).map(function (c) { return nameOf(sc, c); }) });
+    });
+    var l = S.loc;
+    return { items: items, commune: l ? V.places[l.pi].n : '', dept: l ? V.deptNames[V.places[l.pi].d] : (mine.dept || '') };
+  };
   function renderResults(S, data, dept, failed) {
     var h = warn;
     if (failed) { root.innerHTML = h + '<p class="empty">' + esc(t('poll.err')) + '</p><p><button type="button" class="btn" data-pretry>' + esc(t('err.reload')) + '</button></p>'; return; }
@@ -157,7 +167,7 @@
       h += '</section>';
     });
     if (!S.loc) { h += '<p class="note-s">' + esc(t('poll.needCommune')) + '</p>'; }
-    h += '<p class="note-s">' + esc(t('poll.how')) + '</p><div class="pk-act"><button type="button" class="btn ' + (answered() ? 'ghost' : 'primary') + '" data-pedit>' + esc(t(answered() ? 'poll.change' : 'poll.vote')) + '</button></div>';
+    h += '<p class="note-s">' + esc(t('poll.how')) + '</p><div class="pk-act">' + (A.pollSummary().items.length ? '<button type="button" class="btn primary" data-pshare>' + esc(t('poll.share')) + '</button>' : '') + '<button type="button" class="btn ' + (answered() ? 'ghost' : 'primary') + '" data-pedit>' + esc(t(answered() ? 'poll.change' : 'poll.vote')) + '</button></div>';
     root.innerHTML = h;
   }
   function showResults(dept, fresh) {

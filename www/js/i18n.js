@@ -39,6 +39,8 @@
     'poll.needCommune': 'Choisissez votre commune pour répondre aussi pour le Sénat, les députés, le maire, le CASEC et l’ASEC.', 'poll.needSection': 'Choisissez votre section communale pour répondre pour le CASEC et l’ASEC.',
     'poll.nosel': 'Faites au moins un choix.', 'poll.multi': 'Choisissez jusqu’à {n} candidats.', 'poll.multiNote': 'Chaque électeur pouvait choisir jusqu’à {n} candidats : les pourcentages ne s’additionnent pas à 100 %.',
     'poll.err': 'Le sondage est indisponible pour le moment. Réessayez plus tard.', 'poll.limit': 'Trop de réponses ont été envoyées depuis ce réseau aujourd’hui. Réessayez demain.', 'poll.bot': 'La vérification anti-robot a échoué. Rechargez la page et réessayez.', 'poll.soon': 'Le sondage ouvrira bientôt.',
+    'poll.share': 'Partager mon bulletin', 'poll.share.title': 'Mon bulletin NapVote', 'poll.share.sub': 'Sondage ouvert, non scientifique', 'poll.share.cta': 'Et vous, pour qui voteriez-vous ?', 'poll.share.cta2': 'Répondez en une minute, sans compte :',
+    'poll.share.note': 'Sondage ouvert à tous, non scientifique. NapVote est indépendant du CEP.', 'poll.share.send': 'Partager l’image', 'poll.share.save': 'Enregistrer l’image', 'poll.share.help': 'L’image est créée sur votre appareil. Rien n’est envoyé tant que vous ne la partagez pas.', 'poll.share.txt': 'Mon bulletin NapVote ({c}). Donnez aussi votre avis :', 'poll.share.err': 'Impossible de créer l’image.', 'poll.share.close': 'Fermer',
     'post.0': 'Président', 'post.1': 'Sénat', 'post.2': 'Députés', 'post.3': 'Maires', 'post.4': 'CASEC', 'post.5': 'ASEC',
     'postl.0': 'Présidentielle', 'postl.1': 'Sénat', 'postl.2': 'Députés', 'postl.3': 'Maires', 'postl.4': 'CASEC', 'postl.5': 'ASEC',
 
@@ -133,6 +135,8 @@
     'poll.needCommune': 'Chwazi komin ou pou w ka reponn tou pou Sena, depite, majistra, CASEC ak ASEC.', 'poll.needSection': 'Chwazi seksyon kominal ou pou w ka reponn pou CASEC ak ASEC.',
     'poll.nosel': 'Fè omwen yon chwa.', 'poll.multi': 'Chwazi jiska {n} kandida.', 'poll.multiNote': 'Chak elektè te ka chwazi jiska {n} kandida : pousantaj yo pa fè 100 % lè w ajoute yo.',
     'poll.err': 'Sondaj la pa disponib pou kounye a. Eseye ankò pita.', 'poll.limit': 'Gen twòp repons ki soti sou rezo sa a jodi a. Eseye demen.', 'poll.bot': 'Verifikasyon anti-robo a echwe. Rechaje paj la epi eseye ankò.', 'poll.soon': 'Sondaj la ap louvri talè konsa.',
+    'poll.share': 'Pataje bilten mwen', 'poll.share.title': 'Bilten NapVote mwen', 'poll.share.sub': 'Sondaj louvri, pa syantifik', 'poll.share.cta': 'E ou menm, pou ki moun w t ap vote ?', 'poll.share.cta2': 'Reponn nan yon minit, san kont :',
+    'poll.share.note': 'Sondaj louvri pou tout moun, li pa syantifik. NapVote endepandan de CEP.', 'poll.share.send': 'Pataje imaj la', 'poll.share.save': 'Anrejistre imaj la', 'poll.share.help': 'Imaj la fèt sou telefòn ou. Nou pa voye anyen toutotan ou pa pataje l.', 'poll.share.txt': 'Bilten NapVote mwen ({c}). Bay opinyon ou tou :', 'poll.share.err': 'Pa kapab fè imaj la.', 'poll.share.close': 'Femen',
     'post.0': 'Prezidan', 'post.1': 'Senatè', 'post.2': 'Depite', 'post.3': 'Majistra', 'post.4': 'CASEC', 'post.5': 'ASEC',
     'postl.0': 'Prezidansyèl', 'postl.1': 'Sena', 'postl.2': 'Depite', 'postl.3': 'Majistra', 'postl.4': 'CASEC', 'postl.5': 'ASEC',
 
