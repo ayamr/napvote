@@ -1,6 +1,6 @@
 [
  {
-  "i": 3200,
+  "i": 4332,
   "name": "Gary BODEAU",
   "po": 0,
   "elu": false,
@@ -11,7 +11,7 @@
   "extract": "Gary Bodeau (né le 18 novembre 1977 . est un homme politique haïtien qui a occupé le poste de président de la Chambre des députés d'Haïti  du 10 janvier 2018 au 13 janvier 2020 ."
  },
  {
-  "i": 3201,
+  "i": 4333,
   "name": "Deus DERONNETH",
   "po": 0,
   "elu": false,
@@ -22,7 +22,7 @@
   "extract": "Déus Deronneth est né à Marigot, dans le département du Sud-Est de la République d'Haïti.\n\nDéus Deronneth est Doctorant en sciences économiques et diplômé de l'École Nationale d'Administration Financière (ENAF) ; il est titulaire de deux maîtrises : l'une en Administration Publique et Gouvernance de"
  },
  {
-  "i": 3207,
+  "i": 4339,
   "name": "Claude JOSEPH",
   "po": 0,
   "elu": false,
@@ -33,7 +33,18 @@
   "extract": "Claude Joseph est un homme d'État haïtien. Il est ministre des Affaires étrangères du 5 mars 2020 au 24 novembre 2021 et Premier ministre par intérim du 14 avril au 20 juillet 2021. À partir du 7 juillet 2021, son gouvernement assure l'intérim de la présidence de la République à la suite de l'assass"
  },
  {
-  "i": 3211,
+  "i": 4342,
+  "name": "Joseph Michel MARTELLY",
+  "po": 0,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Michel Martelly",
+  "image": "Michel_Martelly_(cropped).jpg",
+  "orig": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Michel_Martelly_%28cropped%29.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=original",
+  "extract": "Michel Joseph Martelly, né le 12 février 1961 à Port-au-Prince, surnommé Sweet Micky (« Micky le doux » en français) ou Tet Kalé (« Crâne rasé » en créole), est un musicien, compositeur et homme d'État haïtien, président de la République du 14 mai 2011 au 7 février 2016.\nLe 20 août 2024, les États-U"
+ },
+ {
+  "i": 4344,
   "name": "Jean Ernest MUSCADIN",
   "po": 0,
   "elu": false,
@@ -44,7 +55,7 @@
   "extract": "Jean Ernest Muscadin is a Haitian public prosecutor in Miragoâne."
  },
  {
-  "i": 3212,
+  "i": 4345,
   "name": "Jocelerme PRIVERT",
   "po": 0,
   "elu": false,
@@ -55,7 +66,7 @@
   "extract": "Jocelerme Privert, né le 1er février 1953 à Petit-Trou-de-Nippes, est un homme d'État haïtien, membre du parti Inite et président provisoire de la république d'Haïti du 14 février 2016 au 7 février 2017.\nD'abord membre du gouvernement sous la présidence de Jean-Bertrand Aristide entre 2001 et 2004, "
  },
  {
-  "i": 3251,
+  "i": 4385,
   "name": "Carl Murat CANTAVE",
   "po": 1,
   "elu": true,
@@ -66,7 +77,18 @@
   "extract": "Carl Murat Cantave is a Haitian politician who served as President of the Haitian Senate from 17 January 2019 to 14 January 2020. He is a member of the KID party, and represents the Artibonite department. Cantave was first elected to the Senate in the 2015–16 Haitian parliamentary election, one of t"
  },
  {
-  "i": 3329,
+  "i": 4463,
+  "name": "Lucna HENRISME",
+  "po": 1,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Lucna Henrisme",
+  "image": "Lucna.jpg",
+  "orig": "https://upload.wikimedia.org/wikipedia/commons/1/1d/Lucna.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=original",
+  "extract": "Lucna Henrisme, née à Jérémie,dans le département de la Grand’Anse en Haïti, au sein de la communauté de Morne Fort est une médecin, consultante humanitaire, entrepreneure et auteure haïtienne."
+ },
+ {
+  "i": 4468,
   "name": "Sorel JACINTHE",
   "po": 1,
   "elu": true,
@@ -77,7 +99,40 @@
   "extract": "Sorel Jacinthe is a politician in Haiti. He was born in 1955.\nJacinthe served as the president of the Chamber of Deputies from 26 April 2011 to January 2012. A former ally of Haiti's president, Jovenel Moise, and a senator in 2019 he was part of the opposition calling for his resignation."
  },
  {
-  "i": 3373,
+  "i": 4489,
+  "name": "Jacques JEAN",
+  "po": 1,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Jean-Jacques Dessalines",
+  "image": "Jean_Jacques_Dessalines.jpg",
+  "orig": "https://upload.wikimedia.org/wikipedia/commons/e/e7/Jean_Jacques_Dessalines.jpg?utm_source=fr.wikipedia.org&utm_campaign=api&utm_content=original",
+  "extract": "Jean-Jacques Dessalines, également connu sous le nom de Jacques Ier, né le 20 septembre 1758 sur l'Habitation Vye Kay (à Grande-Rivière-du-Nord, colonie française de Saint-Domingue) et mort assassiné le 17 octobre 1806 à Pont-Rouge (Haïti), est un esclave affranchi, puis insurgé, devenu empereur et "
+ },
+ {
+  "i": 4491,
+  "name": "Jean Roosevelt JEAN",
+  "po": 1,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Jean Jean Roosevelt",
+  "image": null,
+  "orig": null,
+  "extract": "Originaire de Jérémie, Jean Jean Roosevelt est un artiste haïtien dont la musique est une alliance de rythmes créoles : Nago, Ibo, Yanvalou, Djouba, Kongo, Rabòday, et d’influences reggae, RnB et afro beat."
+ },
+ {
+  "i": 4510,
+  "name": "Smith JOSEPH",
+  "po": 1,
+  "elu": false,
+  "host": "en.wikipedia.org",
+  "title": "Smith Joseph",
+  "image": "Smith_Joseph,_mayor_of_North_Miami.png",
+  "orig": "https://upload.wikimedia.org/wikipedia/commons/3/36/Smith_Joseph%2C_mayor_of_North_Miami.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+  "extract": "Smith Joseph, the Democratic mayor of North Miami, Florida and a physician, was born in Haiti in 1961. Joseph emigrated to the United States in 1979 with his family to Miami, Florida. He graduated from Florida A&M University and Nova Southeastern University, later opening a medical practice in 2001."
+ },
+ {
+  "i": 4520,
   "name": "Ronald LARECHE",
   "po": 1,
   "elu": true,
@@ -86,5 +141,16 @@
   "image": null,
   "orig": null,
   "extract": "Ronald Larêche est un homme d'État haïtien, président du Sénat du 14 février 2016 au 13 janvier 2017, précédemment vice-président du Sénat du 14 janvier au 21 juillet 2016. Il est sénateur du Nord-Est."
+ },
+ {
+  "i": 4636,
+  "name": "Bendgy TILIAS",
+  "po": 1,
+  "elu": false,
+  "host": "fr.wikipedia.org",
+  "title": "Bendgy Tilias",
+  "image": null,
+  "orig": null,
+  "extract": "Bendgy Tilias, né au Cap-Haitien, est un homme d'État ayant occupé, entre autres, les fonctions de Secrétaire d'État à la Communication (entre 2024 et 2026)."
  }
 ]

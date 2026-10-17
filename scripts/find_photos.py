@@ -27,7 +27,7 @@ for i,c in enumerate(V["cands"]):
     nom,pre,po=c[0],c[1],c[3]
     links=H["links"].get(str(i)) or []
     elu=any(l.get("el") for l in links)
-    if po==0 or elu: cands.append((i,pre+" "+nom,po,elu))
+    if po in (0,1) or elu: cands.append((i,pre+" "+nom,po,elu))
 out=[]
 for i,name,po,elu in cands:
     res=None

@@ -15,7 +15,7 @@ except ImportError:
     pass  # Pillow absent : on garde les images déjà recadrées dans www/photos/
 out={}
 for p in json.load(open(ROOT+"/data/photos/curated.json",encoding="utf-8")):
-    fn="photos/%s-%s.jpg"%(p["nom"].lower(),p["pre"].lower())
+    fn="photos/%s-%s.jpg"%(p["nom"].lower().replace(" ","-"),p["pre"].lower().replace(" ","-"))
     assert os.path.exists(ROOT+"/www/"+fn), fn
     out["%s|%s|%d"%(strip(p["nom"]),strip(p["pre"]),p["po"])]={"f":fn,"a":p["author"],"l":p["license"],"u":p["page"]}
 open(ROOT+"/www/js/photos.js","w",encoding="utf-8").write("window.VVPhotos="+json.dumps(out,ensure_ascii=False,separators=(",",":"))+";\n")
