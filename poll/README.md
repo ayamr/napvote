@@ -4,7 +4,7 @@ Service minuscule qui reçoit les votes du sondage « pour qui comptez-vous vote
 Gratuit : le plan gratuit de Cloudflare couvre largement ce volume (100 000 requêtes par jour).
 
 ## Règles du sondage
-- Anonyme : aucun nom, e-mail, téléphone. L'adresse IP n'est jamais stockée (seulement une empreinte salée, supprimée le lendemain, pour limiter le nombre de votes par réseau).
+- Anonyme : aucun nom, e-mail, téléphone. L'adresse IP n'est jamais stockée (seulement une empreinte salée, supprimée le lendemain, pour limiter le nombre de votes par réseau, 400 par jour). Seules des statistiques par pays et région approximatifs (table `geo_daily`, sans identifiant) sont comptées.
 - Un choix par appareil, modifiable (empreinte salée de l'identifiant de l'appareil).
 - Choix autorisés : les candidats à la présidence de la liste du CEP (fichier `https://napvote-ht.com/data/poll-options.json`, régénéré toutes les 2 h), « je ne sais pas encore », « je ne voterai pas ».
 - Limite de 60 votes par jour et par réseau (réseaux mobiles partagés). Anti-robot facultatif : Cloudflare Turnstile.

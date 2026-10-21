@@ -1,11 +1,14 @@
 // Service du sondage NapVote (Cloudflare Worker + D1), version multi-scrutins.
 // POST /vote    {device, dept, token?, votes:[{scope, choice}]}   -> { ok:true, saved:n }
-// POST /results {scopes:[...], dept?}                              -> { scope: {total, choices:{choix:n}} , depts }
+// POST /results {scopes:[...], dept?, t?}                          -> { scopes:{scope:{total, choices:{choix:n}}}, depts }  (cache mémoire 60 s)
 const DEPTS = ["Artibonite", "Centre", "Grand'Anse", "Nippes", "Nord", "Nord-Est", "Nord-Ouest", "Ouest", "Sud", "Sud-Est"];
 const FIXED = ["~aucun", "~indecis", "~abstention"];
 const MAX_SCOPES = 12;
 const maxChoices = (scope) => (scope.startsWith("sen|") ? 3 : 1);
 let optCache = { at: 0, keys: null, scopes: null };
+const TTL_MS = 60 * 1000, FRESH_MS = 3 * 1000;  // durée du cache des résultats ; délai minimal après un vote
+const memo = new Map();                          // « scrutin\u0001département » -> { at, v }
+let deptsMemo = { at: 0, v: null };
 
 const enc = new TextEncoder();
 async function sha256(s) {
@@ -77,15 +80,34 @@ async function vote(req, env) {
 
   const now = Math.floor(Date.now() / 1000), day = new Date().toISOString().slice(0, 10);
   const rk = await sha256(ip + "|" + day + "|" + env.SALT);
-  const limit = parseInt(env.RATE_LIMIT || "120", 10);
-  await env.DB.prepare("DELETE FROM rl WHERE day < ?").bind(day).run();
+  const limit = parseInt(env.RATE_LIMIT || "400", 10);
+  if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM rl WHERE day < ?").bind(day).run();  // purge des jours passés, de temps en temps
   const row = await env.DB.prepare("INSERT INTO rl(k,n,day) VALUES(?,1,?) ON CONFLICT(k) DO UPDATE SET n=n+1 RETURNING n").bind(rk, day).first();
   if (row && row.n > limit) throw new HttpError(429, "trop de votes depuis ce réseau aujourd'hui");
 
-  const dh = await sha256(device + "|" + env.SALT);
+  const dh = await sha256(device + "|" + env.SALT), scopesArr = [...seen];
+  // anciens choix de cet appareil (quelques lignes) : on les retire des totaux avant d'ajouter les nouveaux
+  const prev = (await env.DB.prepare("SELECT scope, choice, dept FROM ballots WHERE device=? AND scope IN (" + scopesArr.map(() => "?").join(",") + ")").bind(dh, ...scopesArr).all()).results || [];
+  const stmts = [];
+  const decC = env.DB.prepare("UPDATE tally SET n = n - 1 WHERE scope=? AND dept=? AND choice=?");
+  const decT = env.DB.prepare("UPDATE tally_tot SET n = n - 1 WHERE scope=? AND dept=?");
+  const doneT = new Set();
+  for (const r of prev) {
+    stmts.push(decC.bind(r.scope, r.dept, r.choice));
+    if (!doneT.has(r.scope)) { doneT.add(r.scope); stmts.push(decT.bind(r.scope, r.dept)); }
+  }
   const del = env.DB.prepare("DELETE FROM ballots WHERE device=? AND scope=?");
   const ins = env.DB.prepare("INSERT INTO ballots(device,scope,choice,dept,created,updated) VALUES(?,?,?,?,?,?)");
-  await env.DB.batch([...[...seen].map((sc) => del.bind(dh, sc)), ...clean.map(([scope, choice]) => ins.bind(dh, scope, choice, dept, now, now))]);
+  const incC = env.DB.prepare("INSERT INTO tally(scope,dept,choice,n) VALUES(?,?,?,1) ON CONFLICT(scope,dept,choice) DO UPDATE SET n = n + 1");
+  const incT = env.DB.prepare("INSERT INTO tally_tot(scope,dept,n) VALUES(?,?,1) ON CONFLICT(scope,dept) DO UPDATE SET n = n + 1");
+  for (const sc of scopesArr) stmts.push(del.bind(dh, sc), incT.bind(sc, dept));
+  for (const [scope, choice] of clean) stmts.push(ins.bind(dh, scope, choice, dept, now, now), incC.bind(scope, dept, choice));
+  // statistique anonyme : pays et région approximatifs de la requête (jamais l'adresse IP)
+  const cf = req.cf || {}, country = String(cf.country || "").slice(0, 8), region = String(cf.region || "").slice(0, 60);
+  stmts.push(env.DB.prepare("INSERT INTO geo_daily(day,country,region,dept,n) VALUES(?,?,?,?,1) ON CONFLICT(day,country,region,dept) DO UPDATE SET n = n + 1").bind(day, country, region, dept));
+  await env.DB.batch(stmts);
+  for (const k of [...memo.keys()]) if (seen.has(k.split("\u0001")[0])) memo.delete(k);
+  deptsMemo = { at: 0, v: null };
   return { ok: true, saved: seen.size };
 }
 
@@ -96,28 +118,53 @@ async function results(req, env) {
   const dept = String(b.dept || "");
   if (!scopes.length || scopes.length > MAX_SCOPES) throw new HttpError(400, "scrutins invalides");
   if (dept && !DEPTS.includes(dept)) throw new HttpError(400, "département invalide");
-  // total = nombre d'électeurs ayant répondu (au Sénat, chacun peut avoir jusqu'à 3 choix)
-  const stmts = [];
+  // Mémoire locale à l'instance : des milliers de visiteurs partagent le même calcul au lieu de relire toute la base.
+  // Une mise à jour juste après un vote (fresh) ne contourne le cache que s'il a plus de FRESH_MS.
+  const fresh = Number(b.t) > 0, maxAge = fresh ? FRESH_MS : TTL_MS, now = Date.now();
+  const out = {}, todo = [];
   for (const s of scopes) {
-    const f = dept && s === "pres";
-    stmts.push(f ? env.DB.prepare("SELECT choice, COUNT(*) n FROM ballots WHERE scope=? AND dept=? GROUP BY choice").bind(s, dept)
-                 : env.DB.prepare("SELECT choice, COUNT(*) n FROM ballots WHERE scope=? GROUP BY choice").bind(s));
-    stmts.push(f ? env.DB.prepare("SELECT COUNT(DISTINCT device) n FROM ballots WHERE scope=? AND dept=?").bind(s, dept)
-                 : env.DB.prepare("SELECT COUNT(DISTINCT device) n FROM ballots WHERE scope=?").bind(s));
+    const f = dept && s === "pres", k = s + "\u0001" + (f ? dept : ""), hit = memo.get(k);
+    if (hit && now - hit.at < maxAge) out[s] = hit.v; else todo.push([s, f, k]);
   }
-  stmts.push(env.DB.prepare("SELECT dept, COUNT(DISTINCT device) n FROM ballots WHERE scope='pres' AND dept<>'' GROUP BY dept"));
-  const res = await env.DB.batch(stmts);
-  const out = {};
-  scopes.forEach((s, i) => {
-    const choices = {};
-    for (const r of res[2 * i].results) choices[r.choice] = r.n;
-    out[s] = { total: (res[2 * i + 1].results[0] || {}).n || 0, choices };
-  });
-  const depts = {}; for (const r of res[2 * scopes.length].results) depts[r.dept] = r.n;
-  return { scopes: out, depts, dept };
+  // Totaux déjà calculés (tables tally / tally_tot) : quelques centaines de lignes, jamais la table des bulletins.
+  let depts = deptsMemo.v;
+  const needDepts = !deptsMemo.v || now - deptsMemo.at >= maxAge;
+  if (todo.length || needDepts) {
+    const ph = todo.map(() => "?").join(","), ids = todo.map((x) => x[0]), stmts = [];
+    if (todo.length) {
+      stmts.push(env.DB.prepare("SELECT scope, dept, choice, n FROM tally WHERE scope IN (" + ph + ")").bind(...ids));
+      stmts.push(env.DB.prepare("SELECT scope, dept, n FROM tally_tot WHERE scope IN (" + ph + ")").bind(...ids));
+    }
+    if (needDepts) stmts.push(env.DB.prepare("SELECT dept, n FROM tally_tot WHERE scope='pres' AND dept<>''"));
+    const res = await env.DB.batch(stmts);
+    if (todo.length) {
+      if (memo.size > 3000) memo.clear();
+      const acc = {};
+      for (const [s, f, k] of todo) acc[s] = { f, k, total: 0, choices: {} };
+      for (const r of res[0].results) { const a = acc[r.scope]; if (!a.f || r.dept === dept) a.choices[r.choice] = (a.choices[r.choice] || 0) + r.n; }
+      for (const r of res[1].results) { const a = acc[r.scope]; if (!a.f || r.dept === dept) a.total += r.n; }
+      for (const s of ids) { out[s] = { total: acc[s].total, choices: acc[s].choices }; memo.set(acc[s].k, { at: now, v: out[s] }); }
+    }
+    if (needDepts) {
+      depts = {}; for (const r of res[res.length - 1].results) depts[r.dept] = r.n;
+      deptsMemo = { at: now, v: depts };
+    }
+  }
+  return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept };
+}
+
+// Recalage horaire : recompte exact à partir des bulletins (corrige les écarts dus à des envois simultanés). Même requêtes que recount.sql.
+async function recount(env) {
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO tally(scope, dept, choice, n) SELECT scope, dept, choice, COUNT(*) FROM ballots WHERE 1 GROUP BY scope, dept, choice ON CONFLICT(scope, dept, choice) DO UPDATE SET n = excluded.n WHERE n <> excluded.n"),
+    env.DB.prepare("INSERT INTO tally_tot(scope, dept, n) SELECT scope, dept, COUNT(DISTINCT device) FROM ballots WHERE 1 GROUP BY scope, dept ON CONFLICT(scope, dept) DO UPDATE SET n = excluded.n WHERE n <> excluded.n"),
+    env.DB.prepare("DELETE FROM tally WHERE n <= 0"),
+    env.DB.prepare("DELETE FROM tally_tot WHERE n <= 0"),
+  ]);
 }
 
 export default {
+  async scheduled(event, env, ctx) { ctx.waitUntil(recount(env)); },
   async fetch(req, env) {
     const cors = corsHeaders(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
@@ -125,7 +172,7 @@ export default {
     try {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 3 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 4 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);
