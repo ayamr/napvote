@@ -87,7 +87,7 @@
   elOut.addEventListener('click', function (e) {
     if (e.target.id === 'cl-more') { S.shown += STEP * 2; render(); return; }
     var m = e.target.closest('button[data-map]');
-    if (m && window.VVMap) { A.show('carte'); window.VVMap.pickCandidate(+m.getAttribute('data-map')); }
+    if (m) { var ci = +m.getAttribute('data-map'); A.show('carte'); A.withMap(function () { window.VVMap.pickCandidate(ci); }); }
   });
 
   render();

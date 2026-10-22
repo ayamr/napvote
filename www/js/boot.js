@@ -5,7 +5,7 @@
   'use strict';
   var V = window.VV, CFG = window.NAPVOTE || {};
   var cap = window.Capacitor, native = !!(cap && cap.isNativePlatform && cap.isNativePlatform());
-  var APP = ['js/app.js', 'js/hist-ui.js', 'js/bulletin.js', 'js/resultats.js', 'js/map.js', 'js/candidats.js', 'js/sondage.js', 'js/vendor/qrcode.js', 'js/partage.js', 'js/pwa.js'];
+  var APP = ['js/app.js', 'js/hist-ui.js', 'js/bulletin.js', 'js/resultats.js', 'js/candidats.js', 'js/sondage.js', 'js/vendor/qrcode.js', 'js/partage.js', 'js/pwa.js'];
 
   function getJSON(url, ms) {
     return new Promise(function (res, rej) {
@@ -42,6 +42,22 @@
       document.body.appendChild(s);
     })();
   }
+  /* La carte (d3 + map.js, environ 100 Ko) n'est chargée qu'à la première visite de la page Carte. */
+  var mapState = 0, mapQ = [];
+  window.VVLoadMap = function (cb) {
+    if (window.VVMap) { if (cb) { cb(); } return; }
+    if (cb) { mapQ.push(cb); }
+    if (mapState) { return; }
+    mapState = 1;
+    var list = ['js/vendor/d3.min.js', 'js/map.js'], i = 0;
+    (function next() {
+      if (i >= list.length) { mapState = 2; var q = mapQ; mapQ = []; q.forEach(function (f) { f(); }); return; }
+      var s = document.createElement('script'); s.src = list[i++]; s.async = false;
+      s.onload = next;
+      s.onerror = function () { mapState = 0; mapQ = []; if (window.VVApp) { window.VVApp.toast(window.t('map.err')); } };
+      document.body.appendChild(s);
+    })();
+  };
   function fail(msg) {
     var m = document.getElementById('main');
     if (m) { m.innerHTML = '<div class="wrap"><div style="margin:32px 0"><h2>' + (window.t ? window.t('err.boot') : 'NapVote ne peut pas démarrer') + '</h2><p>' + (msg || 'Les données sont introuvables.') + '</p><p style="margin-top:14px"><button type="button" class="btn" onclick="location.reload()">' + (window.t ? window.t('err.reload') : 'Recharger') + '</button></p></div></div>'; }

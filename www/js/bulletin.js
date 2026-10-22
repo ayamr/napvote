@@ -199,7 +199,7 @@
       if (s) { A.setLoc(A.loc().pi, +s.getAttribute('data-sec')); return; }
       if (e.target.closest('[data-bshare]')) { A.share({ title: 'Mon bulletin NapVote', text: shareText(), url: location.href.split('#')[0] }); return; }
       if (e.target.closest('[data-bprint]')) { window.print(); return; }
-      if (e.target.closest('[data-bmap]')) { var l = A.loc(); A.show('carte'); if (window.VVMap) { window.VVMap.pickPlace(l.pi); } return; }
+      if (e.target.closest('[data-bmap]')) { var l = A.loc(); A.show('carte'); A.withMap(function () { window.VVMap.pickPlace(l.pi); }); return; }
       var r = e.target.closest('[data-res]');
       if (r) { A.show('res'); A.emit('res', r.getAttribute('data-res')); return; }
       var j = e.target.closest('[data-jump]');

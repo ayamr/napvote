@@ -170,10 +170,12 @@
       try { history.replaceState(null, '', '#' + name); } catch (e) { /* sandboxed */ }
       window.scrollTo(0, 0);
     }
+    if (name === 'carte' && !window.VVMap && window.VVLoadMap) { window.VVLoadMap(function () { if (API.onShow) { API.onShow('carte'); } }); }
     if (API.onShow) { API.onShow(name); }
     hooks.forEach(function (f) { f(name); });
   }
   API.show = show;
+  API.withMap = function (cb) { if (window.VVLoadMap) { window.VVLoadMap(cb); } else { cb(); } };
   var menu = document.getElementById('menu');
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-go]') : null;
@@ -531,7 +533,7 @@
       var sh = e.target.closest('[data-fshare]');
       if (sh) { var c3 = C[+sh.getAttribute('data-fshare')]; API.share({ title: c3.pre + ' ' + c3.nom, text: c3.pre + ' ' + c3.nom + ' — candidat ' + V.postes[c3.po] + ' (' + V.parties[c3.pa] + '), ' + API.where(c3) + '. Sur NapVote.', url: location.href.split('#')[0] }); return; }
       var m = e.target.closest('[data-fmap]');
-      if (m) { dlg.close(); show('carte'); if (window.VVMap) { window.VVMap.pickCandidate(+m.getAttribute('data-fmap')); } return; }
+      if (m) { var ci = +m.getAttribute('data-fmap'); dlg.close(); show('carte'); API.withMap(function () { window.VVMap.pickCandidate(ci); }); return; }
       var bl = e.target.closest('[data-fbul]');
       if (bl) { var c4 = C[+bl.getAttribute('data-fbul')], pl = V.locs[c4.lo].p[0]; dlg.close(); API.setLoc(pl, c4.sc >= 0 ? c4.sc : -1); show('bulletin'); }
     });
