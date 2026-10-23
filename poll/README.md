@@ -5,6 +5,7 @@ Gratuit : le plan gratuit de Cloudflare couvre largement ce volume (100 000 requ
 
 ## Règles du sondage
 - Anonyme : aucun nom, e-mail, téléphone. L'adresse IP n'est jamais stockée (seulement une empreinte salée, supprimée le lendemain, pour limiter le nombre de votes par réseau, 400 par jour). Seules des statistiques par pays et région approximatifs (table `geo_daily`, sans identifiant) sont comptées.
+- Détection d'envois en masse : une signature technique grossière (navigateur, écran arrondi, fuseau, langue) est mélangée à l'adresse réseau et à un secret (table `cluster`, 7 jours, aucun lien avec les bulletins), et les envois sont comptés par opérateur réseau (`asn_daily`). `CLUSTER_MAX` (0 par défaut) permet de plafonner les nouveaux appareils par groupe et par jour. Pour le président, le Sénat et les députés, la répartition des choix d'un groupe est comptée (`cluster_choice`, 7 jours) seulement à partir du `CLUSTER_TRACK`-ième envoi du jour (10) : un appareil ou un petit groupe ne laisse aucune trace. Le rapport `anomalies.sql` n'affiche que l'écart à la moyenne, jamais un nom de candidat.
 - Un choix par appareil, modifiable (empreinte salée de l'identifiant de l'appareil).
 - Choix autorisés : les candidats à la présidence de la liste du CEP (fichier `https://napvote-ht.com/data/poll-options.json`, régénéré toutes les 2 h), « je ne sais pas encore », « je ne voterai pas ».
 - Limite de 60 votes par jour et par réseau (réseaux mobiles partagés). Anti-robot facultatif : Cloudflare Turnstile.

@@ -20,3 +20,13 @@ CREATE TABLE IF NOT EXISTS tally_tot (scope TEXT NOT NULL, dept TEXT NOT NULL, n
 
 -- Statistique anonyme (v5) : envois par jour, pays et région approximatifs de la requête, et département déclaré. Aucune adresse IP, aucun identifiant.
 CREATE TABLE IF NOT EXISTS geo_daily (day TEXT NOT NULL, country TEXT NOT NULL, region TEXT NOT NULL, dept TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, country, region, dept));
+
+-- Détection d'envois en masse (v6). Aucun lien avec les bulletins.
+-- cluster : empreinte secrète (réseau + signature technique grossière + sel + semaine), gardée 7 jours.
+CREATE TABLE IF NOT EXISTS cluster (k TEXT NOT NULL, day TEXT NOT NULL, new_dev INTEGER NOT NULL, sends INTEGER NOT NULL, PRIMARY KEY (k, day));
+-- asn_daily : envois par jour et par opérateur réseau (hébergeurs, VPN, opérateurs mobiles), statistique agrégée.
+CREATE TABLE IF NOT EXISTS asn_daily (day TEXT NOT NULL, asn INTEGER NOT NULL, org TEXT NOT NULL, sends INTEGER NOT NULL, new_dev INTEGER NOT NULL, PRIMARY KEY (day, asn));
+
+-- Répartition des choix par groupe (v7), pour repérer un groupe qui vote très différemment de la moyenne : président, sénateur et député seulement,
+-- gardée 7 jours, uniquement pour les groupes déjà actifs (à partir du CLUSTER_TRACK-ième envoi du jour), jamais pour un appareil isolé.
+CREATE TABLE IF NOT EXISTS cluster_choice (k TEXT NOT NULL, day TEXT NOT NULL, scope TEXT NOT NULL, choice TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (k, day, scope, choice));

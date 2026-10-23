@@ -15,6 +15,13 @@ async function sha256(s) {
   const b = await crypto.subtle.digest("SHA-256", enc.encode(s));
   return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
 }
+// Signature technique grossière (navigateur, système, écran arrondi, fuseau, langue) : ne sert qu'à repérer les envois en masse.
+function coarseUA(ua) {
+  const b = /(Edg|OPR|SamsungBrowser|Firefox|FBAN|FBAV|Instagram|Chrome|Safari)\/?(\d+)?/.exec(ua || "");
+  const o = /(Android)\s(\d+)|(iPhone OS|CPU OS)\s(\d+)|(Windows)|(Mac OS X)|(Linux)/.exec(ua || "");
+  return (b ? b[1] + (b[2] || "") : "?") + "|" + (o ? (o[1] || o[3] || o[5] || o[6] || o[7]) + (o[2] || o[4] || "") : "?");
+}
+const isoWeek = (d) => Math.floor(d.getTime() / (7 * 86400000));
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
 function corsHeaders(req, env) {
@@ -80,14 +87,21 @@ async function vote(req, env) {
 
   const now = Math.floor(Date.now() / 1000), day = new Date().toISOString().slice(0, 10);
   const rk = await sha256(ip + "|" + day + "|" + env.SALT);
-  const limit = parseInt(env.RATE_LIMIT || "400", 10);
+  const limit = parseInt(env.RATE_LIMIT || "100", 10);
   if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM rl WHERE day < ?").bind(day).run();  // purge des jours passés, de temps en temps
   const row = await env.DB.prepare("INSERT INTO rl(k,n,day) VALUES(?,1,?) ON CONFLICT(k) DO UPDATE SET n=n+1 RETURNING n").bind(rk, day).first();
   if (row && row.n > limit) throw new HttpError(429, "trop de votes depuis ce réseau aujourd'hui");
 
   const dh = await sha256(device + "|" + env.SALT), scopesArr = [...seen];
+  const sig = /^[\w\/|.+ -]{0,80}$/.test(String(b.sig || "")) ? String(b.sig || "") : "";
+  const dayDate = new Date(), cl = await sha256([ip, sig, coarseUA(req.headers.get("User-Agent")), env.SALT, isoWeek(dayDate)].join("|"));
+  const clMax = parseInt(env.CLUSTER_MAX || "0", 10);
   // anciens choix de cet appareil (quelques lignes) : on les retire des totaux avant d'ajouter les nouveaux
   const prev = (await env.DB.prepare("SELECT scope, choice, dept FROM ballots WHERE device=? AND scope IN (" + scopesArr.map(() => "?").join(",") + ")").bind(dh, ...scopesArr).all()).results || [];
+  let isNew = false;
+  if (!prev.length) isNew = !(await env.DB.prepare("SELECT 1 AS x FROM ballots WHERE device=? LIMIT 1").bind(dh).first());
+  const grp = await env.DB.prepare("SELECT new_dev, sends FROM cluster WHERE k=? AND day=?").bind(cl, day).first();
+  if (isNew && clMax > 0 && grp && grp.new_dev >= clMax) throw new HttpError(429, "trop de nouveaux appareils depuis ce réseau aujourd'hui");
   const stmts = [];
   const decC = env.DB.prepare("UPDATE tally SET n = n - 1 WHERE scope=? AND dept=? AND choice=?");
   const decT = env.DB.prepare("UPDATE tally_tot SET n = n - 1 WHERE scope=? AND dept=?");
@@ -105,6 +119,19 @@ async function vote(req, env) {
   // statistique anonyme : pays et région approximatifs de la requête (jamais l'adresse IP)
   const cf = req.cf || {}, country = String(cf.country || "").slice(0, 8), region = String(cf.region || "").slice(0, 60);
   stmts.push(env.DB.prepare("INSERT INTO geo_daily(day,country,region,dept,n) VALUES(?,?,?,?,1) ON CONFLICT(day,country,region,dept) DO UPDATE SET n = n + 1").bind(day, country, region, dept));
+  // Répartition des choix (président, sénateur, député) par groupe, seulement à partir du TRACK-ième envoi du jour : les petits groupes ne laissent aucune trace de leurs choix.
+  const track = parseInt(env.CLUSTER_TRACK || "10", 10);
+  if (grp && grp.sends + 1 >= track) {
+    const incG = env.DB.prepare("INSERT INTO cluster_choice(k,day,scope,choice,n) VALUES(?,?,?,?,1) ON CONFLICT(k,day,scope,choice) DO UPDATE SET n = n + 1");
+    for (const [scope, choice] of clean) if (scope === "pres" || scope.startsWith("sen|") || scope.startsWith("dep|")) stmts.push(incG.bind(cl, day, scope, choice));
+  }
+  const asn = Number(cf.asn) || 0, org = String(cf.asOrganization || "").slice(0, 60);
+  stmts.push(env.DB.prepare("INSERT INTO cluster(k,day,new_dev,sends) VALUES(?,?,?,1) ON CONFLICT(k,day) DO UPDATE SET new_dev = new_dev + excluded.new_dev, sends = sends + 1").bind(cl, day, isNew ? 1 : 0));
+  stmts.push(env.DB.prepare("INSERT INTO asn_daily(day,asn,org,sends,new_dev) VALUES(?,?,?,1,?) ON CONFLICT(day,asn) DO UPDATE SET sends = sends + 1, new_dev = new_dev + excluded.new_dev").bind(day, asn, org, isNew ? 1 : 0));
+  if (Math.random() < 0.02) {  // purge : les signatures ne sont gardées que 7 jours
+    const old7 = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10), old60 = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+    stmts.push(env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM cluster_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
+  }
   await env.DB.batch(stmts);
   for (const k of [...memo.keys()]) if (seen.has(k.split("\u0001")[0])) memo.delete(k);
   deptsMemo = { at: 0, v: null };
@@ -172,7 +199,7 @@ export default {
     try {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 4 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 6 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

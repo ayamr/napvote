@@ -10,7 +10,11 @@ ALLOWED_ORIGINS = "https://napvote-ht.com,https://www.napvote-ht.com"
 # liste des candidats autorisés, publiée par le site (régénérée toutes les 2 h)
 OPTIONS_URL = "https://napvote-ht.com/data/poll-options.json"
 # nombre maximal de votes enregistrés par jour et par empreinte réseau (réseaux mobiles partagés)
-RATE_LIMIT = "400"
+RATE_LIMIT = "100"
+# plafond de nouveaux appareils par jour pour un même groupe (réseau + signature) ; 0 = détection seulement, aucun blocage
+CLUSTER_MAX = "0"
+# les choix d'un groupe ne sont comptés qu'à partir de ce nombre d'envois dans la journée (protège les petits groupes)
+CLUSTER_TRACK = "10"
 
 # recalage exact des totaux, une fois par heure
 [triggers]

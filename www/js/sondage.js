@@ -17,16 +17,48 @@
   var FEW = 30, MAXS = 12;
   var FIXED = [{ c: '~aucun', n: t('poll.opt.aucun') }, { c: '~indecis', n: t('poll.opt.indecis') }, { c: '~abstention', n: t('poll.opt.abstention') }];
 
-  /* ---- état local : identifiant d'appareil anonyme et réponses déjà données ---- */
+  /* ---- état local : identifiant d'appareil anonyme et réponses déjà données ----
+     L'identifiant est gardé à trois endroits (mémoire locale, cookie, IndexedDB) : effacer seulement le cache ou les cookies ne le fait pas disparaître. */
   var mine = A.store.get('poll', null) || {};
-  if (!mine.device || mine.device.length < 16) {
-    var id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
-    mine.device = id.replace(/[^A-Za-z0-9-]/g, '').slice(0, 64);
-    if (mine.device.length < 16) { mine.device += '0000000000000000'; }
+  var ID_OK = /^[A-Za-z0-9-]{16,64}$/;
+  function readCookie() { var m = /(?:^|; )vv_d=([A-Za-z0-9-]{16,64})/.exec(document.cookie || ''); return m ? m[1] : ''; }
+  function writeCookie(id) { try { document.cookie = 'vv_d=' + id + '; max-age=31536000; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : ''); } catch (e) { /* cookies refusés */ } }
+  function idb(fn) { // petit accès à IndexedDB, silencieux en cas d'échec
+    try {
+      var rq = indexedDB.open('vv', 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore('k'); };
+      rq.onsuccess = function () { try { fn(rq.result); } catch (e) { /* ignore */ } };
+    } catch (e) { /* IndexedDB indisponible */ }
+  }
+  function putIdb(id) { idb(function (db) { db.transaction('k', 'readwrite').objectStore('k').put(id, 'device'); }); }
+  var tentative = false;
+  if (!ID_OK.test(mine.device || '')) {
+    var id = readCookie();
+    if (!id) {
+      tentative = true;  // aucun identifiant connu ici : on laisse IndexedDB répondre avant d'en créer un définitif
+      id = ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2))).replace(/[^A-Za-z0-9-]/g, '').slice(0, 64);
+      if (id.length < 16) { id += '0000000000000000'; }
+    }
+    mine.device = id;
   }
   mine.answers = mine.answers || {}; mine.dept = mine.dept || '';
   delete mine.choice;
   A.store.set('poll', mine);
+  writeCookie(mine.device);
+  idb(function (db) { // on lit d'abord IndexedDB : si la mémoire locale et le cookie ont été effacés, on retrouve l'ancien identifiant
+    var g = db.transaction('k').objectStore('k').get('device');
+    g.onsuccess = function () {
+      var old = g.result;
+      if (tentative && old && old !== mine.device && ID_OK.test(old) && !Object.keys(mine.answers).length) { mine.device = old; A.store.set('poll', mine); writeCookie(old); }
+      putIdb(mine.device);
+    };
+  });
+  /* signature technique grossière (écran arrondi, fuseau, langue) : sert seulement à repérer les envois en masse, côté serveur */
+  function techSig() {
+    var s = window.screen || {}, r = function (n) { return Math.round((n || 0) / 20) * 20; }, tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
+    return [r(Math.min(s.width || 0, s.height || 0)), r(Math.max(s.width || 0, s.height || 0)), Math.round((window.devicePixelRatio || 1) * 10) / 10, tz.slice(0, 30), (navigator.language || '').slice(0, 5)].join('|').replace(/[^\w\/|.+ -]/g, '').slice(0, 80);
+  }
   var view = '', token = '', onToken = function () {}, tsId = null;
 
   /* ---- scrutins proposés selon la commune enregistrée ---- */
@@ -149,7 +181,7 @@
   function renderResults(S, data, dept, failed) {
     var h = warn;
     if (failed) { root.innerHTML = h + '<p class="empty">' + esc(t('poll.err')) + '</p><p><button type="button" class="btn" data-pretry>' + esc(t('err.reload')) + '</button></p>'; return; }
-    h += '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2>';
+    h += '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2><p class="note-s">' + esc(t('poll.dup')) + '</p>';
     S.list.forEach(function (sc) {
       var d = data.scopes[sc.scope] || { total: 0, choices: {} }, rows = Object.keys(d.choices).map(function (k) { return { c: k, n: d.choices[k] }; }).sort(function (a, b) { return b.n - a.n; });
       var mx = rows.length ? rows[0].n : 1, mineC = [].concat((mine.answers[sc.scope] || {}).c || []);
@@ -192,7 +224,7 @@
     if (!votes.length) { msg.textContent = t('poll.nosel'); return; }
     var dept = document.getElementById('poll-dept').value;
     btn.disabled = true; msg.textContent = '';
-    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token }).then(function () {
+    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig() }).then(function () {
       votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices }; });
       mine.dept = dept; A.store.set('poll', mine); token = '';
       A.toast(t('poll.thanks')); showResults('', true);
