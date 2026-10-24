@@ -124,9 +124,16 @@ async function vote(req, env) {
   }
   const ts = await turnstile(env, b.token, ip);
   if (!ts) throw new HttpError(403, "vérification anti-robot refusée");
-  if ((env.REQUIRE_CHALLENGE || "0") === "1") {
+  const chMode = env.REQUIRE_CHALLENGE || "0";
+  if (chMode === "1") {
     if (env.TURNSTILE_SECRET && (ts.cdata !== device || (ts.action && ts.action !== "vote"))) throw new HttpError(403, "vérification anti-robot refusée");  // jeton lié à cet appareil
     await checkChallenge(env, device, b.ch);
+  } else if (chMode === "2") {
+    // mode d'observation : on vérifie et on compte (table blocked_daily, numéros négatifs), sans jamais refuser
+    const note = async (code, label) => { try { await env.DB.prepare("INSERT INTO blocked_daily(day,asn,org,n) VALUES(?,?,?,1) ON CONFLICT(day,asn) DO UPDATE SET n = n + 1").bind(new Date().toISOString().slice(0, 10), code, label).run(); } catch (e) { /* ignoré */ } };
+    if (env.TURNSTILE_SECRET && (ts.cdata !== device || (ts.action && ts.action !== "vote"))) await note(-1, "OBSERVATION défi : jeton Turnstile non lié à l'appareil");
+    try { await checkChallenge(env, device, b.ch); await note(-9, "OBSERVATION défi : valide"); }
+    catch (e) { await note(e.message === "defi_tot" ? -3 : -2, e.message === "defi_tot" ? "OBSERVATION défi : envoi trop rapide" : "OBSERVATION défi : absent ou invalide"); }
   }
 
   const now = Math.floor(Date.now() / 1000), day = new Date().toISOString().slice(0, 10);
@@ -417,7 +424,7 @@ export default {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 13 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 14 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

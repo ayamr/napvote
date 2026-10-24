@@ -23,8 +23,8 @@ ASN_TRACK = "30"
 BLOCK_HOSTING = "1"
 # si renseigné, les envois qui n'arrivent pas par ce nom d'hôte sont refusés (à activer après la transition : VOTE_HOST = "poll.napvote-ht.com")
 VOTE_HOST = ""
-# défi signé + liaison Turnstile à l'appareil : "1" pour exiger (à activer une fois le nouveau site publié)
-REQUIRE_CHALLENGE = "0"
+# défi signé + liaison Turnstile à l'appareil : "0" désactivé, "2" observation (compte sans refuser), "1" obligatoire
+REQUIRE_CHALLENGE = "2"
 # plafond de nouveaux appareils créés sur un même navigateur (empreinte) dans la semaine ; 0 = détection seulement, aucun blocage
 FP_MAX = "0"
 # excès minimal (en points) pour qu'une cellule opérateur + heure soit proposée au retrait
