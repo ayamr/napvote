@@ -59,7 +59,7 @@
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
     return [r(Math.min(s.width || 0, s.height || 0)), r(Math.max(s.width || 0, s.height || 0)), Math.round((window.devicePixelRatio || 1) * 10) / 10, tz.slice(0, 30), (navigator.language || '').slice(0, 5)].join('|').replace(/[^\w\/|.+ -]/g, '').slice(0, 80);
   }
-  var view = '', token = '', onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '';
+  var lastCut = null, view = '', token = '', onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '';
 
   /* ---- scrutins proposés selon la commune enregistrée ---- */
   function cOpt(c) { return { c: norm(c.nom + ' ' + c.pre), n: c.pre + ' ' + c.nom, s: V.parties[c.pa] }; }
@@ -108,7 +108,7 @@
 
   /* ---- formulaire ---- */
   function renderForm(err) {
-    var S = scopes(), h = warn + '<p class="lead">' + esc(t('poll.intro')) + '</p>';
+    var S = scopes(), h = warn + '<div id="poll-cut"></div><p class="lead">' + esc(t('poll.intro')) + '</p>';
     if (!S.loc) { h += '<p class="note-s">' + esc(t('poll.needCommune')) + '</p>'; }
     h += '<form id="poll-form">';
     S.list.forEach(function (sc, i) {
@@ -149,7 +149,7 @@
     });
     f.querySelectorAll('fieldset[data-max]').forEach(limit); upd();
     onToken = upd;
-    ensureChallenge(); clearInterval(tick); tick = setInterval(function () { if (!document.getElementById('poll-send')) { clearInterval(tick); return; } upd(); }, 700);
+    loadCut(); ensureChallenge(); clearInterval(tick); tick = setInterval(function () { if (!document.getElementById('poll-send')) { clearInterval(tick); return; } upd(); }, 700);
     if (CFG.turnstileKey) { token = ''; mountTurnstile(); }
   }
   function mountTurnstile() {
@@ -199,6 +199,19 @@
   }
   if (base && !A.native && window.crypto && crypto.subtle) { try { computeFp().then(function (h) { fpHex = h; }, function () { /* ignore */ }); } catch (e) { /* ignore */ } }
 
+  /* ---- période retirée des résultats de la présidentielle : bandeau et invitation à confirmer son choix ---- */
+  function fdt(iso) { return new Date(iso).toLocaleString([], { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }); }
+  function cutBanner(cut) {
+    if (!cut) { return ''; }
+    return '<div class="notice"><b>' + esc(t('poll.cut', { a: fdt(cut.from), b: fdt(cut.to) })) + '</b></div>';
+  }
+  function needsConfirm(cut) { var a = (mine.answers.pres || {}); return !!(cut && a.c && !(a.at && a.at > Date.parse(cut.to))); }
+  function loadCut() {  // dans le formulaire, on va chercher la période retirée pour l'afficher avant de voter
+    var box = document.getElementById('poll-cut'); if (!box) { return; }
+    if (lastCut) { box.innerHTML = cutBanner(lastCut); return; }
+    post('/results', { scopes: ['pres'], dept: '' }).then(function (d) { lastCut = d.cut || null; var b = document.getElementById('poll-cut'); if (b) { b.innerHTML = cutBanner(lastCut); } }, function () { /* sans effet */ });
+  }
+
   /* ---- résultats ---- */
   function nameOf(sc, c) {
     var o = null; sc.opts.forEach(function (x) { if (x.c === c) { o = x; } });
@@ -219,7 +232,8 @@
   function renderResults(S, data, dept, failed) {
     var h = warn;
     if (failed) { root.innerHTML = h + '<p class="empty">' + esc(t('poll.err')) + '</p><p><button type="button" class="btn" data-pretry>' + esc(t('err.reload')) + '</button></p>'; return; }
-    h += '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2>' + (data.asof ? '<p class="note-s">' + esc(t('poll.asof', { h: new Date(data.asof).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })) + '</p>' : '') + (justVoted ? '<p class="note-s"><b>' + esc(t('poll.later')) + '</b></p>' : '') + '<p class="note-s">' + esc(t('poll.dup')) + '</p>' + (((data.scopes.pres || {}).adj > 0) ? '<p class="note-s"><b>' + esc(t('poll.adj', { n: fmt(data.scopes.pres.adj) })) + '</b></p>' : '');
+    lastCut = data.cut || lastCut;
+    h += cutBanner(data.cut) + (needsConfirm(data.cut) ? '<p class="note-s">' + esc(t('poll.confirm')) + ' <button type="button" class="btn sm" data-pedit>' + esc(t('poll.confirmBtn')) + '</button></p>' : '') + '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2>' + (data.asof ? '<p class="note-s">' + esc(t('poll.asof', { h: new Date(data.asof).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })) + '</p>' : '') + (justVoted ? '<p class="note-s"><b>' + esc(t('poll.later')) + '</b></p>' : '') + '<p class="note-s">' + esc(t('poll.dup')) + '</p>' + (((data.scopes.pres || {}).adj > 0) ? '<p class="note-s"><b>' + esc(t('poll.adj', { n: fmt(data.scopes.pres.adj) })) + '</b></p>' : '');
     S.list.forEach(function (sc) {
       var d = data.scopes[sc.scope] || { total: 0, choices: {} }, rows = Object.keys(d.choices).map(function (k) { return { c: k, n: d.choices[k] }; }).sort(function (a, b) { return b.n - a.n; });
       var mx = rows.length ? rows[0].n : 1, mineC = [].concat((mine.answers[sc.scope] || {}).c || []);
@@ -263,7 +277,7 @@
     var dept = document.getElementById('poll-dept').value;
     btn.disabled = true; msg.textContent = '';
     post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined }).then(function () {
-      votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices }; });
+      votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices, at: Date.now() }; });
       mine.dept = dept; A.store.set('poll', mine); token = ''; chal = null; justVoted = true;
       A.toast(t('poll.thanks')); showResults('', true);
     }, function (er) {

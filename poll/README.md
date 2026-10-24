@@ -56,3 +56,7 @@ La table `excluded_cells` (opérateur réseau `asn`, heures UTC `hour_from` à `
   - Voir : `SELECT id, org, hour_from, hour_to, choices, excess, top2, new_pct FROM proposals WHERE status = 'proposé';`
   - Valider : `INSERT INTO excluded_cells(asn,hour_from,hour_to,dept,reason,created) SELECT asn,hour_from,hour_to,'*','Proposition #'||id||' validée',date('now') FROM proposals WHERE id = ?; UPDATE proposals SET status = 'validé' WHERE id = ?;`
   - Refuser : `UPDATE proposals SET status = 'refusé' WHERE id = ?;`
+
+## Retrait d'une période
+`excluded_windows(scope, from_ts, to_ts, reason, created)` (secondes Unix) retire des résultats publiés d'un scrutin tous les bulletins dont le dernier choix date de la période. Ils restent en base (réversible : supprimer la ligne, puis attendre la publication de l'heure suivante). Un appareil qui confirme son choix après `to_ts` est compté. Exemple (présidentielle, 48 dernières heures) :
+`INSERT INTO excluded_windows(scope,from_ts,to_ts,reason,created) VALUES ('pres', CAST(strftime('%s','now') AS INTEGER) - 172800, CAST(strftime('%s','now') AS INTEGER), 'Tentatives de manipulation', date('now'));`

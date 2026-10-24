@@ -52,3 +52,7 @@ CREATE TABLE IF NOT EXISTS challenge_used (n TEXT PRIMARY KEY, t INTEGER NOT NUL
 CREATE TABLE IF NOT EXISTS fp_week (k TEXT NOT NULL, week INTEGER NOT NULL, new_dev INTEGER NOT NULL, sends INTEGER NOT NULL, PRIMARY KEY (k, week));
 -- propositions de retrait, produites chaque heure et à valider à la main (statut : proposé, validé, refusé).
 CREATE TABLE IF NOT EXISTS proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT, asn INTEGER, org TEXT, hour_from TEXT, hour_to TEXT, choices INTEGER, excess INTEGER, top2 INTEGER, new_pct INTEGER, status TEXT NOT NULL DEFAULT 'proposé', note TEXT);
+
+-- v13 : périodes retirées des résultats d'un scrutin (dates en secondes Unix). Les bulletins dont le dernier choix date de la période ne sont pas comptés dans l'instantané publié ;
+-- ils restent en base et reviennent si la ligne est supprimée. Un appareil qui confirme son choix après la période est compté normalement.
+CREATE TABLE IF NOT EXISTS excluded_windows (id INTEGER PRIMARY KEY AUTOINCREMENT, scope TEXT NOT NULL, from_ts INTEGER NOT NULL, to_ts INTEGER NOT NULL, reason TEXT, created TEXT);

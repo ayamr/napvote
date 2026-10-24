@@ -209,12 +209,21 @@ async function publishedAt(env) {
   pubMemo = { at: Date.now(), v };
   return v;
 }
+let cutMemo = { at: 0, v: null };
+async function publishedCut(env) {  // période de la présidentielle retirée des résultats (la plus récente), pour l'afficher
+  if (Date.now() - cutMemo.at < 30000) return cutMemo.v;
+  let v = null;
+  try { const r = await env.DB.prepare("SELECT from_ts, to_ts FROM excluded_windows WHERE scope='pres' ORDER BY to_ts DESC LIMIT 1").first(); if (r) v = { from: new Date(r.from_ts * 1000).toISOString(), to: new Date(r.to_ts * 1000).toISOString() }; } catch (e) { /* table absente */ }
+  cutMemo = { at: Date.now(), v };
+  return v;
+}
 // Retrait des envois anormaux. Pour chaque cellule « opérateur réseau + heures + département » inscrite dans excluded_cells, on retire des résultats de la
 // présidentielle seulement l'EXCÉDENT par rapport à ce que le département aurait donné (les électeurs ordinaires de la même cellule restent comptés),
 // en ne gardant que les nouveaux appareils (les renvois ne sont pas des choix en plus). Aucun bulletin n'est modifié ni supprimé : le retrait se fait à l'affichage.
 const EXCL_SQL = `WITH cell AS (
   SELECT a.hour, a.asn, a.dept, a.choice, a.n FROM asn_choice a
   WHERE a.hour <= COALESCE((SELECT v FROM pub_meta WHERE k = 'snap_hour'), '9999')
+  AND NOT EXISTS (SELECT 1 FROM excluded_windows w WHERE w.scope = 'pres' AND CAST(strftime('%s', substr(a.hour, 1, 10) || ' ' || substr(a.hour, 12, 2) || ':00:00') AS INTEGER) >= w.from_ts AND CAST(strftime('%s', substr(a.hour, 1, 10) || ' ' || substr(a.hour, 12, 2) || ':00:00') AS INTEGER) + 3599 <= w.to_ts)
   AND EXISTS (SELECT 1 FROM excluded_cells e WHERE e.asn = a.asn AND a.hour >= e.hour_from AND a.hour <= e.hour_to AND (e.dept = '*' OR e.dept = a.dept))
 ), c AS (SELECT hour, asn, dept, SUM(n) AS t FROM cell GROUP BY hour, asn, dept),
 cs AS (SELECT dept, choice, SUM(n) AS n FROM cell GROUP BY dept, choice),
@@ -290,7 +299,8 @@ async function results(req, env) {
       deptsMemo = { at: now, v: depts };
     }
   }
-  return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept, asof: snap || null };
+  const cut = scopes.includes("pres") ? await publishedCut(env) : null;
+  return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept, asof: snap || null, ...(cut ? { cut } : {}) };
 }
 
 // Recalage horaire : recompte exact à partir des bulletins (corrige les écarts dus à des envois simultanés). Même requêtes que recount.sql.
@@ -311,10 +321,13 @@ async function publish(env) {
     env.DB.prepare("DELETE FROM tally_pub WHERE NOT EXISTS (SELECT 1 FROM tally t WHERE t.scope = tally_pub.scope AND t.dept = tally_pub.dept AND t.choice = tally_pub.choice)"),
     env.DB.prepare("INSERT INTO tally_tot_pub(scope,dept,n) SELECT scope,dept,n FROM tally_tot WHERE 1 ON CONFLICT(scope,dept) DO UPDATE SET n = excluded.n WHERE n <> excluded.n"),
     env.DB.prepare("DELETE FROM tally_tot_pub WHERE NOT EXISTS (SELECT 1 FROM tally_tot t WHERE t.scope = tally_tot_pub.scope AND t.dept = tally_tot_pub.dept)"),
+    // périodes retirées (table excluded_windows) : on retire de l'instantané les bulletins dont le dernier choix date de la période ; les bulletins ne sont pas touchés
+    env.DB.prepare("UPDATE tally_pub SET n = MAX(0, n - (SELECT COUNT(*) FROM ballots b WHERE b.scope = tally_pub.scope AND b.dept = tally_pub.dept AND b.choice = tally_pub.choice AND EXISTS (SELECT 1 FROM excluded_windows w WHERE w.scope = b.scope AND b.created BETWEEN w.from_ts AND w.to_ts))) WHERE scope IN (SELECT scope FROM excluded_windows)"),
+    env.DB.prepare("UPDATE tally_tot_pub SET n = MAX(0, n - (SELECT COUNT(DISTINCT b.device) FROM ballots b WHERE b.scope = tally_tot_pub.scope AND b.dept = tally_tot_pub.dept AND EXISTS (SELECT 1 FROM excluded_windows w WHERE w.scope = b.scope AND b.created BETWEEN w.from_ts AND w.to_ts))) WHERE scope IN (SELECT scope FROM excluded_windows)"),
     env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('snap_at',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(now.toISOString()),
     env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('snap_hour',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(now.toISOString().slice(0, 13)),
   ]);
-  pubMemo = { at: 0, v: null };
+  pubMemo = { at: 0, v: null }; cutMemo = { at: 0, v: null };
 }
 
 // Détection automatique : propose (sans rien retirer) les cellules « opérateur + heure » dont les choix de président s'écartent fortement
@@ -404,7 +417,7 @@ export default {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 12 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 13 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);
