@@ -21,6 +21,9 @@ function coarseUA(ua) {
   const o = /(Android)\s(\d+)|(iPhone OS|CPU OS)\s(\d+)|(Windows)|(Mac OS X)|(Linux)/.exec(ua || "");
   return (b ? b[1] + (b[2] || "") : "?") + "|" + (o ? (o[1] || o[3] || o[5] || o[6] || o[7]) + (o[2] || o[4] || "") : "?");
 }
+// Réseaux d'hébergement de serveurs, de VPN et de relais privés : aucun électeur ne vote depuis un serveur. Désactivable avec BLOCK_HOSTING = "0".
+const HOSTING = /host|data ?cent|server|cloud|vps|vpn|proxy|\bcolo\b|colocation|hetzner|\bovh|digitalocean|linode|vultr|choopa|amazon|\baws\b|google llc|google cloud|microsoft|azure|oracle|alibaba|tencent|m247|datacamp|packethub|gthost|leaseweb|contabo|ionos|scaleway|quadranet|frantech|buyvm|psychz|nordvpn|tefincom|expressvpn|surfshark|proton|mullvad|windscribe|private ?internet|london trust|kape technologies|cyberghost|ipvanish|mudhook|tunnelbear|vyprvpn|hotspot ?shield|anchorfree|psiphon|zscaler|private customer|akamai|fastly|ipxo|ucloud|kamatera|clouvider|serverius|zenlayer|ddos|anycast|cdn|latitude|hurricane electric|eventure/i;
+const hostingNet = (org) => !!org && HOSTING.test(org);
 const isoWeek = (d) => Math.floor(d.getTime() / (7 * 86400000));
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
@@ -83,6 +86,13 @@ async function vote(req, env) {
     seen.add(scope); for (const c of list) clean.push([scope, c]);
   }
   const ip = req.headers.get("CF-Connecting-IP") || "";
+  const cfx = req.cf || {};
+  if ((env.BLOCK_HOSTING || "1") !== "0" && hostingNet(cfx.asOrganization)) {
+    try {  // on compte les refus par opérateur, pour surveiller les faux positifs
+      await env.DB.prepare("INSERT INTO blocked_daily(day,asn,org,n) VALUES(?,?,?,1) ON CONFLICT(day,asn) DO UPDATE SET n = n + 1").bind(new Date().toISOString().slice(0, 10), Number(cfx.asn) || 0, String(cfx.asOrganization).slice(0, 60)).run();
+    } catch (e) { /* le refus prime sur la statistique */ }
+    throw new HttpError(403, "reseau");
+  }
   if (!(await turnstileOk(env, b.token, ip))) throw new HttpError(403, "vérification anti-robot refusée");
 
   const now = Math.floor(Date.now() / 1000), day = new Date().toISOString().slice(0, 10);
@@ -122,15 +132,24 @@ async function vote(req, env) {
   // Répartition des choix (président, sénateur, député) par groupe, seulement à partir du TRACK-ième envoi du jour : les petits groupes ne laissent aucune trace de leurs choix.
   const track = parseInt(env.CLUSTER_TRACK || "10", 10);
   if (grp && grp.sends + 1 >= track) {
-    const incG = env.DB.prepare("INSERT INTO cluster_choice(k,day,scope,choice,n) VALUES(?,?,?,?,1) ON CONFLICT(k,day,scope,choice) DO UPDATE SET n = n + 1");
-    for (const [scope, choice] of clean) if (scope === "pres" || scope.startsWith("sen|") || scope.startsWith("dep|")) stmts.push(incG.bind(cl, day, scope, choice));
+    const incG = env.DB.prepare("INSERT INTO group_choice(k,day,scope,dept,choice,n) VALUES(?,?,?,?,?,1) ON CONFLICT(k,day,scope,dept,choice) DO UPDATE SET n = n + 1");
+    for (const [scope, choice] of clean) if (scope === "pres" || scope.startsWith("sen|") || scope.startsWith("dep|")) stmts.push(incG.bind(cl, day, scope, dept, choice));
   }
   const asn = Number(cf.asn) || 0, org = String(cf.asOrganization || "").slice(0, 60);
+  // Suivi horaire par opérateur réseau et département déclaré ; les choix de président ne sont comptés que pour les opérateurs déjà actifs (ASN_TRACK envois dans la journée).
+  const hour = new Date().toISOString().slice(0, 13), aTrack = parseInt(env.ASN_TRACK || "30", 10);
+  const ad = await env.DB.prepare("SELECT sends FROM asn_daily WHERE day=? AND asn=?").bind(day, asn).first();
+  stmts.push(env.DB.prepare("INSERT INTO asn_hour(hour,asn,org,dept,sends,new_dev) VALUES(?,?,?,?,1,?) ON CONFLICT(hour,asn,dept) DO UPDATE SET sends = sends + 1, new_dev = new_dev + excluded.new_dev").bind(hour, asn, org, dept, isNew ? 1 : 0));
+  if (ad && ad.sends + 1 >= aTrack) {
+    for (const [scope, choice] of clean) if (scope === "pres") stmts.push(env.DB.prepare("INSERT INTO asn_choice(hour,asn,dept,choice,n) VALUES(?,?,?,?,1) ON CONFLICT(hour,asn,dept,choice) DO UPDATE SET n = n + 1").bind(hour, asn, dept, choice));
+  }
   stmts.push(env.DB.prepare("INSERT INTO cluster(k,day,new_dev,sends) VALUES(?,?,?,1) ON CONFLICT(k,day) DO UPDATE SET new_dev = new_dev + excluded.new_dev, sends = sends + 1").bind(cl, day, isNew ? 1 : 0));
   stmts.push(env.DB.prepare("INSERT INTO asn_daily(day,asn,org,sends,new_dev) VALUES(?,?,?,1,?) ON CONFLICT(day,asn) DO UPDATE SET sends = sends + 1, new_dev = new_dev + excluded.new_dev").bind(day, asn, org, isNew ? 1 : 0));
   if (Math.random() < 0.02) {  // purge : les signatures ne sont gardées que 7 jours
     const old7 = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10), old60 = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
-    stmts.push(env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM cluster_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
+    stmts.push(env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
+    const old14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 13);
+    stmts.push(env.DB.prepare("DELETE FROM asn_hour WHERE hour < ?").bind(old14), env.DB.prepare("DELETE FROM asn_choice WHERE hour < ?").bind(old14));
   }
   await env.DB.batch(stmts);
   for (const k of [...memo.keys()]) if (seen.has(k.split("\u0001")[0])) memo.delete(k);
@@ -199,7 +218,7 @@ export default {
     try {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 6 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 9 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

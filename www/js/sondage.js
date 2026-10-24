@@ -231,7 +231,7 @@
     }, function (er) {
       token = ''; if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } }
       btn.disabled = !!CFG.turnstileKey;
-      msg.textContent = er.status === 429 ? t('poll.limit') : (er.status === 403 ? t('poll.bot') : t('poll.err'));
+      msg.textContent = er.status === 429 ? t('poll.limit') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err'));
     });
   });
   root.addEventListener('click', function (e) {

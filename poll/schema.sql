@@ -27,6 +27,14 @@ CREATE TABLE IF NOT EXISTS cluster (k TEXT NOT NULL, day TEXT NOT NULL, new_dev 
 -- asn_daily : envois par jour et par opérateur réseau (hébergeurs, VPN, opérateurs mobiles), statistique agrégée.
 CREATE TABLE IF NOT EXISTS asn_daily (day TEXT NOT NULL, asn INTEGER NOT NULL, org TEXT NOT NULL, sends INTEGER NOT NULL, new_dev INTEGER NOT NULL, PRIMARY KEY (day, asn));
 
--- Répartition des choix par groupe (v7), pour repérer un groupe qui vote très différemment de la moyenne : président, sénateur et député seulement,
--- gardée 7 jours, uniquement pour les groupes déjà actifs (à partir du CLUSTER_TRACK-ième envoi du jour), jamais pour un appareil isolé.
-CREATE TABLE IF NOT EXISTS cluster_choice (k TEXT NOT NULL, day TEXT NOT NULL, scope TEXT NOT NULL, choice TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (k, day, scope, choice));
+-- Répartition des choix par groupe et par département déclaré (v8), pour repérer un groupe qui vote très différemment des autres répondants du même département :
+-- président, sénateur et député seulement, gardée 7 jours, uniquement pour les groupes déjà actifs (à partir du CLUSTER_TRACK-ième envoi du jour), jamais pour un appareil isolé.
+CREATE TABLE IF NOT EXISTS group_choice (k TEXT NOT NULL, day TEXT NOT NULL, scope TEXT NOT NULL, dept TEXT NOT NULL, choice TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (k, day, scope, dept, choice));
+
+-- Suivi par opérateur réseau (v9), conservé 14 jours. asn_hour : envois par heure, opérateur et département déclaré.
+-- asn_choice : choix de président par heure, opérateur et département, seulement pour les opérateurs déjà actifs (ASN_TRACK envois dans la journée) ; aucun lien avec un appareil.
+CREATE TABLE IF NOT EXISTS asn_hour (hour TEXT NOT NULL, asn INTEGER NOT NULL, org TEXT NOT NULL, dept TEXT NOT NULL, sends INTEGER NOT NULL, new_dev INTEGER NOT NULL, PRIMARY KEY (hour, asn, dept));
+CREATE TABLE IF NOT EXISTS asn_choice (hour TEXT NOT NULL, asn INTEGER NOT NULL, dept TEXT NOT NULL, choice TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (hour, asn, dept, choice));
+
+-- Envois refusés parce qu'ils venaient d'un hébergeur de serveurs, d'un VPN ou d'un relais privé (v10) : compte par jour et par opérateur, sans autre information.
+CREATE TABLE IF NOT EXISTS blocked_daily (day TEXT NOT NULL, asn INTEGER NOT NULL, org TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, asn));

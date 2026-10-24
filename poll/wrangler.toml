@@ -15,6 +15,10 @@ RATE_LIMIT = "100"
 CLUSTER_MAX = "0"
 # les choix d'un groupe ne sont comptés qu'à partir de ce nombre d'envois dans la journée (protège les petits groupes)
 CLUSTER_TRACK = "10"
+# les choix de président d'un opérateur réseau ne sont comptés qu'à partir de ce nombre d'envois dans la journée
+ASN_TRACK = "30"
+# refuse les envois venant d'hébergeurs de serveurs, de VPN et de relais privés ("0" pour désactiver)
+BLOCK_HOSTING = "1"
 
 # recalage exact des totaux, une fois par heure
 [triggers]
