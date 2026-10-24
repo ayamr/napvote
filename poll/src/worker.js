@@ -191,6 +191,21 @@ async function vote(req, env) {
     stmts.push(env.DB.prepare("INSERT INTO hw_day(k,day,new_dev,sends) VALUES(?,?,?,1) ON CONFLICT(k,day) DO UPDATE SET new_dev = new_dev + excluded.new_dev, sends = sends + 1").bind(hwk, day, isNew ? 1 : 0));
     if (fpk) stmts.push(env.DB.prepare("INSERT OR IGNORE INTO hw_fp(k,day,fpk) VALUES(?,?,?)").bind(hwk, day, fpk));  // navigateurs différents vus sur ce matériel et ce réseau
   }
+  // Dossier de preuves de l'envoi (14 jours) : sert à calculer, après coup et de la même façon pour tous les candidats, un score de suspicion par bulletin.
+  // Tout est mélangé à un secret : ni adresse, ni identifiant en clair. Voir le tableau « evidence » du schéma.
+  {
+    const wk = isoWeek(dayDate), h16 = async (x) => (await sha256(x + "|" + env.SALT)).slice(0, 16), hd = req.headers;
+    const ua = hd.get("User-Agent") || "", chAge = (b.ch && Number(b.ch.t)) ? Date.now() - Number(b.ch.t) : 0, tsAge = ts && ts.challenge_ts ? Date.now() - Date.parse(ts.challenge_ts) : 0;
+    const hdr = ["Sec-Fetch-Site", "Sec-Fetch-Mode", "Sec-Fetch-Dest", "Sec-CH-UA", "Accept-Language", "Origin", "Referer", "Accept-Encoding"].reduce((a, k, i) => a | (hd.get(k) ? 1 << i : 0), 0);
+    const sgIn = b.sg && typeof b.sg === "object" ? b.sg : {}, sg = {};
+    for (const k of ["o", "i", "p", "k", "s", "m", "f", "tr", "a", "n"]) { const v = Number(sgIn[k]); if (Number.isFinite(v)) sg[k] = Math.max(0, Math.min(1e9, Math.round(v))); }
+    const presChoice = (clean.find((x) => x[0] === "pres") || [])[1] || "";
+    stmts.push(env.DB.prepare("INSERT INTO evidence(t,dh,isnew,asn,country,region,colo,http,tls,rtt,net,fp,hw,ua,uah,lang,hdr,chal,tsage,scopes,pres,dept,sg,tech) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(
+      Math.floor(Date.now() / 1000), dh, isNew ? 1 : 0, Number(cf.asn) || 0, String(cf.country || "").slice(0, 4), String(cf.region || "").slice(0, 30), String(cf.colo || "").slice(0, 6),
+      String(cf.httpProtocol || "").slice(0, 10), String(cf.tlsVersion || "").slice(0, 10), Number(cf.clientTcpRtt) || 0,
+      await h16(ip + "|" + wk), fpk ? fpk.slice(0, 16) : "", hwRaw ? await h16(hwRaw + "|" + wk) : "", coarseUA(ua), await h16(ua), String(hd.get("Accept-Language") || "").slice(0, 5),
+      hdr, chAge, tsAge > 0 ? tsAge : 0, seen.size, presChoice, dept, JSON.stringify(sg).slice(0, 200), sig.slice(0, 80)));
+  }
   const asn = Number(cf.asn) || 0, org = String(cf.asOrganization || "").slice(0, 60);
   // Suivi horaire par opérateur réseau et département déclaré ; les choix de président ne sont comptés que pour les opérateurs déjà actifs (ASN_TRACK envois dans la journée).
   const hour = new Date().toISOString().slice(0, 13), aTrack = parseInt(env.ASN_TRACK || "30", 10);
@@ -203,7 +218,7 @@ async function vote(req, env) {
   stmts.push(env.DB.prepare("INSERT INTO asn_daily(day,asn,org,sends,new_dev) VALUES(?,?,?,1,?) ON CONFLICT(day,asn) DO UPDATE SET sends = sends + 1, new_dev = new_dev + excluded.new_dev").bind(day, asn, org, isNew ? 1 : 0));
   if (Math.random() < 0.02) {  // purge : les signatures ne sont gardées que 7 jours
     const old7 = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10), old60 = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
-    stmts.push(env.DB.prepare("DELETE FROM hw_day WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM hw_fp WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
+    stmts.push(env.DB.prepare("DELETE FROM evidence WHERE t < ?").bind(Math.floor(Date.now() / 1000) - 14 * 86400), env.DB.prepare("DELETE FROM hw_day WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM hw_fp WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
     const old14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 13);
     stmts.push(env.DB.prepare("DELETE FROM asn_hour WHERE hour < ?").bind(old14), env.DB.prepare("DELETE FROM asn_choice WHERE hour < ?").bind(old14));
     stmts.push(env.DB.prepare("DELETE FROM fp_week WHERE week < ?").bind(isoWeek(dayDate) - 1), env.DB.prepare("DELETE FROM challenge_used WHERE t < ?").bind(Date.now() - 86400000));
@@ -221,6 +236,14 @@ async function publishedAt(env) {
   let v = null;
   try { const r = await env.DB.prepare("SELECT v FROM pub_meta WHERE k='snap_at'").first(); v = r ? r.v : null; } catch (e) { /* table absente : résultats en direct */ }
   pubMemo = { at: Date.now(), v };
+  return v;
+}
+let riskMemo = { at: 0, v: 0 };
+async function riskRemoved(env) {  // bulletins de la présidentielle retirés après examen des preuves, comptés dans l'instantané publié
+  if (Date.now() - riskMemo.at < 30000) return riskMemo.v;
+  let v = 0;
+  try { const r = await env.DB.prepare("SELECT v FROM pub_meta WHERE k='risk_pres'").first(); v = r ? Number(r.v) || 0 : 0; } catch (e) { /* table absente */ }
+  riskMemo = { at: Date.now(), v };
   return v;
 }
 let cutMemo = { at: 0, v: null };
@@ -313,6 +336,7 @@ async function results(req, env) {
       deptsMemo = { at: now, v: depts };
     }
   }
+  if (scopes.includes("pres") && out.pres) { const rk = await riskRemoved(env); if (rk > 0) out.pres = { ...out.pres, adj: (out.pres.adj || 0) + rk }; }
   const cut = scopes.includes("pres") ? await publishedCut(env) : null;
   return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept, asof: snap || null, ...(cut ? { cut } : {}) };
 }
@@ -338,10 +362,14 @@ async function publish(env) {
     // périodes retirées (table excluded_windows) : on retire de l'instantané les bulletins dont le dernier choix date de la période ; les bulletins ne sont pas touchés
     env.DB.prepare("UPDATE tally_pub SET n = MAX(0, n - (SELECT COUNT(*) FROM ballots b WHERE b.scope = tally_pub.scope AND b.dept = tally_pub.dept AND b.choice = tally_pub.choice AND EXISTS (SELECT 1 FROM excluded_windows w WHERE w.scope = b.scope AND b.created BETWEEN w.from_ts AND w.to_ts))) WHERE scope IN (SELECT scope FROM excluded_windows)"),
     env.DB.prepare("UPDATE tally_tot_pub SET n = MAX(0, n - (SELECT COUNT(DISTINCT b.device) FROM ballots b WHERE b.scope = tally_tot_pub.scope AND b.dept = tally_tot_pub.dept AND EXISTS (SELECT 1 FROM excluded_windows w WHERE w.scope = b.scope AND b.created BETWEEN w.from_ts AND w.to_ts))) WHERE scope IN (SELECT scope FROM excluded_windows)"),
+    // bulletins retirés après examen des preuves (ballot_risk, statut 'retire') : retirés de l'instantané, jamais supprimés
+    env.DB.prepare("UPDATE tally_pub SET n = MAX(0, n - (SELECT COUNT(*) FROM ballots b JOIN ballot_risk r ON r.dh = b.device AND r.scope = b.scope AND r.status = 'retire' WHERE b.scope = tally_pub.scope AND b.dept = tally_pub.dept AND b.choice = tally_pub.choice)) WHERE scope IN (SELECT scope FROM ballot_risk WHERE status = 'retire')"),
+    env.DB.prepare("UPDATE tally_tot_pub SET n = MAX(0, n - (SELECT COUNT(DISTINCT b.device) FROM ballots b JOIN ballot_risk r ON r.dh = b.device AND r.scope = b.scope AND r.status = 'retire' WHERE b.scope = tally_tot_pub.scope AND b.dept = tally_tot_pub.dept)) WHERE scope IN (SELECT scope FROM ballot_risk WHERE status = 'retire')"),
+    env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('risk_pres',(SELECT CAST(COUNT(*) AS TEXT) FROM ballot_risk r WHERE r.status = 'retire' AND r.scope = 'pres' AND EXISTS (SELECT 1 FROM ballots b WHERE b.device = r.dh AND b.scope = 'pres'))) ON CONFLICT(k) DO UPDATE SET v = excluded.v"),
     env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('snap_at',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(now.toISOString()),
     env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('snap_hour',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(now.toISOString().slice(0, 13)),
   ]);
-  pubMemo = { at: 0, v: null }; cutMemo = { at: 0, v: null };
+  pubMemo = { at: 0, v: null }; cutMemo = { at: 0, v: null }; riskMemo = { at: 0, v: 0 };
 }
 
 // Détection automatique : propose (sans rien retirer) les cellules « opérateur + heure » dont les choix de président s'écartent fortement
@@ -431,7 +459,7 @@ export default {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 15 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 16 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

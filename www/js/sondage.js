@@ -42,6 +42,7 @@
     mine.device = id;
   }
   mine.answers = mine.answers || {}; mine.dept = mine.dept || '';
+  mine.first = mine.first || Date.now(); mine.n = mine.n || 0;
   delete mine.choice;
   A.store.set('poll', mine);
   writeCookie(mine.device);
@@ -149,7 +150,7 @@
     });
     f.querySelectorAll('fieldset[data-max]').forEach(limit); upd();
     onToken = upd;
-    loadCut(); ensureChallenge(); clearInterval(tick); tick = setInterval(function () { if (!document.getElementById('poll-send')) { clearInterval(tick); return; } upd(); }, 700);
+    sgc.formAt = Date.now(); sgc.first = 0; loadCut(); ensureChallenge(); clearInterval(tick); tick = setInterval(function () { if (!document.getElementById('poll-send')) { clearInterval(tick); return; } upd(); }, 700);
     if (CFG.turnstileKey) { token = ''; mountTurnstile(); }
   }
   function mountTurnstile() {
@@ -160,6 +161,32 @@
   function post(path, body) {
     return fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || 'erreur'); e.status = r.status; throw e; } return j; }); });
+  }
+
+  /* ---- signaux de comportement : ce que fait la personne avant d'envoyer (comptés, jamais le contenu des saisies) ----
+     Ils servent seulement à repérer l'automatisation, de la même façon pour tous les choix ; conservés 14 jours avec l'envoi. */
+  var sgc = { p: 0, k: 0, s: 0, m: 0, tr: 1, first: 0, formAt: 0 };
+  if (base) {
+    var hit = function (e) { if (!sgc.first) { sgc.first = Date.now(); } if (e && e.isTrusted === false) { sgc.tr = 0; } };
+    ['pointerdown', 'touchstart', 'mousedown', 'click'].forEach(function (ev) { document.addEventListener(ev, function (e) { sgc.p++; hit(e); }, true); });
+    document.addEventListener('keydown', function (e) { sgc.k++; hit(e); }, true);
+    document.addEventListener('mousemove', function () { if (sgc.m < 99) { sgc.m++; } }, { passive: true, capture: true });
+    window.addEventListener('scroll', function () { if (sgc.s < 255) { sgc.s++; } }, { passive: true, capture: true });
+  }
+  function autoFlags() { // indices d'un navigateur piloté par un programme (bits : 1 webdriver, 2 sans interface, 4 variables d'automatisation, 8 sans langue, 16 Chrome sans window.chrome, 32 mobile sans tactile, 64 fenêtre de taille nulle)
+    var n = navigator, f = 0, ua = n.userAgent || '';
+    try { if (n.webdriver) { f |= 1; } } catch (e) { /* ignore */ }
+    if (/HeadlessChrome|PhantomJS|Puppeteer|Playwright/i.test(ua)) { f |= 2; }
+    if (window._phantom || window.callPhantom || window.__nightmare || window.domAutomation || window.domAutomationController || document.documentElement.getAttribute('webdriver') || window.__playwright__binding__ || window.__pwInitScripts) { f |= 4; }
+    if (!n.languages || !n.languages.length) { f |= 8; }
+    if (/Chrome\//.test(ua) && !/Edg|OPR|SamsungBrowser/.test(ua) && !window.chrome) { f |= 16; }
+    if (/Android|iPhone|iPad/.test(ua) && !(n.maxTouchPoints > 0)) { f |= 32; }
+    if (!window.outerWidth || !window.innerWidth) { f |= 64; }
+    return f;
+  }
+  function signals() {
+    var now = Date.now();
+    return { o: sgc.formAt ? now - sgc.formAt : 0, i: sgc.first ? now - sgc.first : 0, p: Math.min(sgc.p, 255), k: Math.min(sgc.k, 255), s: sgc.s, m: sgc.m, f: autoFlags(), tr: sgc.tr, a: Math.round((now - (mine.first || now)) / 1000), n: Math.min(mine.n || 0, 255) };
   }
 
   /* ---- défi signé : jeton demandé au service à l'ouverture du formulaire ; l'envoi n'est possible qu'après quelques secondes ---- */
@@ -284,9 +311,9 @@
     if (!votes.length) { msg.textContent = t('poll.nosel'); return; }
     var dept = document.getElementById('poll-dept').value;
     btn.disabled = true; msg.textContent = '';
-    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined, hw: hwHex || undefined }).then(function () {
+    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined, hw: hwHex || undefined, sg: signals() }).then(function () {
       votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices, at: Date.now() }; });
-      mine.dept = dept; A.store.set('poll', mine); token = ''; chal = null; justVoted = true;
+      mine.dept = dept; mine.n = (mine.n || 0) + 1; A.store.set('poll', mine); token = ''; chal = null; justVoted = true;
       A.toast(t('poll.thanks')); showResults('', true);
     }, function (er) {
       token = ''; ensureChallenge(true); if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } }

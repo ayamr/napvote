@@ -1,0 +1,209 @@
+"""Score de suspicion par bulletin (présidentielle), à partir du dossier de preuves (table evidence).
+
+Les règles sont les mêmes pour tous les candidats : le score ne regarde JAMAIS le candidat choisi pour décider qui est suspect,
+sauf pour la règle d'uniformité d'un groupe (écart du groupe à la moyenne de son département), qui s'applique de la même façon à tous.
+
+Usage :
+  python3 score.py                       rapport sur les dernières 24 h (lecture seule), base en ligne via wrangler
+  python3 score.py --hours 36            autre durée
+  python3 score.py --apply 100           inscrit dans ballot_risk les bulletins de score >= 100 (statut 'retire') et 60-99 ('suspect')
+  python3 score.py --sqlite test.db      même chose sur une base locale (tests)
+Retirer / rétablir ensuite (réversible, prise en compte à la publication de l'heure suivante) :
+  UPDATE ballot_risk SET status = 'garde' WHERE dh = '...';   DELETE FROM ballot_risk;  (annule tout)
+"""
+import argparse, collections, json, math, os, sqlite3, subprocess, sys, datetime, statistics
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+FLAG_POINTS = {1: 80, 2: 80, 4: 60, 8: 20, 16: 20, 32: 15, 64: 20}
+FLAG_NAMES = {1: "navigateur piloté (webdriver)", 2: "navigateur sans interface", 4: "variables d'automatisation", 8: "aucune langue", 16: "Chrome sans window.chrome", 32: "mobile sans tactile", 64: "fenêtre de taille nulle"}
+
+
+class Source:
+    def __init__(self, sqlite_path=None):
+        self.db = sqlite3.connect(sqlite_path) if sqlite_path else None
+        self.db and setattr(self.db, "row_factory", sqlite3.Row)
+
+    def q(self, sql):
+        if self.db:
+            return [dict(r) for r in self.db.execute(sql).fetchall()]
+        r = subprocess.run(["npx", "wrangler", "d1", "execute", "napvote-poll", "--remote", "--json", "--command", sql], capture_output=True, text=True, cwd=HERE).stdout
+        return json.loads(r[r.index("["):r.rindex("]") + 1])[0]["results"]
+
+    def run_file(self, sql_text):
+        if self.db:
+            self.db.executescript(sql_text); return
+        path = os.path.join(HERE, "_apply.sql"); open(path, "w", encoding="utf-8").write(sql_text)
+        r = subprocess.run(["npx", "wrangler", "d1", "execute", "napvote-poll", "--remote", f"--file={path}"], capture_output=True, text=True, cwd=HERE)
+        os.remove(path)
+        if r.returncode != 0:
+            print(r.stdout[-400:], r.stderr[-400:]); sys.exit(1)
+
+
+def tvd_excess(obs, exp, t):
+    tvd = 0.5 * sum(abs(obs.get(c, 0) / t - exp.get(c, 0)) for c in set(obs) | set(exp))
+    noise = 0.5 * sum(math.sqrt(2 * p * (1 - p) / (math.pi * t)) for p in exp.values() if 0 < p < 1)
+    return 100 * (tvd - noise)
+
+
+def main():
+    ap = argparse.ArgumentParser(); ap.add_argument("--hours", type=int, default=24); ap.add_argument("--apply", type=int); ap.add_argument("--sqlite"); a = ap.parse_args()
+    src = Source(a.sqlite)
+    now = src.q("SELECT CAST(strftime('%s','now') AS INTEGER) AS n")[0]["n"] if not a.sqlite else int(datetime.datetime.now(datetime.UTC).timestamp())
+    since = now - a.hours * 3600
+    ev = src.q(f"SELECT id,t,dh,isnew,asn,net,fp,hw,ua,hdr,chal,tsage,pres,dept,sg FROM evidence WHERE t >= {since}")
+    if not ev:
+        print("Aucun dossier de preuves sur cette période."); return
+    # un seul dossier par appareil : le plus récent (celui qui correspond au bulletin actuel)
+    last = {}
+    for e in ev:
+        if e["dh"] not in last or e["t"] > last[e["dh"]]["t"]: last[e["dh"]] = e
+    # bulletins de la présidentielle actuels de ces appareils
+    allb = [r for r in src.q(f"SELECT device, scope, dept, choice FROM ballots WHERE created >= {since}") if r["device"] in last]
+    ball = {r["device"]: r for r in allb if r["scope"] == "pres"}
+    # cellules déjà retirées (opérateur + heures) : on ne retire pas deux fois
+    cells = src.q("SELECT asn, hour_from, hour_to FROM excluded_cells")
+    def hour_of(t): return datetime.datetime.fromtimestamp(t, datetime.UTC).strftime("%Y-%m-%dT%H")
+    def in_cell(e): return any(c["asn"] == e["asn"] and c["hour_from"] <= hour_of(e["t"]) <= c["hour_to"] for c in cells)
+    # tailles de groupes sur la période
+    fp_new = collections.defaultdict(set); hwnet = collections.defaultdict(set); net = collections.defaultdict(set)
+    by_min = collections.defaultdict(int); chal_by_net = collections.defaultdict(list)
+    for e in ev:
+        if e["fp"] and e["isnew"]: fp_new[e["fp"]].add(e["dh"])
+        if e["hw"] and e["net"]: hwnet[(e["hw"], e["net"])].add(e["dh"])
+        if e["net"]: net[e["net"]].add(e["dh"]); by_min[(e["net"], e["t"] // 60)] += 1
+        if e["net"] and e["chal"]: chal_by_net[e["net"]].append(e["chal"])
+    # uniformité d'un groupe réseau : écart à la moyenne du département (de tous les autres appareils)
+    pres_by_dept = collections.defaultdict(collections.Counter)
+    for dev, b in ball.items(): pres_by_dept[b["dept"]][b["choice"]] += 1
+    allp = src.q("SELECT dept, choice, SUM(n) n FROM tally WHERE scope='pres' GROUP BY dept, choice")
+    base = collections.defaultdict(collections.Counter)
+    for r in allp: base[r["dept"]][r["choice"]] += r["n"]
+    unif = {}
+    for k, devs in net.items():
+        members = [d for d in devs if d in ball]
+        if len(members) < 20: continue
+        dd = collections.Counter(ball[d]["dept"] for d in members); exp = collections.Counter(); tot = 0
+        for dept, nd in dd.items():
+            rest = base[dept].copy()
+            for d in members:
+                if ball[d]["dept"] == dept: rest[ball[d]["choice"]] -= 1
+            rt = sum(v for v in rest.values() if v > 0)
+            if rt < 200: continue
+            for c, v in rest.items(): exp[c] += nd * max(0, v) / rt
+            tot += nd
+        if not tot: continue
+        obs = collections.Counter(ball[d]["choice"] for d in members)
+        unif[k] = tvd_excess(obs, {c: v / tot for c, v in exp.items()}, len(members))
+    # score par appareil
+    rows = []
+    for dev, e in last.items():
+        if dev not in ball: continue
+        reasons = []
+        def add(p, label):
+            reasons.append((p, label))
+        sg = {}
+        try: sg = json.loads(e["sg"] or "{}")
+        except Exception: pass
+        f = int(sg.get("f", 0))
+        if sg:
+            for bit, p in FLAG_POINTS.items():
+                if f & bit: add(p, FLAG_NAMES[bit])
+            if sg.get("p", 0) + sg.get("k", 0) == 0: add(40, "aucune interaction avant l'envoi")
+            if sg.get("tr", 1) == 0: add(60, "événement non fiable")
+            o = sg.get("o", 0)
+            if 0 < o < 4000: add(40, "formulaire envoyé en moins de 4 s")
+            elif 0 < o < 7000: add(25, "formulaire envoyé en moins de 7 s")
+        if e["chal"] and e["chal"] < 6500: add(15, "envoi dès le déblocage du bouton")
+        if e["tsage"] and e["tsage"] < 300: add(10, "contrôle anti-robot résolu en moins de 0,3 s")
+        ua = e["ua"] or ""
+        if re_modern(ua) and not (e["hdr"] & 1 and e["hdr"] & 2): add(15, "en-têtes de navigateur moderne absents")
+        n_fp = len(fp_new.get(e["fp"], ())) if e["fp"] else 0
+        for th, p in ((30, 45), (15, 30), (8, 15)):
+            if n_fp >= th: add(p, f"même empreinte de navigateur que {n_fp - 1} autres nouveaux appareils"); break
+        n_hw = len(hwnet.get((e["hw"], e["net"]), ())) if e["hw"] and e["net"] else 0
+        for th, p in ((11, 40), (6, 25)):
+            if n_hw >= th: add(p, f"même matériel et même réseau que {n_hw - 1} autres appareils"); break
+        n_net = len(net.get(e["net"], ())) if e["net"] else 0
+        for th, p in ((100, 20), (40, 10)):
+            if n_net >= th: add(p, f"réseau très actif ({n_net} appareils)"); break
+        if e["net"] and by_min.get((e["net"], e["t"] // 60), 0) >= 8: add(20, "au moins 8 envois du même réseau dans la même minute")
+        ch = chal_by_net.get(e["net"], [])
+        if len(ch) >= 10 and statistics.pstdev(ch) < 300: add(25, "délais d'envoi presque identiques sur ce réseau")
+        if e["net"] in unif and unif[e["net"]] >= 40: add(30, f"groupe réseau uniforme (excès {unif[e['net']]:.0f})")
+        score = min(200, sum(p for p, _ in reasons))
+        rows.append({"dh": dev, "score": score, "reasons": "; ".join(l for _, l in sorted(reasons, reverse=True)), "choice": ball[dev]["choice"], "dept": ball[dev]["dept"], "skip": in_cell(e)})
+    n = len(rows); skip = sum(1 for r in rows if r["skip"])
+    print(f"Période : {a.hours} h | dossiers : {len(ev)} envois, {len(last)} appareils, {n} avec un bulletin de président | déjà couverts par un retrait par opérateur : {skip}")
+    live = [r for r in rows if not r["skip"]]
+    print("\nRépartition des scores (hors cellules déjà retirées) :")
+    for lo, hi, lab in ((0, 19, "0-19 (normal)"), (20, 39, "20-39"), (40, 59, "40-59"), (60, 99, "60-99 (à voir)"), (100, 999, "100+ (retrait)")):
+        c = sum(1 for r in live if lo <= r["score"] <= hi); print(f"  {lab:18s} {c:6d}  ({100 * c / max(1, len(live)):4.1f} %)")
+    # tableau par candidat : mêmes règles, seuil unique
+    T = a.apply or 100
+    tot = collections.Counter(r["choice"] for r in live); sus = collections.Counter(r["choice"] for r in live if r["score"] >= T); mid = collections.Counter(r["choice"] for r in live if 60 <= r["score"] < T)
+    order = [c for c, _ in tot.most_common()]
+    print(f"\nPar candidat (désigné par son rang dans cet échantillon), seuil unique {T} :")
+    print("  rang | bulletins | part | score moyen | à voir (60-{}) | retirés (>= {}) | part retirée".format(T - 1, T))
+    for i, c in enumerate(order[:10]):
+        sc = [r["score"] for r in live if r["choice"] == c]
+        print(f"  {i + 1:4d} | {tot[c]:9d} | {100 * tot[c] / len(live):4.1f} % | {sum(sc) / len(sc):6.1f}      | {mid[c]:13d} | {sus[c]:15d} | {100 * sus[c] / tot[c]:5.1f} %")
+    rs = collections.Counter()
+    for r in live:
+        if r["score"] >= T:
+            for x in r["reasons"].split("; ")[:2]: rs[x.split(" que ")[0] if "même" in x else x] += 1
+    print("\nMotifs les plus fréquents parmi les retirés :"); [print(f"  {v:5d}  {k}") for k, v in rs.most_common(8)]
+    removed = sum(sus.values()); print(f"\nTotal retiré au seuil {T} : {removed} ({100 * removed / max(1, len(live)):.1f} % de l'échantillon)")
+    # ---- taux de votes suspects par candidat et par scrutin (président, sénat, députés, maires...), avec marge d'erreur de Wilson à 95 % ----
+    sc = {r["dh"]: r["score"] for r in live}
+    def kind(scope): return scope.split("|")[0]
+    def wilson(k, n):
+        if n == 0: return (0.0, 0.0)
+        z = 1.96; p = k / n; den = 1 + z * z / n; c = p + z * z / (2 * n); w = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+        return ((c - w) / den, (c + w) / den)
+    agg = collections.defaultdict(lambda: [0, 0]); per = collections.defaultdict(lambda: collections.defaultdict(lambda: [0, 0]))
+    for b in allb:
+        if b["device"] not in sc: continue
+        sus_ = sc[b["device"]] >= T; kd = kind(b["scope"])
+        agg[kd][0] += 1; agg[kd][1] += sus_
+        per[kd][b["choice"]][0] += 1; per[kd][b["choice"]][1] += sus_
+    NAMES = {"pres": "Président", "sen": "Sénat", "dep": "Députés", "may": "Maires", "cas": "CASEC", "asec": "ASEC"}
+    print("\n== Taux de votes suspects par candidat (seuil %d), intervalle de confiance à 95 %% ; en dessous de 30 bulletins : taux du scrutin utilisé ==" % T)
+    for kd in ("pres", "sen", "dep", "may", "cas", "asec"):
+        if kd not in agg: continue
+        n0, k0 = agg[kd]; print(f"\n{NAMES[kd]} : {n0} bulletins, taux moyen {100 * k0 / n0:.1f} % ({k0} suspects)")
+        ranked = sorted(per[kd].items(), key=lambda x: -x[1][0])[:8]
+        for i, (c, (n, k)) in enumerate(ranked):
+            lo, hi = wilson(k, n); small = "  ← échantillon trop petit, taux du scrutin utilisé" if n < 30 else ""
+            print(f"  {i + 1}. {n:6d} bulletins | taux {100 * k / n:5.1f} % [{100 * lo:4.1f} - {100 * hi:4.1f}]{small}")
+    # variabilité dans le temps (président) : un taux unique est-il représentatif ?
+    blocks = collections.defaultdict(lambda: [0, 0])
+    for r in live:
+        t = last[r["dh"]]["t"]; blk = datetime.datetime.fromtimestamp(t - t % 21600, datetime.UTC).strftime("%d %Hh")
+        blocks[blk][0] += 1; blocks[blk][1] += r["score"] >= T
+    print("\n== Variabilité du taux suspect dans le temps (président, blocs de 6 h UTC) : un taux unique est-il représentatif ? ==")
+    for blk in sorted(blocks): n, k = blocks[blk]; print(f"  {blk} : {n:5d} bulletins | {100 * k / n:5.1f} % suspects")
+    json.dump({kd: {"total": agg[kd], "candidats": {c: v for c, v in per[kd].items()}} for kd in agg}, open(os.path.join(HERE, "_taux.json"), "w"), ensure_ascii=False)
+    if a.apply:
+        stmts = []; d = datetime.date.today().isoformat()
+        sel = []
+        byd = collections.defaultdict(list)
+        for b in allb: byd[b["device"]].append(b["scope"])
+        for r in live:
+            if r["score"] >= 60:
+                for scp in set(byd.get(r["dh"], ["pres"])): sel.append({**r, "scope": scp})
+        for i in range(0, len(sel), 200):
+            vals = ",".join("('%s','%s',%d,'%s','%s','%s')" % (r["dh"], r["scope"].replace("'", "''"), r["score"], r["reasons"].replace("'", "''")[:300], "retire" if r["score"] >= T else "suspect", d) for r in sel[i:i + 200])
+            stmts.append(f"INSERT INTO ballot_risk(dh,scope,score,reasons,status,decided) VALUES {vals} ON CONFLICT(dh,scope) DO UPDATE SET score=excluded.score, reasons=excluded.reasons, status=excluded.status, decided=excluded.decided WHERE ballot_risk.status <> 'garde';")
+        src.run_file("\n".join(stmts) if stmts else "SELECT 1;")
+        print(f"Inscrit dans ballot_risk (tous scrutins) : {sum(1 for r in sel if r['score'] >= T)} bulletins retirés, {sum(1 for r in sel if r['score'] < T)} à voir. Effet à la prochaine publication horaire (17 min après l'heure).")
+
+
+def re_modern(ua):
+    import re
+    m = re.search(r"(Chrome|Firefox|Version)/(\d+)", ua or "")
+    return bool(m and int(m.group(2)) >= 80)
+
+
+
+if __name__ == "__main__":
+    main()

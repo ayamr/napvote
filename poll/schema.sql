@@ -61,3 +61,16 @@ CREATE TABLE IF NOT EXISTS excluded_windows (id INTEGER PRIMARY KEY AUTOINCREMEN
 -- hw_day : code mélangé (matériel + réseau + secret + jour) -> nouveaux appareils et envois ; hw_fp : empreintes de navigateur différentes vues sur ce couple.
 CREATE TABLE IF NOT EXISTS hw_day (k TEXT NOT NULL, day TEXT NOT NULL, new_dev INTEGER NOT NULL, sends INTEGER NOT NULL, PRIMARY KEY (k, day));
 CREATE TABLE IF NOT EXISTS hw_fp (k TEXT NOT NULL, day TEXT NOT NULL, fpk TEXT NOT NULL, PRIMARY KEY (k, day, fpk));
+
+-- v16 : dossier de preuves par envoi accepté (14 jours), pour calculer après coup un score de suspicion par bulletin, de la même façon pour tous les candidats.
+-- Tous les codes sont mélangés à un secret (dh = empreinte de l'appareil comme dans ballots ; net, fp, hw, uah = 16 caractères de SHA-256 avec secret). Aucune adresse, aucun identifiant en clair.
+CREATE TABLE IF NOT EXISTS evidence (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER NOT NULL, dh TEXT NOT NULL, isnew INTEGER NOT NULL,
+  asn INTEGER, country TEXT, region TEXT, colo TEXT, http TEXT, tls TEXT, rtt INTEGER,
+  net TEXT, fp TEXT, hw TEXT, ua TEXT, uah TEXT, lang TEXT, hdr INTEGER, chal INTEGER, tsage INTEGER,
+  scopes INTEGER, pres TEXT, dept TEXT, sg TEXT, tech TEXT
+);
+CREATE INDEX IF NOT EXISTS evidence_t ON evidence(t);
+CREATE INDEX IF NOT EXISTS evidence_dh ON evidence(dh);
+-- décisions après examen des preuves : status = 'suspect' (à voir), 'retire' (retiré de l'instantané publié), 'garde' (confirmé honnête).
+CREATE TABLE IF NOT EXISTS ballot_risk (dh TEXT NOT NULL, scope TEXT NOT NULL DEFAULT 'pres', score INTEGER, reasons TEXT, status TEXT NOT NULL DEFAULT 'suspect', decided TEXT, PRIMARY KEY (dh, scope));
