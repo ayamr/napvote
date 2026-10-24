@@ -87,6 +87,7 @@ async function vote(req, env) {
   }
   const ip = req.headers.get("CF-Connecting-IP") || "";
   const cfx = req.cf || {};
+  if (env.VOTE_HOST && new URL(req.url).hostname !== env.VOTE_HOST) throw new HttpError(403, "hote");  // on force le passage par l'adresse protégée
   if ((env.BLOCK_HOSTING || "1") !== "0" && hostingNet(cfx.asOrganization)) {
     try {  // on compte les refus par opérateur, pour surveiller les faux positifs
       await env.DB.prepare("INSERT INTO blocked_daily(day,asn,org,n) VALUES(?,?,?,1) ON CONFLICT(day,asn) DO UPDATE SET n = n + 1").bind(new Date().toISOString().slice(0, 10), Number(cfx.asn) || 0, String(cfx.asOrganization).slice(0, 60)).run();
@@ -218,7 +219,7 @@ export default {
     try {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 9 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 10 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

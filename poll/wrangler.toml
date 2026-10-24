@@ -2,6 +2,8 @@ name = "napvote-poll"
 main = "src/worker.js"
 compatibility_date = "2025-01-01"
 workers_dev = true
+# adresse protégée par les règles de sécurité de Cloudflare (la zone napvote-ht.com doit être active)
+routes = [{ pattern = "poll.napvote-ht.com", custom_domain = true }]
 preview_urls = false
 
 [vars]
@@ -19,6 +21,8 @@ CLUSTER_TRACK = "10"
 ASN_TRACK = "30"
 # refuse les envois venant d'hébergeurs de serveurs, de VPN et de relais privés ("0" pour désactiver)
 BLOCK_HOSTING = "1"
+# si renseigné, les envois qui n'arrivent pas par ce nom d'hôte sont refusés (à activer après la transition : VOTE_HOST = "poll.napvote-ht.com")
+VOTE_HOST = ""
 
 # recalage exact des totaux, une fois par heure
 [triggers]

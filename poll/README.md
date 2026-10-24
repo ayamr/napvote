@@ -41,3 +41,6 @@ npm run db:local && npm run dev         # http://localhost:8787
 
 ## Réseaux refusés
 Les envois venant d'hébergeurs de serveurs, de VPN grand public et de relais privés (liste `HOSTING` dans `src/worker.js`, détectée d'après le nom de l'opérateur réseau) sont refusés avec le message `poll.net`. `BLOCK_HOSTING = "0"` désactive la règle. Les refus sont comptés par jour et par opérateur dans `blocked_daily`.
+
+## Adresse protégée
+Le service est rattaché à `poll.napvote-ht.com` (route `custom_domain` dans `wrangler.toml`), ce qui permet d'appliquer les règles de sécurité de Cloudflare (WAF, limite de débit, analyse de sécurité). Quand tous les clients utilisent cette adresse, renseigner `VOTE_HOST = "poll.napvote-ht.com"` pour refuser les envois arrivant par `workers.dev`.
