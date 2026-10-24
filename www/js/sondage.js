@@ -59,7 +59,7 @@
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
     return [r(Math.min(s.width || 0, s.height || 0)), r(Math.max(s.width || 0, s.height || 0)), Math.round((window.devicePixelRatio || 1) * 10) / 10, tz.slice(0, 30), (navigator.language || '').slice(0, 5)].join('|').replace(/[^\w\/|.+ -]/g, '').slice(0, 80);
   }
-  var view = '', token = '', onToken = function () {}, tsId = null;
+  var view = '', token = '', onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '';
 
   /* ---- scrutins proposés selon la commune enregistrée ---- */
   function cOpt(c) { return { c: norm(c.nom + ' ' + c.pre), n: c.pre + ' ' + c.nom, s: V.parties[c.pa] }; }
@@ -136,7 +136,7 @@
       boxes.forEach(function (b) { if (!b.getAttribute('data-fixed')) { b.disabled = !b.checked && n >= max; } });
       var c = fs.querySelector('.poll-cnt'); if (c) { c.textContent = n + ' / ' + max; }
     }
-    function upd() { btn.disabled = !f.querySelector('input:checked') || (!!CFG.turnstileKey && !token); }
+    function upd() { btn.disabled = !f.querySelector('input:checked') || (!!CFG.turnstileKey && !token) || !chalReady(); }
     f.addEventListener('change', function (e) {
       var fs = e.target.closest('fieldset[data-max]');
       if (fs) {
@@ -149,10 +149,11 @@
     });
     f.querySelectorAll('fieldset[data-max]').forEach(limit); upd();
     onToken = upd;
+    ensureChallenge(); clearInterval(tick); tick = setInterval(function () { if (!document.getElementById('poll-send')) { clearInterval(tick); return; } upd(); }, 700);
     if (CFG.turnstileKey) { token = ''; mountTurnstile(); }
   }
   function mountTurnstile() {
-    function draw() { if (window.turnstile && document.getElementById('poll-ts')) { tsId = window.turnstile.render('#poll-ts', { sitekey: CFG.turnstileKey, language: window.NVLang === 'ht' ? 'fr' : 'fr', callback: function (tk) { token = tk; onToken(); }, 'expired-callback': function () { token = ''; onToken(); }, 'error-callback': function () { token = ''; onToken(); } }); } }
+    function draw() { if (window.turnstile && document.getElementById('poll-ts')) { tsId = window.turnstile.render('#poll-ts', { sitekey: CFG.turnstileKey, action: 'vote', cData: mine.device, language: window.NVLang === 'ht' ? 'fr' : 'fr', callback: function (tk) { token = tk; onToken(); }, 'expired-callback': function () { token = ''; onToken(); }, 'error-callback': function () { token = ''; onToken(); } }); } }
     if (window.turnstile) { draw(); return; }
     var s = document.createElement('script'); s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true; s.onload = draw; document.head.appendChild(s);
   }
@@ -160,6 +161,43 @@
     return fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || 'erreur'); e.status = r.status; throw e; } return j; }); });
   }
+
+  /* ---- défi signé : jeton demandé au service à l'ouverture du formulaire ; l'envoi n'est possible qu'après quelques secondes ---- */
+  function ensureChallenge(force) {
+    if (!base || (chal && !force && Date.now() - chal.got < 20 * 60000)) { return; }
+    chal = null; chalFail = false;
+    post('/challenge', { device: mine.device }).then(function (c) { c.got = Date.now(); chal = c; }, function () { chalFail = true; });
+  }
+  function chalReady() {
+    if (chalFail) { return true; }  // service du défi injoignable : le service décidera
+    if (!chal) { return false; }
+    var age = Date.now() - chal.got;
+    if (age > 25 * 60000) { ensureChallenge(true); return false; }
+    return age >= (chal.min || 5000) + 1000;
+  }
+  /* ---- empreinte du navigateur (web seulement, jamais dans les applications) : un code calculé ici, mélangé à un secret par le service ---- */
+  function sha256hex(str) { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function (d) { return Array.prototype.map.call(new Uint8Array(d), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }); }
+  function fpCanvas() {
+    try { var c = document.createElement('canvas'); c.width = 240; c.height = 60; var x = c.getContext('2d'); x.textBaseline = 'top'; x.font = '16px Arial'; x.fillStyle = '#f60'; x.fillRect(10, 5, 100, 30); x.fillStyle = '#069'; x.fillText('NapVote ✓ éàç 123', 4, 12); x.fillStyle = 'rgba(102,204,0,0.6)'; x.font = '18px serif'; x.fillText('NapVote ✓ éàç 123', 6, 30); return c.toDataURL(); } catch (e) { return ''; }
+  }
+  function fpWebgl() {
+    try { var c = document.createElement('canvas'), g = c.getContext('webgl') || c.getContext('experimental-webgl'); if (!g) { return ''; } var d = g.getExtension('WEBGL_debug_renderer_info'); return [g.getParameter(g.VERSION), g.getParameter(g.MAX_TEXTURE_SIZE), g.getParameter(g.MAX_VERTEX_ATTRIBS), d ? g.getParameter(d.UNMASKED_VENDOR_WEBGL) : '', d ? g.getParameter(d.UNMASKED_RENDERER_WEBGL) : ''].join('~'); } catch (e) { return ''; }
+  }
+  function fpFonts() {
+    try {
+      var base = ['monospace', 'sans-serif', 'serif'], test = ['Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New', 'Roboto', 'Noto Sans', 'Helvetica', 'Tahoma', 'Trebuchet MS', 'Comic Sans MS', 'Impact', 'Segoe UI', 'Ubuntu', 'Droid Sans'];
+      var sp = document.createElement('span'); sp.style.cssText = 'position:absolute;left:-9999px;font-size:72px'; sp.textContent = 'mmmmmmmmmmlli'; document.body.appendChild(sp);
+      var w = {}; base.forEach(function (b) { sp.style.fontFamily = b; w[b] = sp.offsetWidth; });
+      var out = test.map(function (f) { return base.some(function (b) { sp.style.fontFamily = '"' + f + '",' + b; return sp.offsetWidth !== w[b]; }) ? 1 : 0; }).join('');
+      sp.remove(); return out;
+    } catch (e) { return ''; }
+  }
+  function computeFp() {
+    var n = navigator, sc = window.screen || {}, tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
+    return sha256hex([n.userAgent, n.platform, n.language, (n.languages || []).join(','), n.hardwareConcurrency, n.deviceMemory, n.maxTouchPoints, sc.width, sc.height, sc.colorDepth, window.devicePixelRatio, tz, new Date().getTimezoneOffset(), fpCanvas(), fpWebgl(), fpFonts()].join('||'));
+  }
+  if (base && !A.native && window.crypto && crypto.subtle) { try { computeFp().then(function (h) { fpHex = h; }, function () { /* ignore */ }); } catch (e) { /* ignore */ } }
 
   /* ---- résultats ---- */
   function nameOf(sc, c) {
@@ -181,19 +219,19 @@
   function renderResults(S, data, dept, failed) {
     var h = warn;
     if (failed) { root.innerHTML = h + '<p class="empty">' + esc(t('poll.err')) + '</p><p><button type="button" class="btn" data-pretry>' + esc(t('err.reload')) + '</button></p>'; return; }
-    h += '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2><p class="note-s">' + esc(t('poll.dup')) + '</p>' + (((data.scopes.pres || {}).adj > 0) ? '<p class="note-s"><b>' + esc(t('poll.adj', { n: fmt(data.scopes.pres.adj) })) + '</b></p>' : '');
+    h += '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2>' + (data.asof ? '<p class="note-s">' + esc(t('poll.asof', { h: new Date(data.asof).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })) + '</p>' : '') + (justVoted ? '<p class="note-s"><b>' + esc(t('poll.later')) + '</b></p>' : '') + '<p class="note-s">' + esc(t('poll.dup')) + '</p>' + (((data.scopes.pres || {}).adj > 0) ? '<p class="note-s"><b>' + esc(t('poll.adj', { n: fmt(data.scopes.pres.adj) })) + '</b></p>' : '');
     S.list.forEach(function (sc) {
       var d = data.scopes[sc.scope] || { total: 0, choices: {} }, rows = Object.keys(d.choices).map(function (k) { return { c: k, n: d.choices[k] }; }).sort(function (a, b) { return b.n - a.n; });
       var mx = rows.length ? rows[0].n : 1, mineC = [].concat((mine.answers[sc.scope] || {}).c || []);
       h += '<section class="poll-r"><div class="poll-h"><h3>' + esc(sc.title) + '</h3>' + (sc.scope === 'pres' ? '<label class="field2">' + esc(t('pk.dept')) + ' <select id="poll-fdept">' + deptOptions(dept, true) + '</select></label>' : '') + '</div>' +
-        '<p class="note-s" style="margin-top:4px">' + esc(t(d.total > 1 ? 'poll.total' : 'poll.total1', { n: fmt(d.total) })) + (sc.scope === 'pres' && dept ? ' · ' + esc(dept) : '') + '</p>';
+        '<p class="note-s" style="margin-top:4px">' + esc(d.total >= 200 ? t('poll.totalA', { n: fmt(Math.round(d.total / 100) * 100) }) : t(d.total > 1 ? 'poll.total' : 'poll.total1', { n: fmt(d.total) })) + (sc.scope === 'pres' && dept ? ' · ' + esc(dept) : '') + '</p>';
       if (sc.scope === 'pres' && dept && d.total > 0 && d.total < FEW) { h += '<p class="note-s">' + esc(t('poll.few')) + '</p>'; }
       if (sc.multi && d.total) { h += '<p class="note-s">' + esc(t('poll.multiNote', { n: sc.multi })) + '</p>'; }
       if (!d.total) { h += '<p class="empty">' + esc(t('poll.none')) + '</p>'; }
       else {
         h += '<ul class="rank">' + rows.map(function (r) {
-          var pc = Math.round(1000 * r.n / d.total) / 10;
-          return '<li><div class="rk hist-r"><span class="rk-l">' + esc(nameOf(sc, r.c)) + (mineC.indexOf(r.c) >= 0 ? ' <span class="poll-me">✓ ' + esc(t('poll.mine')) + '</span>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pc.toLocaleString('fr-FR') + ' % <small>' + fmt(r.n) + '</small></span></div></li>';
+          var pc = Math.round(100 * r.n / d.total);
+          return '<li><div class="rk hist-r"><span class="rk-l">' + esc(nameOf(sc, r.c)) + (mineC.indexOf(r.c) >= 0 ? ' <span class="poll-me">✓ ' + esc(t('poll.mine')) + '</span>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pc.toLocaleString('fr-FR') + ' %</span></div></li>';
         }).join('') + '</ul>';
       }
       h += '</section>';
@@ -224,14 +262,14 @@
     if (!votes.length) { msg.textContent = t('poll.nosel'); return; }
     var dept = document.getElementById('poll-dept').value;
     btn.disabled = true; msg.textContent = '';
-    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig() }).then(function () {
+    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined }).then(function () {
       votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices }; });
-      mine.dept = dept; A.store.set('poll', mine); token = '';
+      mine.dept = dept; A.store.set('poll', mine); token = ''; chal = null; justVoted = true;
       A.toast(t('poll.thanks')); showResults('', true);
     }, function (er) {
-      token = ''; if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } }
-      btn.disabled = !!CFG.turnstileKey;
-      msg.textContent = er.status === 429 ? t('poll.limit') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err'));
+      token = ''; ensureChallenge(true); if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } }
+      btn.disabled = true;
+      msg.textContent = (er.message === 'defi' || er.message === 'defi_tot') ? t('poll.wait') : (er.message === 'empreinte' ? t('poll.fp') : (er.status === 429 ? t('poll.limit') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err'))));
     });
   });
   root.addEventListener('click', function (e) {
@@ -244,7 +282,7 @@
     if (e.target.id === 'poll-fdept') { showResults(e.target.value); }
     if (e.target.id === 'poll-sec') { var l = A.loc(); if (l && +e.target.value >= 0) { A.setLoc(l.pi, +e.target.value); } }
   });
-  A.onPage(function (p) { if (p === 'poll') { view = ''; show(); } });
+  A.onPage(function (p) { if (p === 'poll') { view = ''; justVoted = false; show(); } });
   A.on('loc', function () { if (!document.getElementById('p-poll').hidden) { show(); } });
   var hp = document.querySelector('[data-poll-home] .btn');
   if (hp) { hp.addEventListener('click', function () { A.show('poll'); }); }

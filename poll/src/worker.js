@@ -58,12 +58,40 @@ async function options(env) {
   throw new HttpError(503, "liste des choix indisponible");
 }
 
-async function turnstileOk(env, token, ip) {
-  if (!env.TURNSTILE_SECRET) return true;
-  if (!token) return false;
+async function turnstile(env, token, ip) {  // renvoie null si l'anti-robot échoue, sinon le détail de la vérification (action, cdata)
+  if (!env.TURNSTILE_SECRET) return {};
+  if (!token) return null;
   const body = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token, remoteip: ip || "" });
   const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body });
-  return !!(await r.json()).success;
+  const j = await r.json();
+  return j.success ? j : null;
+}
+
+// Défi signé : le site demande un jeton (/challenge) avant d'envoyer. Il lie l'envoi à l'appareil et impose un délai minimum depuis l'ouverture de la page.
+const CH_MIN_MS = 5000, CH_MAX_MS = 30 * 60 * 1000;
+async function hmacHex(env, msg) {
+  const key = await crypto.subtle.importKey("raw", enc.encode("ch|" + env.SALT), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(msg));
+  return [...new Uint8Array(sig)].map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, 40);
+}
+async function challenge(req, env) {
+  if (!env.SALT) throw new HttpError(500, "service mal configuré");
+  let b; try { b = await req.json(); } catch (e) { throw new HttpError(400, "requête invalide"); }
+  const device = String(b.device || "");
+  if (!/^[A-Za-z0-9-]{16,64}$/.test(device)) throw new HttpError(400, "appareil invalide");
+  const t = Date.now(), n = [...crypto.getRandomValues(new Uint8Array(8))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return { t, n, s: await hmacHex(env, device + "|" + t + "|" + n), min: CH_MIN_MS };
+}
+async function checkChallenge(env, device, ch) {  // lève une erreur « defi » (à refaire) ou « defi_tot » (trop rapide)
+  if (!ch || typeof ch !== "object") throw new HttpError(400, "defi");
+  const t = Number(ch.t), n = String(ch.n || ""), s = String(ch.s || "");
+  if (!Number.isFinite(t) || !/^[0-9a-f]{16}$/.test(n) || !/^[0-9a-f]{40}$/.test(s)) throw new HttpError(400, "defi");
+  if (s !== (await hmacHex(env, device + "|" + t + "|" + n))) throw new HttpError(400, "defi");
+  const age = Date.now() - t;
+  if (age > CH_MAX_MS || age < 0) throw new HttpError(400, "defi");
+  if (age < CH_MIN_MS) throw new HttpError(400, "defi_tot");
+  try { await env.DB.prepare("INSERT INTO challenge_used(n,t) VALUES(?,?)").bind(n, t).run(); }  // un jeton ne sert qu'une fois
+  catch (e) { throw new HttpError(400, "defi"); }
 }
 
 async function vote(req, env) {
@@ -94,7 +122,12 @@ async function vote(req, env) {
     } catch (e) { /* le refus prime sur la statistique */ }
     throw new HttpError(403, "reseau");
   }
-  if (!(await turnstileOk(env, b.token, ip))) throw new HttpError(403, "vérification anti-robot refusée");
+  const ts = await turnstile(env, b.token, ip);
+  if (!ts) throw new HttpError(403, "vérification anti-robot refusée");
+  if ((env.REQUIRE_CHALLENGE || "0") === "1") {
+    if (env.TURNSTILE_SECRET && (ts.cdata !== device || (ts.action && ts.action !== "vote"))) throw new HttpError(403, "vérification anti-robot refusée");  // jeton lié à cet appareil
+    await checkChallenge(env, device, b.ch);
+  }
 
   const now = Math.floor(Date.now() / 1000), day = new Date().toISOString().slice(0, 10);
   const rk = await sha256(ip + "|" + day + "|" + env.SALT);
@@ -107,12 +140,19 @@ async function vote(req, env) {
   const sig = /^[\w\/|.+ -]{0,80}$/.test(String(b.sig || "")) ? String(b.sig || "") : "";
   const dayDate = new Date(), cl = await sha256([ip, sig, coarseUA(req.headers.get("User-Agent")), env.SALT, isoWeek(dayDate)].join("|"));
   const clMax = parseInt(env.CLUSTER_MAX || "0", 10);
+  // Empreinte du navigateur calculée par la page (web seulement) : on ne garde qu'un code mélangé à un secret et à la semaine, 8 jours, sans lien avec les bulletins.
+  const fpRaw = /^[0-9a-f]{64}$/.test(String(b.fp || "")) ? String(b.fp) : "";
+  const fpk = fpRaw ? await sha256([fpRaw, env.SALT, isoWeek(dayDate)].join("|")) : "", fpMax = parseInt(env.FP_MAX || "0", 10);
   // anciens choix de cet appareil (quelques lignes) : on les retire des totaux avant d'ajouter les nouveaux
   const prev = (await env.DB.prepare("SELECT scope, choice, dept FROM ballots WHERE device=? AND scope IN (" + scopesArr.map(() => "?").join(",") + ")").bind(dh, ...scopesArr).all()).results || [];
   let isNew = false;
   if (!prev.length) isNew = !(await env.DB.prepare("SELECT 1 AS x FROM ballots WHERE device=? LIMIT 1").bind(dh).first());
   const grp = await env.DB.prepare("SELECT new_dev, sends FROM cluster WHERE k=? AND day=?").bind(cl, day).first();
   if (isNew && clMax > 0 && grp && grp.new_dev >= clMax) throw new HttpError(429, "trop de nouveaux appareils depuis ce réseau aujourd'hui");
+  if (isNew && fpk && fpMax > 0) {  // trop de nouveaux appareils créés sur le même navigateur cette semaine
+    const f = await env.DB.prepare("SELECT new_dev FROM fp_week WHERE k=? AND week=?").bind(fpk, isoWeek(dayDate)).first();
+    if (f && f.new_dev >= fpMax) throw new HttpError(429, "empreinte");
+  }
   const stmts = [];
   const decC = env.DB.prepare("UPDATE tally SET n = n - 1 WHERE scope=? AND dept=? AND choice=?");
   const decT = env.DB.prepare("UPDATE tally_tot SET n = n - 1 WHERE scope=? AND dept=?");
@@ -136,6 +176,7 @@ async function vote(req, env) {
     const incG = env.DB.prepare("INSERT INTO group_choice(k,day,scope,dept,choice,n) VALUES(?,?,?,?,?,1) ON CONFLICT(k,day,scope,dept,choice) DO UPDATE SET n = n + 1");
     for (const [scope, choice] of clean) if (scope === "pres" || scope.startsWith("sen|") || scope.startsWith("dep|")) stmts.push(incG.bind(cl, day, scope, dept, choice));
   }
+  if (fpk) stmts.push(env.DB.prepare("INSERT INTO fp_week(k,week,new_dev,sends) VALUES(?,?,?,1) ON CONFLICT(k,week) DO UPDATE SET new_dev = new_dev + excluded.new_dev, sends = sends + 1").bind(fpk, isoWeek(dayDate), isNew ? 1 : 0));
   const asn = Number(cf.asn) || 0, org = String(cf.asOrganization || "").slice(0, 60);
   // Suivi horaire par opérateur réseau et département déclaré ; les choix de président ne sont comptés que pour les opérateurs déjà actifs (ASN_TRACK envois dans la journée).
   const hour = new Date().toISOString().slice(0, 13), aTrack = parseInt(env.ASN_TRACK || "30", 10);
@@ -151,6 +192,7 @@ async function vote(req, env) {
     stmts.push(env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
     const old14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 13);
     stmts.push(env.DB.prepare("DELETE FROM asn_hour WHERE hour < ?").bind(old14), env.DB.prepare("DELETE FROM asn_choice WHERE hour < ?").bind(old14));
+    stmts.push(env.DB.prepare("DELETE FROM fp_week WHERE week < ?").bind(isoWeek(dayDate) - 1), env.DB.prepare("DELETE FROM challenge_used WHERE t < ?").bind(Date.now() - 86400000));
   }
   await env.DB.batch(stmts);
   for (const k of [...memo.keys()]) if (seen.has(k.split("\u0001")[0])) memo.delete(k);
@@ -158,15 +200,25 @@ async function vote(req, env) {
   return { ok: true, saved: seen.size };
 }
 
+// Instantané publié : les résultats affichés ne bougent qu'une fois par heure (tâche planifiée), pour ne pas offrir de retour immédiat à qui tenterait de les influencer.
+let pubMemo = { at: 0, v: null };
+async function publishedAt(env) {
+  if (Date.now() - pubMemo.at < 30000) return pubMemo.v;
+  let v = null;
+  try { const r = await env.DB.prepare("SELECT v FROM pub_meta WHERE k='snap_at'").first(); v = r ? r.v : null; } catch (e) { /* table absente : résultats en direct */ }
+  pubMemo = { at: Date.now(), v };
+  return v;
+}
 // Retrait des envois anormaux. Pour chaque cellule « opérateur réseau + heures + département » inscrite dans excluded_cells, on retire des résultats de la
 // présidentielle seulement l'EXCÉDENT par rapport à ce que le département aurait donné (les électeurs ordinaires de la même cellule restent comptés),
 // en ne gardant que les nouveaux appareils (les renvois ne sont pas des choix en plus). Aucun bulletin n'est modifié ni supprimé : le retrait se fait à l'affichage.
 const EXCL_SQL = `WITH cell AS (
   SELECT a.hour, a.asn, a.dept, a.choice, a.n FROM asn_choice a
-  WHERE EXISTS (SELECT 1 FROM excluded_cells e WHERE e.asn = a.asn AND a.hour >= e.hour_from AND a.hour <= e.hour_to AND (e.dept = '*' OR e.dept = a.dept))
+  WHERE a.hour <= COALESCE((SELECT v FROM pub_meta WHERE k = 'snap_hour'), '9999')
+  AND EXISTS (SELECT 1 FROM excluded_cells e WHERE e.asn = a.asn AND a.hour >= e.hour_from AND a.hour <= e.hour_to AND (e.dept = '*' OR e.dept = a.dept))
 ), c AS (SELECT hour, asn, dept, SUM(n) AS t FROM cell GROUP BY hour, asn, dept),
 cs AS (SELECT dept, choice, SUM(n) AS n FROM cell GROUP BY dept, choice),
-base AS (SELECT t.dept, t.choice, MAX(0, t.n - COALESCE(cs.n, 0)) AS n FROM tally t LEFT JOIN cs ON cs.dept = t.dept AND cs.choice = t.choice WHERE t.scope = 'pres'),
+base AS (SELECT t.dept, t.choice, MAX(0, t.n - COALESCE(cs.n, 0)) AS n FROM TALLY t LEFT JOIN cs ON cs.dept = t.dept AND cs.choice = t.choice WHERE t.scope = 'pres'),
 moy AS (SELECT dept, choice, n * 1.0 / NULLIF(SUM(n) OVER (PARTITION BY dept), 0) AS p FROM base)
 SELECT cell.dept, cell.choice, SUM(MAX(0.0, cell.n - c.t * COALESCE(m.p, 0)) * COALESCE(h.new_dev * 1.0 / NULLIF(h.sends, 0), 1.0)) AS x
 FROM cell JOIN c ON c.hour = cell.hour AND c.asn = cell.asn AND c.dept = cell.dept
@@ -174,11 +226,11 @@ LEFT JOIN moy m ON m.dept = cell.dept AND m.choice = cell.choice
 LEFT JOIN asn_hour h ON h.hour = cell.hour AND h.asn = cell.asn AND h.dept = cell.dept
 GROUP BY cell.dept, cell.choice`;
 let exclMemo = { at: 0, v: null };
-async function loadExcl(env, maxAge) {
+async function loadExcl(env, maxAge, tallyTable) {
   if (exclMemo.v && Date.now() - exclMemo.at < maxAge) return exclMemo.v;
   const byChoice = new Map(), byDept = new Map();
   try {
-    for (const r of (await env.DB.prepare(EXCL_SQL).all()).results || []) {
+    for (const r of (await env.DB.prepare(EXCL_SQL.replace("FROM TALLY t", "FROM " + tallyTable + " t")).all()).results || []) {
       const x = Math.round(r.x || 0); if (x <= 0) continue;
       byChoice.set(r.dept + "\u0001" + r.choice, x); byDept.set(r.dept, (byDept.get(r.dept) || 0) + x);
     }
@@ -202,18 +254,19 @@ async function results(req, env) {
     const f = dept && s === "pres", k = s + "\u0001" + (f ? dept : ""), hit = memo.get(k);
     if (hit && now - hit.at < maxAge) out[s] = hit.v; else todo.push([s, f, k]);
   }
-  // Totaux déjà calculés (tables tally / tally_tot) : quelques centaines de lignes, jamais la table des bulletins.
+  // Totaux déjà calculés : quelques centaines de lignes, jamais la table des bulletins. On lit l'instantané publié chaque heure (tally_pub) ; à défaut, les totaux en direct.
   let depts = deptsMemo.v;
   const needDepts = !deptsMemo.v || now - deptsMemo.at >= maxAge;
+  const snap = await publishedAt(env), T = snap ? "tally_pub" : "tally", TT = snap ? "tally_tot_pub" : "tally_tot";
   if (todo.length || needDepts) {
     const ph = todo.map(() => "?").join(","), ids = todo.map((x) => x[0]), stmts = [];
     if (todo.length) {
-      stmts.push(env.DB.prepare("SELECT scope, dept, choice, n FROM tally WHERE scope IN (" + ph + ")").bind(...ids));
-      stmts.push(env.DB.prepare("SELECT scope, dept, n FROM tally_tot WHERE scope IN (" + ph + ")").bind(...ids));
+      stmts.push(env.DB.prepare("SELECT scope, dept, choice, n FROM " + T + " WHERE scope IN (" + ph + ")").bind(...ids));
+      stmts.push(env.DB.prepare("SELECT scope, dept, n FROM " + TT + " WHERE scope IN (" + ph + ")").bind(...ids));
     }
-    if (needDepts) stmts.push(env.DB.prepare("SELECT dept, n FROM tally_tot WHERE scope='pres' AND dept<>''"));
+    if (needDepts) stmts.push(env.DB.prepare("SELECT dept, n FROM " + TT + " WHERE scope='pres' AND dept<>''"));
     const res = await env.DB.batch(stmts);
-    const ex = (needDepts || ids.includes("pres")) ? await loadExcl(env, maxAge) : null;
+    const ex = (needDepts || ids.includes("pres")) ? await loadExcl(env, maxAge, T) : null;
     if (todo.length) {
       if (memo.size > 3000) memo.clear();
       const acc = {};
@@ -237,7 +290,7 @@ async function results(req, env) {
       deptsMemo = { at: now, v: depts };
     }
   }
-  return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept };
+  return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept, asof: snap || null };
 }
 
 // Recalage horaire : recompte exact à partir des bulletins (corrige les écarts dus à des envois simultanés). Même requêtes que recount.sql.
@@ -250,16 +303,108 @@ async function recount(env) {
   ]);
 }
 
+// Publication horaire : copie des totaux en direct vers l'instantané affiché (n'écrit que les lignes qui changent).
+async function publish(env) {
+  const now = new Date();
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO tally_pub(scope,dept,choice,n) SELECT scope,dept,choice,n FROM tally WHERE 1 ON CONFLICT(scope,dept,choice) DO UPDATE SET n = excluded.n WHERE n <> excluded.n"),
+    env.DB.prepare("DELETE FROM tally_pub WHERE NOT EXISTS (SELECT 1 FROM tally t WHERE t.scope = tally_pub.scope AND t.dept = tally_pub.dept AND t.choice = tally_pub.choice)"),
+    env.DB.prepare("INSERT INTO tally_tot_pub(scope,dept,n) SELECT scope,dept,n FROM tally_tot WHERE 1 ON CONFLICT(scope,dept) DO UPDATE SET n = excluded.n WHERE n <> excluded.n"),
+    env.DB.prepare("DELETE FROM tally_tot_pub WHERE NOT EXISTS (SELECT 1 FROM tally_tot t WHERE t.scope = tally_tot_pub.scope AND t.dept = tally_tot_pub.dept)"),
+    env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('snap_at',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(now.toISOString()),
+    env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('snap_hour',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(now.toISOString().slice(0, 13)),
+  ]);
+  pubMemo = { at: 0, v: null };
+}
+
+// Détection automatique : propose (sans rien retirer) les cellules « opérateur + heure » dont les choix de président s'écartent fortement
+// des autres répondants des mêmes départements. Une personne valide ensuite chaque proposition (voir README).
+async function propose(env) {
+  const minExc = parseInt(env.PROPOSE_MIN || "40", 10), minChoices = 60;
+  const since = new Date(Date.now() - 48 * 3600000).toISOString().slice(0, 13);
+  const rows = (await env.DB.prepare("SELECT hour, asn, dept, choice, n FROM asn_choice WHERE hour >= ?").bind(since).all()).results || [];
+  if (!rows.length) return 0;
+  const pd = {}; for (const r of (await env.DB.prepare("SELECT dept, choice, n FROM tally WHERE scope='pres'").all()).results || []) { (pd[r.dept] = pd[r.dept] || { tot: 0, c: {} }); pd[r.dept].tot += r.n; pd[r.dept].c[r.choice] = r.n; }
+  const hh = {}; for (const r of (await env.DB.prepare("SELECT hour, asn, SUM(sends) AS s, SUM(new_dev) AS nd FROM asn_hour WHERE hour >= ? GROUP BY hour, asn").bind(since).all()).results || []) hh[r.asn + "|" + r.hour] = r;
+  const orgs = {}; for (const r of (await env.DB.prepare("SELECT asn, MAX(org) AS org FROM asn_daily GROUP BY asn").all()).results || []) orgs[r.asn] = r.org;
+  const cells = new Map(), own = {};  // own[asn][dept][choix] : tout ce que cet opérateur a envoyé sur la période, retiré de la référence pour le comparer au reste des répondants
+  for (const r of rows) {
+    const k = r.asn + "|" + r.hour; if (!cells.has(k)) cells.set(k, { asn: r.asn, hour: r.hour, c: {}, d: {} });
+    const o = cells.get(k); o.c[r.choice] = (o.c[r.choice] || 0) + r.n; o.d[r.dept] = (o.d[r.dept] || 0) + r.n;
+    const w = ((own[r.asn] = own[r.asn] || {})[r.dept] = own[r.asn][r.dept] || {}); w[r.choice] = (w[r.choice] || 0) + r.n;
+  }
+  // La référence (autres répondants du même département) exclut l'opérateur évalué ET les opérateurs déjà signalés : on itère jusqu'à stabilité,
+  // pour qu'une vague n'en fasse pas paraître un autre opérateur anormal.
+  const evaluate = (skip) => {
+    const out = {};
+    for (const o of cells.values()) {
+      const t = Object.values(o.c).reduce((a, b) => a + b, 0);
+      if (t < minChoices) continue;
+      const exp = {};
+      for (const [d, nd] of Object.entries(o.d)) {
+        const b = pd[d]; if (!b) continue;
+        const rest = {}; let rt = 0;
+        for (const [ch, n] of Object.entries(b.c)) {
+          let v = n - (((own[o.asn] || {})[d] || {})[ch] || 0);
+          for (const f of skip) if (String(f) !== String(o.asn)) v -= ((own[f] || {})[d] || {})[ch] || 0;
+          v = Math.max(0, v); rest[ch] = v; rt += v;
+        }
+        if (rt < 200) continue;  // trop peu d'autres répondants dans ce département pour comparer
+        for (const [ch, v] of Object.entries(rest)) exp[ch] = (exp[ch] || 0) + nd * v / rt;
+      }
+      if (!Object.keys(exp).length) continue;
+      let tvd = 0; for (const ch of new Set([...Object.keys(o.c), ...Object.keys(exp)])) tvd += Math.abs((o.c[ch] || 0) / t - (exp[ch] || 0) / t); tvd /= 2;
+      let noise = 0; for (const e of Object.values(exp)) { const p = e / t; if (p > 0 && p < 1) noise += Math.sqrt(2 * p * (1 - p) / (Math.PI * t)); } noise /= 2;
+      const h = hh[o.asn + "|" + o.hour] || { s: 0, nd: 0 }, newPct = h.s ? h.nd / h.s : 1;
+      const top2 = Object.values(o.c).sort((a, b) => b - a).slice(0, 2).reduce((a, b) => a + b, 0) / t;
+      const exc = Math.round(100 * (tvd - noise));
+      if (exc >= minExc && newPct >= 0.7) (out[o.asn] = out[o.asn] || []).push({ hour: o.hour, t, exc, top2: Math.round(100 * top2), newPct: Math.round(100 * newPct) });
+    }
+    return out;
+  };
+  // Élimination progressive : on signale l'opérateur le plus anormal, on le retire de la référence, puis on réévalue les autres.
+  const flagged = {}, chosen = [];
+  for (let i = 0; i < 8; i++) {
+    const cand = Object.entries(evaluate(chosen)).filter(([a]) => !chosen.includes(a));
+    if (!cand.length) break;
+    const score = (l) => l.reduce((a, x) => a + x.exc * x.t, 0) / l.reduce((a, x) => a + x.t, 0);
+    cand.sort((x, y) => score(y[1]) - score(x[1]));
+    chosen.push(cand[0][0]); flagged[cand[0][0]] = cand[0][1];
+  }
+  let added = 0;
+  for (const [asn, list] of Object.entries(flagged)) {
+    list.sort((a, b) => (a.hour < b.hour ? -1 : 1));
+    const groups = []; let cur = null;
+    for (const x of list) {  // heures consécutives regroupées en une seule proposition
+      const prev = cur && new Date(cur.to + ":00:00Z").getTime() + 3600000;
+      if (cur && new Date(x.hour + ":00:00Z").getTime() <= prev) { cur.to = x.hour; cur.t += x.t; cur.excSum += x.exc * x.t; cur.top += x.top2 * x.t; cur.nw += x.newPct * x.t; } else { cur = { from: x.hour, to: x.hour, t: x.t, excSum: x.exc * x.t, top: x.top2 * x.t, nw: x.newPct * x.t }; groups.push(cur); }
+    }
+    for (const g of groups) {
+      const dup = await env.DB.prepare("SELECT 1 AS x FROM proposals WHERE asn=? AND hour_from<=? AND hour_to>=? UNION ALL SELECT 1 FROM excluded_cells WHERE asn=? AND hour_from<=? AND hour_to>=?").bind(Number(asn), g.to, g.from, Number(asn), g.to, g.from).first();
+      if (dup) continue;
+      await env.DB.prepare("INSERT INTO proposals(created,asn,org,hour_from,hour_to,choices,excess,top2,new_pct) VALUES(?,?,?,?,?,?,?,?,?)").bind(new Date().toISOString(), Number(asn), (orgs[asn] || "").slice(0, 60), g.from, g.to, g.t, Math.round(g.excSum / g.t), Math.round(g.top / g.t), Math.round(g.nw / g.t)).run();
+      added++;
+    }
+  }
+  return added;
+}
+async function cron(env) {
+  await recount(env);
+  try { await publish(env); } catch (e) { /* tables de publication absentes : résultats en direct */ }
+  try { await propose(env); } catch (e) { /* tables de propositions absentes */ }
+}
+
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(recount(env)); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(cron(env)); },
   async fetch(req, env) {
     const cors = corsHeaders(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const url = new URL(req.url);
     try {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
+      if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 11 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 12 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

@@ -47,3 +47,12 @@ Le service est rattaché à `poll.napvote-ht.com` (route `custom_domain` dans `w
 
 ## Retrait des envois anormaux
 La table `excluded_cells` (opérateur réseau `asn`, heures UTC `hour_from` à `hour_to` au format `2026-10-24T03`, `dept` ou `*`) désigne des cellules dont l'excédent de choix de président par rapport au département est retiré **à l'affichage** (aucun bulletin n'est modifié). Pour annuler : `DELETE FROM excluded_cells WHERE ...`. Le service renvoie le nombre d'envois retirés dans `scopes.pres.adj`, que le site signale sous les résultats.
+
+## Sécurité du sondage (v12)
+- **Résultats publiés chaque heure** : la tâche planifiée (17 min après l'heure) copie les totaux dans `tally_pub` / `tally_tot_pub` ; `/results` lit cet instantané et renvoie `asof`. Le site affiche des pourcentages entiers et un total arrondi.
+- **Défi signé** : `POST /challenge {device}` renvoie `{t, n, s, min}` ; `/vote` doit présenter ce jeton (`ch`) entre 5 s et 30 min après sa création, une seule fois (`challenge_used`). Avec `REQUIRE_CHALLENGE = "1"`, le jeton Turnstile doit aussi porter `cdata = device` et `action = vote`. Activer `"1"` seulement une fois le site à jour publié.
+- **Empreinte du navigateur** (web uniquement, jamais dans les applications) : le site envoie `fp` (SHA-256), le service ne garde que `sha256(fp | SALT | semaine)` dans `fp_week` (8 jours). `FP_MAX = "0"` : détection seulement ; une valeur > 0 refuse un nouvel appareil au-delà de ce nombre sur la même empreinte dans la semaine.
+- **Propositions automatiques** : chaque heure, `propose()` écrit dans `proposals` les cellules « opérateur + heures » dont les choix de président s'écartent de la référence (reste des répondants, sans les opérateurs déjà signalés) d'au moins `PROPOSE_MIN` points.
+  - Voir : `SELECT id, org, hour_from, hour_to, choices, excess, top2, new_pct FROM proposals WHERE status = 'proposé';`
+  - Valider : `INSERT INTO excluded_cells(asn,hour_from,hour_to,dept,reason,created) SELECT asn,hour_from,hour_to,'*','Proposition #'||id||' validée',date('now') FROM proposals WHERE id = ?; UPDATE proposals SET status = 'validé' WHERE id = ?;`
+  - Refuser : `UPDATE proposals SET status = 'refusé' WHERE id = ?;`

@@ -42,3 +42,13 @@ CREATE TABLE IF NOT EXISTS blocked_daily (day TEXT NOT NULL, asn INTEGER NOT NUL
 -- Envois anormaux retirés de l'affichage de la présidentielle (v11) : une ligne par opérateur réseau et plage d'heures UTC (dept = '*' pour tous les départements).
 -- Seul l'excédent par rapport au département est retiré ; aucun bulletin n'est modifié.
 CREATE TABLE IF NOT EXISTS excluded_cells (asn INTEGER NOT NULL, hour_from TEXT NOT NULL, hour_to TEXT NOT NULL, dept TEXT NOT NULL DEFAULT '*', reason TEXT, created TEXT);
+
+-- v12 : résultats publiés une fois par heure, défi signé, empreinte du navigateur, propositions de retrait.
+CREATE TABLE IF NOT EXISTS tally_pub (scope TEXT NOT NULL, dept TEXT NOT NULL, choice TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (scope, dept, choice));
+CREATE TABLE IF NOT EXISTS tally_tot_pub (scope TEXT NOT NULL, dept TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (scope, dept));
+CREATE TABLE IF NOT EXISTS pub_meta (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS challenge_used (n TEXT PRIMARY KEY, t INTEGER NOT NULL);
+-- empreinte du navigateur : code mélangé à un secret et à la semaine (8 jours), compte les nouveaux appareils créés ; aucun lien avec les bulletins.
+CREATE TABLE IF NOT EXISTS fp_week (k TEXT NOT NULL, week INTEGER NOT NULL, new_dev INTEGER NOT NULL, sends INTEGER NOT NULL, PRIMARY KEY (k, week));
+-- propositions de retrait, produites chaque heure et à valider à la main (statut : proposé, validé, refusé).
+CREATE TABLE IF NOT EXISTS proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT, asn INTEGER, org TEXT, hour_from TEXT, hour_to TEXT, choices INTEGER, excess INTEGER, top2 INTEGER, new_pct INTEGER, status TEXT NOT NULL DEFAULT 'proposé', note TEXT);
