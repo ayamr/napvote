@@ -94,7 +94,22 @@ async function checkChallenge(env, device, ch) {  // lève une erreur « defi »
   catch (e) { throw new HttpError(400, "defi"); }
 }
 
+// Envois refusés : on enregistre le candidat visé (président seulement) avec la raison, pour mesurer où va la manipulation même quand elle est bloquée.
+async function recordAttempt(env, req, ctx, reason) {
+  const cf = req.cf || {}, ip = req.headers.get("CF-Connecting-IP") || "";
+  const net = (await sha256(ip + "|" + isoWeek(new Date()) + "|" + env.SALT)).slice(0, 16);
+  const pres = (ctx.clean.find((x) => x[0] === "pres") || [])[1] || "";
+  await env.DB.prepare("INSERT INTO attempts(t,reason,asn,country,net,pres,dept,scopes) VALUES(?,?,?,?,?,?,?,?)").bind(Math.floor(Date.now() / 1000), String(reason).slice(0, 40), Number(cf.asn) || 0, String(cf.country || "").slice(0, 4), net, pres, ctx.dept || "", new Set(ctx.clean.map((x) => x[0])).size).run();
+}
 async function vote(req, env) {
+  const ctx = {};
+  try { return await voteInner(req, env, ctx); }
+  catch (e) {
+    if (e instanceof HttpError && ctx.clean && [400, 403, 409, 429].includes(e.status)) { try { await recordAttempt(env, req, ctx, e.message); } catch (x) { /* la statistique ne doit jamais gêner le refus */ } }
+    throw e;
+  }
+}
+async function voteInner(req, env, ctx) {
   if (!env.SALT) throw new HttpError(500, "service mal configuré");
   let b;
   try { b = await req.json(); } catch (e) { throw new HttpError(400, "requête invalide"); }
@@ -113,6 +128,7 @@ async function vote(req, env) {
     if (list.some((c) => FIXED.includes(c)) && list.length > 1) throw new HttpError(400, "choix incompatibles");
     seen.add(scope); for (const c of list) clean.push([scope, c]);
   }
+  ctx.clean = clean; ctx.dept = dept;
   const ip = req.headers.get("CF-Connecting-IP") || "";
   const cfx = req.cf || {};
   if (env.VOTE_HOST && new URL(req.url).hostname !== env.VOTE_HOST) throw new HttpError(403, "hote");  // on force le passage par l'adresse protégée
@@ -218,7 +234,7 @@ async function vote(req, env) {
   stmts.push(env.DB.prepare("INSERT INTO asn_daily(day,asn,org,sends,new_dev) VALUES(?,?,?,1,?) ON CONFLICT(day,asn) DO UPDATE SET sends = sends + 1, new_dev = new_dev + excluded.new_dev").bind(day, asn, org, isNew ? 1 : 0));
   if (Math.random() < 0.02) {  // purge : les signatures ne sont gardées que 7 jours
     const old7 = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10), old60 = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
-    stmts.push(env.DB.prepare("DELETE FROM evidence WHERE t < ?").bind(Math.floor(Date.now() / 1000) - 14 * 86400), env.DB.prepare("DELETE FROM hw_day WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM hw_fp WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
+    stmts.push(env.DB.prepare("DELETE FROM attempts WHERE t < ?").bind(Math.floor(Date.now() / 1000) - 14 * 86400), env.DB.prepare("DELETE FROM evidence WHERE t < ?").bind(Math.floor(Date.now() / 1000) - 14 * 86400), env.DB.prepare("DELETE FROM hw_day WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM hw_fp WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
     const old14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 13);
     stmts.push(env.DB.prepare("DELETE FROM asn_hour WHERE hour < ?").bind(old14), env.DB.prepare("DELETE FROM asn_choice WHERE hour < ?").bind(old14));
     stmts.push(env.DB.prepare("DELETE FROM fp_week WHERE week < ?").bind(isoWeek(dayDate) - 1), env.DB.prepare("DELETE FROM challenge_used WHERE t < ?").bind(Date.now() - 86400000));
@@ -265,10 +281,12 @@ const EXCL_SQL = `WITH cell AS (
 ), c AS (SELECT hour, asn, dept, SUM(n) AS t FROM cell GROUP BY hour, asn, dept),
 cs AS (SELECT dept, choice, SUM(n) AS n FROM cell GROUP BY dept, choice),
 base AS (SELECT t.dept, t.choice, MAX(0, t.n - COALESCE(cs.n, 0)) AS n FROM TALLY t LEFT JOIN cs ON cs.dept = t.dept AND cs.choice = t.choice WHERE t.scope = 'pres'),
-moy AS (SELECT dept, choice, n * 1.0 / NULLIF(SUM(n) OVER (PARTITION BY dept), 0) AS p FROM base)
-SELECT cell.dept, cell.choice, SUM(MAX(0.0, cell.n - c.t * COALESCE(m.p, 0)) * COALESCE(h.new_dev * 1.0 / NULLIF(h.sends, 0), 1.0)) AS x
+nat AS (SELECT choice, n * 1.0 / NULLIF(SUM(n) OVER (), 0) AS p FROM (SELECT choice, SUM(n) AS n FROM base GROUP BY choice)),
+moy AS (SELECT dept, choice, CASE WHEN SUM(n) OVER (PARTITION BY dept) >= 200 THEN n * 1.0 / SUM(n) OVER (PARTITION BY dept) END AS p FROM base)
+SELECT cell.dept, cell.choice, SUM(MAX(0.0, cell.n - c.t * COALESCE(m.p, nt.p, 0)) * COALESCE(h.new_dev * 1.0 / NULLIF(h.sends, 0), 1.0)) AS x
 FROM cell JOIN c ON c.hour = cell.hour AND c.asn = cell.asn AND c.dept = cell.dept
 LEFT JOIN moy m ON m.dept = cell.dept AND m.choice = cell.choice
+LEFT JOIN nat nt ON nt.choice = cell.choice
 LEFT JOIN asn_hour h ON h.hour = cell.hour AND h.asn = cell.asn AND h.dept = cell.dept
 GROUP BY cell.dept, cell.choice`;
 let exclMemo = { at: 0, v: null };
@@ -395,7 +413,14 @@ async function propose(env) {
     for (const o of cells.values()) {
       const t = Object.values(o.c).reduce((a, b) => a + b, 0);
       if (t < minChoices) continue;
-      const exp = {};
+      const exp = {}; let covered = 0;
+      // référence nationale sans cet opérateur ni les opérateurs déjà signalés : sert de repli quand un opérateur domine un département (il reste alors trop peu d'autres répondants)
+      const natRest = {}; let natT = 0;
+      for (const [d, b] of Object.entries(pd)) for (const [ch, n] of Object.entries(b.c)) {
+        let v = n - (((own[o.asn] || {})[d] || {})[ch] || 0);
+        for (const f of skip) if (String(f) !== String(o.asn)) v -= ((own[f] || {})[d] || {})[ch] || 0;
+        v = Math.max(0, v); natRest[ch] = (natRest[ch] || 0) + v; natT += v;
+      }
       for (const [d, nd] of Object.entries(o.d)) {
         const b = pd[d]; if (!b) continue;
         const rest = {}; let rt = 0;
@@ -404,10 +429,11 @@ async function propose(env) {
           for (const f of skip) if (String(f) !== String(o.asn)) v -= ((own[f] || {})[d] || {})[ch] || 0;
           v = Math.max(0, v); rest[ch] = v; rt += v;
         }
-        if (rt < 200) continue;  // trop peu d'autres répondants dans ce département pour comparer
-        for (const [ch, v] of Object.entries(rest)) exp[ch] = (exp[ch] || 0) + nd * v / rt;
+        if (rt >= 200) { for (const [ch, v] of Object.entries(rest)) exp[ch] = (exp[ch] || 0) + nd * v / rt; covered += nd; }
+        else if (natT >= 1000) { for (const [ch, v] of Object.entries(natRest)) exp[ch] = (exp[ch] || 0) + nd * v / natT; covered += nd; }  // repli national
       }
-      if (!Object.keys(exp).length) continue;
+      if (!Object.keys(exp).length || covered < 0.6 * t) continue;  // référence trop partielle : on n'évalue pas
+      for (const ch of Object.keys(exp)) exp[ch] = exp[ch] * t / covered;  // la référence est ramenée à l'ensemble des votes de la cellule
       let tvd = 0; for (const ch of new Set([...Object.keys(o.c), ...Object.keys(exp)])) tvd += Math.abs((o.c[ch] || 0) / t - (exp[ch] || 0) / t); tvd /= 2;
       let noise = 0; for (const e of Object.values(exp)) { const p = e / t; if (p > 0 && p < 1) noise += Math.sqrt(2 * p * (1 - p) / (Math.PI * t)); } noise /= 2;
       const h = hh[o.asn + "|" + o.hour] || { s: 0, nd: 0 }, newPct = h.s ? h.nd / h.s : 1;
@@ -443,8 +469,39 @@ async function propose(env) {
   }
   return added;
 }
+// Retrait automatique des réseaux « en bloc » (présidentielle) : un réseau d'au moins BLOCK_MIN appareils votant dans les BLOCK_HOURS dernières heures, dont au moins
+// BLOCK_SHARE pour le même candidat, voit ces votes-là retirés de l'instantané publié (table ballot_risk, statut 'retire'). Mêmes seuils pour tous les candidats.
+// Les appareils déjà couverts par un retrait par opérateur (excluded_cells) et ceux confirmés honnêtes (statut 'garde') sont ignorés. Désactivable : AUTO_BLOCKS = "0".
+async function autoBlocks(env) {
+  if ((env.AUTO_BLOCKS || "1") !== "1") return 0;
+  const need = parseInt(env.BLOCK_MIN || "30", 10), share = parseFloat(env.BLOCK_SHARE || "0.9"), hours = parseInt(env.BLOCK_HOURS || "6", 10);
+  const since = Math.floor(Date.now() / 1000) - hours * 3600;
+  const rows = (await env.DB.prepare("SELECT dh, net, pres, asn, t FROM evidence WHERE t >= ? AND pres <> '' AND net <> ''").bind(since).all()).results || [];
+  const last = new Map();
+  for (const r of rows) { const o = last.get(r.dh); if (!o || r.t > o.t) last.set(r.dh, r); }
+  const byNet = new Map();
+  for (const r of last.values()) { if (!byNet.has(r.net)) byNet.set(r.net, []); byNet.get(r.net).push(r); }
+  const cells = (await env.DB.prepare("SELECT asn, hour_from, hour_to FROM excluded_cells").all()).results || [];
+  const hourOf = (t) => new Date(t * 1000).toISOString().slice(0, 13);
+  const inCell = (r) => cells.some((c) => c.asn === r.asn && c.hour_from <= hourOf(r.t) && hourOf(r.t) <= c.hour_to);
+  const keep = new Set(((await env.DB.prepare("SELECT dh FROM ballot_risk WHERE scope = 'pres' AND status = 'garde'").all()).results || []).map((x) => x.dh));
+  const flagged = [], day = new Date().toISOString().slice(0, 10);
+  for (const list of byNet.values()) {
+    if (list.length < need) continue;
+    const cnt = {};
+    for (const r of list) cnt[r.pres] = (cnt[r.pres] || 0) + 1;
+    const [top, n] = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    if (n / list.length < share) continue;
+    const why = "réseau en bloc : " + list.length + " votes, " + Math.round(100 * n / list.length) + " % pour le même candidat (automatique)";
+    for (const r of list) if (r.pres === top && !keep.has(r.dh) && !inCell(r)) flagged.push([r.dh, why]);
+  }
+  const ins = "INSERT INTO ballot_risk(dh,scope,score,reasons,status,decided) VALUES(?,'pres',100,?,'retire',?) ON CONFLICT(dh,scope) DO UPDATE SET score = MAX(ballot_risk.score, 100), reasons = excluded.reasons, status = 'retire', decided = excluded.decided WHERE ballot_risk.status <> 'garde'";
+  for (let i = 0; i < flagged.length; i += 40) await env.DB.batch(flagged.slice(i, i + 40).map(([dh, why]) => env.DB.prepare(ins).bind(dh, why, day)));
+  return flagged.length;
+}
 async function cron(env) {
   await recount(env);
+  try { await autoBlocks(env); } catch (e) { /* tables absentes : pas de retrait automatique */ }
   try { await publish(env); } catch (e) { /* tables de publication absentes : résultats en direct */ }
   try { await propose(env); } catch (e) { /* tables de propositions absentes */ }
 }
@@ -459,7 +516,7 @@ export default {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 16 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 19 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

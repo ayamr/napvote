@@ -74,3 +74,7 @@ CREATE INDEX IF NOT EXISTS evidence_t ON evidence(t);
 CREATE INDEX IF NOT EXISTS evidence_dh ON evidence(dh);
 -- décisions après examen des preuves : status = 'suspect' (à voir), 'retire' (retiré de l'instantané publié), 'garde' (confirmé honnête).
 CREATE TABLE IF NOT EXISTS ballot_risk (dh TEXT NOT NULL, scope TEXT NOT NULL DEFAULT 'pres', score INTEGER, reasons TEXT, status TEXT NOT NULL DEFAULT 'suspect', decided TEXT, PRIMARY KEY (dh, scope));
+
+-- v17 : envois refusés (14 jours) avec le candidat de président visé, pour mesurer où va la manipulation même quand elle est bloquée. Aucun identifiant : code réseau mélangé au secret.
+CREATE TABLE IF NOT EXISTS attempts (id INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER NOT NULL, reason TEXT, asn INTEGER, country TEXT, net TEXT, pres TEXT, dept TEXT, scopes INTEGER);
+CREATE INDEX IF NOT EXISTS attempts_t ON attempts(t);

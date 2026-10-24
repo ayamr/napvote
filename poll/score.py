@@ -14,7 +14,7 @@ Retirer / rétablir ensuite (réversible, prise en compte à la publication de l
 import argparse, collections, json, math, os, sqlite3, subprocess, sys, datetime, statistics
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FLAG_POINTS = {1: 80, 2: 80, 4: 60, 8: 20, 16: 20, 32: 15, 64: 20}
+FLAG_POINTS = {1: 80, 2: 80, 4: 60, 8: 20, 16: 3, 32: 8, 64: 20}  # 16 (Chrome sans window.chrome) et 32 (mobile sans tactile) : très courants dans les navigateurs intégrés aux applications, donc presque sans poids
 FLAG_NAMES = {1: "navigateur piloté (webdriver)", 2: "navigateur sans interface", 4: "variables d'automatisation", 8: "aucune langue", 16: "Chrome sans window.chrome", 32: "mobile sans tactile", 64: "fenêtre de taille nulle"}
 
 
@@ -26,8 +26,15 @@ class Source:
     def q(self, sql):
         if self.db:
             return [dict(r) for r in self.db.execute(sql).fetchall()]
-        r = subprocess.run(["npx", "wrangler", "d1", "execute", "napvote-poll", "--remote", "--json", "--command", sql], capture_output=True, text=True, cwd=HERE).stdout
-        return json.loads(r[r.index("["):r.rindex("]") + 1])[0]["results"]
+        import time
+        for essai in range(4):  # nouvel essai si la base répond par une erreur passagère
+            r = subprocess.run(["npx", "wrangler", "d1", "execute", "napvote-poll", "--remote", "--json", "--command", sql], capture_output=True, text=True, cwd=HERE).stdout
+            try:
+                i = r.index("[\n"); data = json.loads(r[i:r.rindex("]") + 1])
+                if data and "results" in data[0]: return data[0]["results"]
+            except Exception: pass
+            time.sleep(3 * (essai + 1))
+        raise RuntimeError("la base n'a pas répondu : " + r[-300:])
 
     def run_file(self, sql_text):
         if self.db:
@@ -46,7 +53,7 @@ def tvd_excess(obs, exp, t):
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--hours", type=int, default=24); ap.add_argument("--apply", type=int); ap.add_argument("--sqlite"); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument("--hours", type=int, default=24); ap.add_argument("--apply", type=int); ap.add_argument("--sqlite"); ap.add_argument("--net-min", type=int, default=30); ap.add_argument("--net-min-other", type=int, default=20); ap.add_argument("--net-share", type=float, default=0.9); ap.add_argument("--apply-other", action="store_true", help="appliquer aussi le retrait des réseaux en bloc aux scrutins locaux (déconseillé : un candidat local très populaire peut avoir 90 pour cent des votes d'un réseau)"); a = ap.parse_args()
     src = Source(a.sqlite)
     now = src.q("SELECT CAST(strftime('%s','now') AS INTEGER) AS n")[0]["n"] if not a.sqlite else int(datetime.datetime.now(datetime.UTC).timestamp())
     since = now - a.hours * 3600
@@ -94,6 +101,26 @@ def main():
         if not tot: continue
         obs = collections.Counter(ball[d]["choice"] for d in members)
         unif[k] = tvd_excess(obs, {c: v / tot for c, v in exp.items()}, len(members))
+    # ---- RÉSEAUX « EN BLOC » : un réseau d'au moins N votes dont >= 90 % vont au même candidat (même seuil pour tous les candidats) ----
+    # Les électeurs honnêtes se répartissent sur de nombreux petits réseaux et, sur un réseau partagé, votent pour plusieurs candidats.
+    bloc = {}  # (appareil, scrutin) -> raison
+    blocks_found = []
+    bys = collections.defaultdict(lambda: collections.defaultdict(list))
+    for b in allb:
+        net_ = last[b["device"]]["net"] if b["device"] in last else ""
+        if net_: bys[b["scope"]][net_].append(b)
+    for scp, nets_ in bys.items():
+        need = a.net_min if scp == "pres" else a.net_min_other
+        for net_, bl in nets_.items():
+            devs = {x["device"] for x in bl}
+            if len(devs) < need: continue
+            cnt = collections.Counter(x["choice"] for x in bl)
+            top_c, top_n = cnt.most_common(1)[0]
+            holders = {x["device"] for x in bl if x["choice"] == top_c}
+            share = len(holders) / len(devs)
+            if share >= a.net_share:
+                blocks_found.append((scp, net_, len(devs), top_c, share))
+                for d_ in holders: bloc[(d_, scp)] = f"réseau en bloc : {len(devs)} votes, {100 * share:.0f} % pour le même candidat"
     # score par appareil
     rows = []
     for dev, e in last.items():
@@ -129,9 +156,17 @@ def main():
         if e["net"] and by_min.get((e["net"], e["t"] // 60), 0) >= 8: add(20, "au moins 8 envois du même réseau dans la même minute")
         ch = chal_by_net.get(e["net"], [])
         if len(ch) >= 10 and statistics.pstdev(ch) < 300: add(25, "délais d'envoi presque identiques sur ce réseau")
-        if e["net"] in unif and unif[e["net"]] >= 40: add(30, f"groupe réseau uniforme (excès {unif[e['net']]:.0f})")
-        score = min(200, sum(p for p, _ in reasons))
-        rows.append({"dh": dev, "score": score, "reasons": "; ".join(l for _, l in sorted(reasons, reverse=True)), "choice": ball[dev]["choice"], "dept": ball[dev]["dept"], "skip": in_cell(e)})
+        if (dev, "pres") in bloc: add(100, bloc[(dev, "pres")])
+        # Règles de GROUPE (empreinte, matériel, réseau, uniformité) : des téléphones identiques les déclenchent sans qu'il y ait fraude.
+        # Elles ne comptent donc que plafonnées à 30 points, sauf si le COMPORTEMENT de l'appareil est lui aussi anormal (indice d'automatisation fort, envoi trop rapide, aucune interaction...).
+        GROUP = ("même empreinte", "même matériel", "réseau très actif", "au moins 8 envois", "délais d'envoi", "groupe réseau uniforme")
+        behav = [pl for pl in reasons if not pl[1].startswith(GROUP)]
+        grp = [pl for pl in reasons if pl[1].startswith(GROUP)]
+        strong = any(p >= 15 for p, _ in behav)
+        gsum = sum(p for p, _ in grp)
+        score = min(200, sum(p for p, _ in behav) + (gsum if strong else min(gsum, 30)))
+        bsc = sum(p for p, l in behav if not l.startswith("réseau en bloc")) + (gsum if strong and any(p >= 15 for p, l in behav if not l.startswith("réseau en bloc")) else min(gsum, 30))
+        rows.append({"dh": dev, "score": score, "bscore": bsc, "reasons": "; ".join(l for _, l in sorted(reasons, reverse=True)), "choice": ball[dev]["choice"], "dept": ball[dev]["dept"], "skip": in_cell(e)})
     n = len(rows); skip = sum(1 for r in rows if r["skip"])
     print(f"Période : {a.hours} h | dossiers : {len(ev)} envois, {len(last)} appareils, {n} avec un bulletin de président | déjà couverts par un retrait par opérateur : {skip}")
     live = [r for r in rows if not r["skip"]]
@@ -141,12 +176,14 @@ def main():
     # tableau par candidat : mêmes règles, seuil unique
     T = a.apply or 100
     tot = collections.Counter(r["choice"] for r in live); sus = collections.Counter(r["choice"] for r in live if r["score"] >= T); mid = collections.Counter(r["choice"] for r in live if 60 <= r["score"] < T)
-    order = [c for c, _ in tot.most_common()]
+    gen = src.q("SELECT choice, SUM(n) AS n FROM tally WHERE scope='pres' GROUP BY choice ORDER BY n DESC")
+    grank = {r["choice"]: i + 1 for i, r in enumerate(gen)}
+    order = sorted(tot, key=lambda c: grank.get(c, 999))
     print(f"\nPar candidat (désigné par son rang dans cet échantillon), seuil unique {T} :")
-    print("  rang | bulletins | part | score moyen | à voir (60-{}) | retirés (>= {}) | part retirée".format(T - 1, T))
+    print("  rang général | bulletins | part | score moyen | à voir (60-{}) | retirés (>= {}) | part retirée".format(T - 1, T))
     for i, c in enumerate(order[:10]):
         sc = [r["score"] for r in live if r["choice"] == c]
-        print(f"  {i + 1:4d} | {tot[c]:9d} | {100 * tot[c] / len(live):4.1f} % | {sum(sc) / len(sc):6.1f}      | {mid[c]:13d} | {sus[c]:15d} | {100 * sus[c] / tot[c]:5.1f} %")
+        print(f"  {grank.get(c, 99):4d} | {tot[c]:9d} | {100 * tot[c] / len(live):4.1f} % | {sum(sc) / len(sc):6.1f}      | {mid[c]:13d} | {sus[c]:15d} | {100 * sus[c] / tot[c]:5.1f} %")
     rs = collections.Counter()
     for r in live:
         if r["score"] >= T:
@@ -163,18 +200,20 @@ def main():
     agg = collections.defaultdict(lambda: [0, 0]); per = collections.defaultdict(lambda: collections.defaultdict(lambda: [0, 0]))
     for b in allb:
         if b["device"] not in sc: continue
-        sus_ = sc[b["device"]] >= T; kd = kind(b["scope"])
+        sus_ = sc[b["device"]] >= T or (b["device"], b["scope"]) in bloc; kd = kind(b["scope"])
         agg[kd][0] += 1; agg[kd][1] += sus_
         per[kd][b["choice"]][0] += 1; per[kd][b["choice"]][1] += sus_
     NAMES = {"pres": "Président", "sen": "Sénat", "dep": "Députés", "may": "Maires", "cas": "CASEC", "asec": "ASEC"}
     print("\n== Taux de votes suspects par candidat (seuil %d), intervalle de confiance à 95 %% ; en dessous de 30 bulletins : taux du scrutin utilisé ==" % T)
     for kd in ("pres", "sen", "dep", "may", "cas", "asec"):
         if kd not in agg: continue
-        n0, k0 = agg[kd]; print(f"\n{NAMES[kd]} : {n0} bulletins, taux moyen {100 * k0 / n0:.1f} % ({k0} suspects)")
-        ranked = sorted(per[kd].items(), key=lambda x: -x[1][0])[:8]
+        n0, k0 = agg[kd]; print(f"\n{NAMES[kd]} : {n0} bulletins, taux moyen {100 * k0 / n0:.1f} % ({k0} suspects)" + ("" if kd == "pres" else "  [indicatif : en local, un candidat très populaire peut avoir 90 % d'un réseau ; non appliqué]"))
+        ranked = sorted(per[kd].items(), key=lambda x: (grank.get(x[0], 999) if kd == "pres" else -x[1][0]))[:(10 if kd == "pres" else 8)]
         for i, (c, (n, k)) in enumerate(ranked):
             lo, hi = wilson(k, n); small = "  ← échantillon trop petit, taux du scrutin utilisé" if n < 30 else ""
-            print(f"  {i + 1}. {n:6d} bulletins | taux {100 * k / n:5.1f} % [{100 * lo:4.1f} - {100 * hi:4.1f}]{small}")
+            print(f"  {(grank.get(c, 99) if kd == 'pres' else i + 1)}. {n:6d} bulletins | taux {100 * k / n:5.1f} % [{100 * lo:4.1f} - {100 * hi:4.1f}]{small}")
+    print(f"\nRéseaux « en bloc » trouvés (seuils : {a.net_min} votes de président / {a.net_min_other} pour les autres scrutins, {100 * a.net_share:.0f} % pour le même candidat) : {len(blocks_found)}")
+    by_scope = collections.Counter(sc_[0].split("|")[0] for sc_ in blocks_found); print("   par scrutin :", dict(by_scope))
     # variabilité dans le temps (président) : un taux unique est-il représentatif ?
     blocks = collections.defaultdict(lambda: [0, 0])
     for r in live:
@@ -182,15 +221,38 @@ def main():
         blocks[blk][0] += 1; blocks[blk][1] += r["score"] >= T
     print("\n== Variabilité du taux suspect dans le temps (président, blocs de 6 h UTC) : un taux unique est-il représentatif ? ==")
     for blk in sorted(blocks): n, k = blocks[blk]; print(f"  {blk} : {n:5d} bulletins | {100 * k / n:5.1f} % suspects")
+    # ---- envois REFUSÉS par candidat de président : où va la manipulation, même quand elle est bloquée ----
+    try:
+        att = src.q(f"SELECT pres, reason, COUNT(*) AS n FROM attempts WHERE t >= {since} AND pres <> '' GROUP BY pres, reason")
+    except Exception:
+        att = []
+    if att:
+        TOT = sum(r["n"] for r in att); byc = collections.Counter(); byr = collections.defaultdict(collections.Counter)
+        for r in att: byc[r["pres"]] += r["n"]; byr[r["pres"]][r["reason"]] += r["n"]
+        acc = collections.Counter(r["choice"] for r in live); accT = sum(acc.values())
+        print(f"\n== Envois refusés selon le candidat de président visé ({TOT} tentatives) : part parmi les refus, part parmi les envois acceptés, rapport ==")
+        print("  rang (par tentatives) | tentatives | part des refus | part des acceptés | rapport | raisons principales")
+        for i, (c, n) in enumerate(byc.most_common(10)):
+            sh = 100 * n / TOT; sa = 100 * acc.get(c, 0) / accT if accT else 0
+            top = ", ".join(f"{k[:22]} {v}" for k, v in byr[c].most_common(2))
+            print(f"  {i + 1:4d}                  | {n:10d} | {sh:5.1f} %        | {sa:5.1f} %           | {sh / sa if sa else float('inf'):5.1f}   | {top}")
+        print("  (un rapport élevé = ce candidat est visé par beaucoup plus de tentatives refusées que sa part de votes acceptés)")
     json.dump({kd: {"total": agg[kd], "candidats": {c: v for c, v in per[kd].items()}} for kd in agg}, open(os.path.join(HERE, "_taux.json"), "w"), ensure_ascii=False)
     if a.apply:
         stmts = []; d = datetime.date.today().isoformat()
         sel = []
         byd = collections.defaultdict(list)
         for b in allb: byd[b["device"]].append(b["scope"])
+        seen_pairs = set()
         for r in live:
             if r["score"] >= 60:
-                for scp in set(byd.get(r["dh"], ["pres"])): sel.append({**r, "scope": scp})
+                # comportement anormal (automatisation...) : tous les scrutins de l'appareil ; vote en bloc seulement : le scrutin de président (les autres scrutins sont traités par leur propre réseau en bloc)
+                scopes_ = set(byd.get(r["dh"], ["pres"])) if r["bscore"] >= 60 else {"pres"}
+                for scp in scopes_: sel.append({**r, "scope": scp}); seen_pairs.add((r["dh"], scp))
+        for (dv_, scp), why in bloc.items():  # réseaux en bloc dans les autres scrutins : uniquement avec --apply-other ; par défaut, indicatif seulement
+            if scp != "pres" and not a.apply_other: continue
+            if dv_ in last and in_cell(last[dv_]): continue  # déjà couvert par un retrait par opérateur : pas de double retrait
+            if (dv_, scp) not in seen_pairs: sel.append({"dh": dv_, "scope": scp, "score": 100, "reasons": why}); seen_pairs.add((dv_, scp))
         for i in range(0, len(sel), 200):
             vals = ",".join("('%s','%s',%d,'%s','%s','%s')" % (r["dh"], r["scope"].replace("'", "''"), r["score"], r["reasons"].replace("'", "''")[:300], "retire" if r["score"] >= T else "suspect", d) for r in sel[i:i + 200])
             stmts.append(f"INSERT INTO ballot_risk(dh,scope,score,reasons,status,decided) VALUES {vals} ON CONFLICT(dh,scope) DO UPDATE SET score=excluded.score, reasons=excluded.reasons, status=excluded.status, decided=excluded.decided WHERE ballot_risk.status <> 'garde';")

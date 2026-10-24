@@ -29,6 +29,12 @@ REQUIRE_CHALLENGE = "1"
 FP_MAX = "0"
 # excès minimal (en points) pour qu'une cellule opérateur + heure soit proposée au retrait
 PROPOSE_MIN = "40"
+# retrait automatique chaque heure des réseaux « en bloc » (présidentielle) : "0" pour désactiver
+AUTO_BLOCKS = "1"
+# au moins ce nombre d'appareils sur un réseau, dans les dernières heures, dont cette part pour le même candidat
+BLOCK_MIN = "30"
+BLOCK_SHARE = "0.9"
+BLOCK_HOURS = "6"
 
 # recalage exact des totaux, une fois par heure
 [triggers]

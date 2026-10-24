@@ -10,8 +10,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 def q(sql, db=None):
     if db: return [dict(r) for r in db.execute(sql).fetchall()]
-    r = subprocess.run(["npx", "wrangler", "d1", "execute", "napvote-poll", "--remote", "--json", "--command", sql], capture_output=True, text=True, cwd=HERE).stdout
-    return json.loads(r[r.index("["):r.rindex("]") + 1])[0]["results"]
+    import time
+    for essai in range(4):
+        r = subprocess.run(["npx", "wrangler", "d1", "execute", "napvote-poll", "--remote", "--json", "--command", sql], capture_output=True, text=True, cwd=HERE).stdout
+        try:
+            i = r.index("[\n"); data = json.loads(r[i:r.rindex("]") + 1])
+            if data and "results" in data[0]: return data[0]["results"]
+        except Exception: pass
+        time.sleep(3 * (essai + 1))
+    raise RuntimeError("la base n'a pas répondu : " + r[-300:])
 
 def dev(k, n, p):  # déviance binomiale 2*[k log(k/np) + (n-k) log((n-k)/(n(1-p)))]
     if n == 0: return 0.0
