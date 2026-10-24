@@ -59,7 +59,7 @@
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
     return [r(Math.min(s.width || 0, s.height || 0)), r(Math.max(s.width || 0, s.height || 0)), Math.round((window.devicePixelRatio || 1) * 10) / 10, tz.slice(0, 30), (navigator.language || '').slice(0, 5)].join('|').replace(/[^\w\/|.+ -]/g, '').slice(0, 80);
   }
-  var lastCut = null, view = '', token = '', onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '';
+  var lastCut = null, view = '', token = '', onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '', hwHex = '';
 
   /* ---- scrutins proposés selon la commune enregistrée ---- */
   function cOpt(c) { return { c: norm(c.nom + ' ' + c.pre), n: c.pre + ' ' + c.nom, s: V.parties[c.pa] }; }
@@ -192,12 +192,20 @@
       sp.remove(); return out;
     } catch (e) { return ''; }
   }
+  function fpGpu() {
+    try { var cv = document.createElement('canvas'), g = cv.getContext('webgl') || cv.getContext('experimental-webgl'); if (!g) { return ''; } var d = g.getExtension('WEBGL_debug_renderer_info'); return d ? g.getParameter(d.UNMASKED_VENDOR_WEBGL) + '~' + g.getParameter(d.UNMASKED_RENDERER_WEBGL) : ''; } catch (e) { return ''; }
+  }
+  function computeHw() { // ne dépend que de l'appareil, pas du navigateur
+    var n = navigator, sc = window.screen || {}, tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
+    return sha256hex([Math.min(sc.width || 0, sc.height || 0), Math.max(sc.width || 0, sc.height || 0), sc.colorDepth, window.devicePixelRatio, n.hardwareConcurrency, n.maxTouchPoints, tz, n.platform, fpGpu()].join('||'));
+  }
   function computeFp() {
     var n = navigator, sc = window.screen || {}, tz = '';
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
     return sha256hex([n.userAgent, n.platform, n.language, (n.languages || []).join(','), n.hardwareConcurrency, n.deviceMemory, n.maxTouchPoints, sc.width, sc.height, sc.colorDepth, window.devicePixelRatio, tz, new Date().getTimezoneOffset(), fpCanvas(), fpWebgl(), fpFonts()].join('||'));
   }
-  if (base && !A.native && window.crypto && crypto.subtle) { try { computeFp().then(function (h) { fpHex = h; }, function () { /* ignore */ }); } catch (e) { /* ignore */ } }
+  if (base && !A.native && window.crypto && crypto.subtle) { try { computeFp().then(function (h) { fpHex = h; }, function () { /* ignore */ }); computeHw().then(function (h) { hwHex = h; }, function () { /* ignore */ }); } catch (e) { /* ignore */ } }
 
   /* ---- période retirée des résultats de la présidentielle : bandeau et invitation à confirmer son choix ---- */
   function fdt(iso) { return new Date(iso).toLocaleString([], { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }); }
@@ -276,7 +284,7 @@
     if (!votes.length) { msg.textContent = t('poll.nosel'); return; }
     var dept = document.getElementById('poll-dept').value;
     btn.disabled = true; msg.textContent = '';
-    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined }).then(function () {
+    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined, hw: hwHex || undefined }).then(function () {
       votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices, at: Date.now() }; });
       mine.dept = dept; A.store.set('poll', mine); token = ''; chal = null; justVoted = true;
       A.toast(t('poll.thanks')); showResults('', true);

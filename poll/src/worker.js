@@ -148,6 +148,9 @@ async function vote(req, env) {
   const dayDate = new Date(), cl = await sha256([ip, sig, coarseUA(req.headers.get("User-Agent")), env.SALT, isoWeek(dayDate)].join("|"));
   const clMax = parseInt(env.CLUSTER_MAX || "0", 10);
   // Empreinte du navigateur calculée par la page (web seulement) : on ne garde qu'un code mélangé à un secret et à la semaine, 8 jours, sans lien avec les bulletins.
+  // Empreinte du MATÉRIEL (écran, processeur graphique, cœurs, fuseau : identique d'un navigateur à l'autre sur un même appareil), croisée avec le réseau et le jour : mesure seulement.
+  const hwRaw = /^[0-9a-f]{64}$/.test(String(b.hw || "")) ? String(b.hw) : "";
+  const hwk = hwRaw ? await sha256([hwRaw, ip, env.SALT, day].join("|")) : "";
   const fpRaw = /^[0-9a-f]{64}$/.test(String(b.fp || "")) ? String(b.fp) : "";
   const fpk = fpRaw ? await sha256([fpRaw, env.SALT, isoWeek(dayDate)].join("|")) : "", fpMax = parseInt(env.FP_MAX || "0", 10);
   // anciens choix de cet appareil (quelques lignes) : on les retire des totaux avant d'ajouter les nouveaux
@@ -184,6 +187,10 @@ async function vote(req, env) {
     for (const [scope, choice] of clean) if (scope === "pres" || scope.startsWith("sen|") || scope.startsWith("dep|")) stmts.push(incG.bind(cl, day, scope, dept, choice));
   }
   if (fpk) stmts.push(env.DB.prepare("INSERT INTO fp_week(k,week,new_dev,sends) VALUES(?,?,?,1) ON CONFLICT(k,week) DO UPDATE SET new_dev = new_dev + excluded.new_dev, sends = sends + 1").bind(fpk, isoWeek(dayDate), isNew ? 1 : 0));
+  if (hwk) {
+    stmts.push(env.DB.prepare("INSERT INTO hw_day(k,day,new_dev,sends) VALUES(?,?,?,1) ON CONFLICT(k,day) DO UPDATE SET new_dev = new_dev + excluded.new_dev, sends = sends + 1").bind(hwk, day, isNew ? 1 : 0));
+    if (fpk) stmts.push(env.DB.prepare("INSERT OR IGNORE INTO hw_fp(k,day,fpk) VALUES(?,?,?)").bind(hwk, day, fpk));  // navigateurs différents vus sur ce matériel et ce réseau
+  }
   const asn = Number(cf.asn) || 0, org = String(cf.asOrganization || "").slice(0, 60);
   // Suivi horaire par opérateur réseau et département déclaré ; les choix de président ne sont comptés que pour les opérateurs déjà actifs (ASN_TRACK envois dans la journée).
   const hour = new Date().toISOString().slice(0, 13), aTrack = parseInt(env.ASN_TRACK || "30", 10);
@@ -196,7 +203,7 @@ async function vote(req, env) {
   stmts.push(env.DB.prepare("INSERT INTO asn_daily(day,asn,org,sends,new_dev) VALUES(?,?,?,1,?) ON CONFLICT(day,asn) DO UPDATE SET sends = sends + 1, new_dev = new_dev + excluded.new_dev").bind(day, asn, org, isNew ? 1 : 0));
   if (Math.random() < 0.02) {  // purge : les signatures ne sont gardées que 7 jours
     const old7 = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10), old60 = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
-    stmts.push(env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
+    stmts.push(env.DB.prepare("DELETE FROM hw_day WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM hw_fp WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
     const old14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 13);
     stmts.push(env.DB.prepare("DELETE FROM asn_hour WHERE hour < ?").bind(old14), env.DB.prepare("DELETE FROM asn_choice WHERE hour < ?").bind(old14));
     stmts.push(env.DB.prepare("DELETE FROM fp_week WHERE week < ?").bind(isoWeek(dayDate) - 1), env.DB.prepare("DELETE FROM challenge_used WHERE t < ?").bind(Date.now() - 86400000));
@@ -424,7 +431,7 @@ export default {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 14 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 15 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

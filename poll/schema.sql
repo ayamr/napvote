@@ -56,3 +56,8 @@ CREATE TABLE IF NOT EXISTS proposals (id INTEGER PRIMARY KEY AUTOINCREMENT, crea
 -- v13 : périodes retirées des résultats d'un scrutin (dates en secondes Unix). Les bulletins dont le dernier choix date de la période ne sont pas comptés dans l'instantané publié ;
 -- ils restent en base et reviennent si la ligne est supprimée. Un appareil qui confirme son choix après la période est compté normalement.
 CREATE TABLE IF NOT EXISTS excluded_windows (id INTEGER PRIMARY KEY AUTOINCREMENT, scope TEXT NOT NULL, from_ts INTEGER NOT NULL, to_ts INTEGER NOT NULL, reason TEXT, created TEXT);
+
+-- v15 : mesure « même matériel, même réseau, plusieurs navigateurs » (8 jours, aucun lien avec les bulletins).
+-- hw_day : code mélangé (matériel + réseau + secret + jour) -> nouveaux appareils et envois ; hw_fp : empreintes de navigateur différentes vues sur ce couple.
+CREATE TABLE IF NOT EXISTS hw_day (k TEXT NOT NULL, day TEXT NOT NULL, new_dev INTEGER NOT NULL, sends INTEGER NOT NULL, PRIMARY KEY (k, day));
+CREATE TABLE IF NOT EXISTS hw_fp (k TEXT NOT NULL, day TEXT NOT NULL, fpk TEXT NOT NULL, PRIMARY KEY (k, day, fpk));

@@ -60,3 +60,6 @@ La table `excluded_cells` (opérateur réseau `asn`, heures UTC `hour_from` à `
 ## Retrait d'une période
 `excluded_windows(scope, from_ts, to_ts, reason, created)` (secondes Unix) retire des résultats publiés d'un scrutin tous les bulletins dont le dernier choix date de la période. Ils restent en base (réversible : supprimer la ligne, puis attendre la publication de l'heure suivante). Un appareil qui confirme son choix après `to_ts` est compté. Exemple (présidentielle, 48 dernières heures) :
 `INSERT INTO excluded_windows(scope,from_ts,to_ts,reason,created) VALUES ('pres', CAST(strftime('%s','now') AS INTEGER) - 172800, CAST(strftime('%s','now') AS INTEGER), 'Tentatives de manipulation', date('now'));`
+
+## Mesure « même matériel, même réseau » (v15)
+La page envoie `hw` (SHA-256 de l'écran, du processeur graphique, du nombre de cœurs, du fuseau horaire… : stable d'un navigateur à l'autre). Le service garde `sha256(hw | IP | SALT | jour)` dans `hw_day` (nouveaux appareils, envois) et les empreintes de navigateur différentes vues dans `hw_fp` (8 jours). Mesure seulement : rapports 9 et 10 de `anomalies.sql`. Aucun blocage.
