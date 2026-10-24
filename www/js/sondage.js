@@ -181,7 +181,7 @@
   function renderResults(S, data, dept, failed) {
     var h = warn;
     if (failed) { root.innerHTML = h + '<p class="empty">' + esc(t('poll.err')) + '</p><p><button type="button" class="btn" data-pretry>' + esc(t('err.reload')) + '</button></p>'; return; }
-    h += '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2><p class="note-s">' + esc(t('poll.dup')) + '</p>';
+    h += '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2><p class="note-s">' + esc(t('poll.dup')) + '</p>' + (((data.scopes.pres || {}).adj > 0) ? '<p class="note-s"><b>' + esc(t('poll.adj', { n: fmt(data.scopes.pres.adj) })) + '</b></p>' : '');
     S.list.forEach(function (sc) {
       var d = data.scopes[sc.scope] || { total: 0, choices: {} }, rows = Object.keys(d.choices).map(function (k) { return { c: k, n: d.choices[k] }; }).sort(function (a, b) { return b.n - a.n; });
       var mx = rows.length ? rows[0].n : 1, mineC = [].concat((mine.answers[sc.scope] || {}).c || []);

@@ -44,3 +44,6 @@ Les envois venant d'hébergeurs de serveurs, de VPN grand public et de relais pr
 
 ## Adresse protégée
 Le service est rattaché à `poll.napvote-ht.com` (route `custom_domain` dans `wrangler.toml`), ce qui permet d'appliquer les règles de sécurité de Cloudflare (WAF, limite de débit, analyse de sécurité). Quand tous les clients utilisent cette adresse, renseigner `VOTE_HOST = "poll.napvote-ht.com"` pour refuser les envois arrivant par `workers.dev`.
+
+## Retrait des envois anormaux
+La table `excluded_cells` (opérateur réseau `asn`, heures UTC `hour_from` à `hour_to` au format `2026-10-24T03`, `dept` ou `*`) désigne des cellules dont l'excédent de choix de président par rapport au département est retiré **à l'affichage** (aucun bulletin n'est modifié). Pour annuler : `DELETE FROM excluded_cells WHERE ...`. Le service renvoie le nombre d'envois retirés dans `scopes.pres.adj`, que le site signale sous les résultats.

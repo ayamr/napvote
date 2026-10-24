@@ -158,6 +158,35 @@ async function vote(req, env) {
   return { ok: true, saved: seen.size };
 }
 
+// Retrait des envois anormaux. Pour chaque cellule « opérateur réseau + heures + département » inscrite dans excluded_cells, on retire des résultats de la
+// présidentielle seulement l'EXCÉDENT par rapport à ce que le département aurait donné (les électeurs ordinaires de la même cellule restent comptés),
+// en ne gardant que les nouveaux appareils (les renvois ne sont pas des choix en plus). Aucun bulletin n'est modifié ni supprimé : le retrait se fait à l'affichage.
+const EXCL_SQL = `WITH cell AS (
+  SELECT a.hour, a.asn, a.dept, a.choice, a.n FROM asn_choice a
+  WHERE EXISTS (SELECT 1 FROM excluded_cells e WHERE e.asn = a.asn AND a.hour >= e.hour_from AND a.hour <= e.hour_to AND (e.dept = '*' OR e.dept = a.dept))
+), c AS (SELECT hour, asn, dept, SUM(n) AS t FROM cell GROUP BY hour, asn, dept),
+cs AS (SELECT dept, choice, SUM(n) AS n FROM cell GROUP BY dept, choice),
+base AS (SELECT t.dept, t.choice, MAX(0, t.n - COALESCE(cs.n, 0)) AS n FROM tally t LEFT JOIN cs ON cs.dept = t.dept AND cs.choice = t.choice WHERE t.scope = 'pres'),
+moy AS (SELECT dept, choice, n * 1.0 / NULLIF(SUM(n) OVER (PARTITION BY dept), 0) AS p FROM base)
+SELECT cell.dept, cell.choice, SUM(MAX(0.0, cell.n - c.t * COALESCE(m.p, 0)) * COALESCE(h.new_dev * 1.0 / NULLIF(h.sends, 0), 1.0)) AS x
+FROM cell JOIN c ON c.hour = cell.hour AND c.asn = cell.asn AND c.dept = cell.dept
+LEFT JOIN moy m ON m.dept = cell.dept AND m.choice = cell.choice
+LEFT JOIN asn_hour h ON h.hour = cell.hour AND h.asn = cell.asn AND h.dept = cell.dept
+GROUP BY cell.dept, cell.choice`;
+let exclMemo = { at: 0, v: null };
+async function loadExcl(env, maxAge) {
+  if (exclMemo.v && Date.now() - exclMemo.at < maxAge) return exclMemo.v;
+  const byChoice = new Map(), byDept = new Map();
+  try {
+    for (const r of (await env.DB.prepare(EXCL_SQL).all()).results || []) {
+      const x = Math.round(r.x || 0); if (x <= 0) continue;
+      byChoice.set(r.dept + "\u0001" + r.choice, x); byDept.set(r.dept, (byDept.get(r.dept) || 0) + x);
+    }
+  } catch (e) { /* table absente ou erreur : aucun retrait plutôt qu'un échec */ }
+  exclMemo = { at: Date.now(), v: { byChoice, byDept } };
+  return exclMemo.v;
+}
+
 async function results(req, env) {
   let b;
   try { b = await req.json(); } catch (e) { throw new HttpError(400, "requête invalide"); }
@@ -184,16 +213,27 @@ async function results(req, env) {
     }
     if (needDepts) stmts.push(env.DB.prepare("SELECT dept, n FROM tally_tot WHERE scope='pres' AND dept<>''"));
     const res = await env.DB.batch(stmts);
+    const ex = (needDepts || ids.includes("pres")) ? await loadExcl(env, maxAge) : null;
     if (todo.length) {
       if (memo.size > 3000) memo.clear();
       const acc = {};
-      for (const [s, f, k] of todo) acc[s] = { f, k, total: 0, choices: {} };
-      for (const r of res[0].results) { const a = acc[r.scope]; if (!a.f || r.dept === dept) a.choices[r.choice] = (a.choices[r.choice] || 0) + r.n; }
-      for (const r of res[1].results) { const a = acc[r.scope]; if (!a.f || r.dept === dept) a.total += r.n; }
-      for (const s of ids) { out[s] = { total: acc[s].total, choices: acc[s].choices }; memo.set(acc[s].k, { at: now, v: out[s] }); }
+      for (const [s, f, k] of todo) acc[s] = { f, k, total: 0, choices: {}, adj: 0 };
+      for (const r of res[0].results) {
+        const a = acc[r.scope];
+        if (!a.f || r.dept === dept) {
+          let n = r.n;
+          if (r.scope === "pres" && ex) { const m = Math.min(n, ex.byChoice.get(r.dept + "\u0001" + r.choice) || 0); n -= m; a.adj += m; }
+          a.choices[r.choice] = (a.choices[r.choice] || 0) + n;
+        }
+      }
+      for (const r of res[1].results) {
+        const a = acc[r.scope];
+        if (!a.f || r.dept === dept) a.total += (r.scope === "pres" && ex) ? Math.max(0, r.n - (ex.byDept.get(r.dept) || 0)) : r.n;
+      }
+      for (const s of ids) { out[s] = { total: acc[s].total, choices: acc[s].choices }; if (acc[s].adj > 0) out[s].adj = acc[s].adj; memo.set(acc[s].k, { at: now, v: out[s] }); }
     }
     if (needDepts) {
-      depts = {}; for (const r of res[res.length - 1].results) depts[r.dept] = r.n;
+      depts = {}; for (const r of res[res.length - 1].results) depts[r.dept] = Math.max(0, r.n - (ex ? ex.byDept.get(r.dept) || 0 : 0));
       deptsMemo = { at: now, v: depts };
     }
   }
@@ -219,7 +259,7 @@ export default {
     try {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 10 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 11 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

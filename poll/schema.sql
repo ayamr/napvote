@@ -38,3 +38,7 @@ CREATE TABLE IF NOT EXISTS asn_choice (hour TEXT NOT NULL, asn INTEGER NOT NULL,
 
 -- Envois refusés parce qu'ils venaient d'un hébergeur de serveurs, d'un VPN ou d'un relais privé (v10) : compte par jour et par opérateur, sans autre information.
 CREATE TABLE IF NOT EXISTS blocked_daily (day TEXT NOT NULL, asn INTEGER NOT NULL, org TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (day, asn));
+
+-- Envois anormaux retirés de l'affichage de la présidentielle (v11) : une ligne par opérateur réseau et plage d'heures UTC (dept = '*' pour tous les départements).
+-- Seul l'excédent par rapport au département est retiré ; aucun bulletin n'est modifié.
+CREATE TABLE IF NOT EXISTS excluded_cells (asn INTEGER NOT NULL, hour_from TEXT NOT NULL, hour_to TEXT NOT NULL, dept TEXT NOT NULL DEFAULT '*', reason TEXT, created TEXT);
