@@ -60,7 +60,7 @@
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
     return [r(Math.min(s.width || 0, s.height || 0)), r(Math.max(s.width || 0, s.height || 0)), Math.round((window.devicePixelRatio || 1) * 10) / 10, tz.slice(0, 30), (navigator.language || '').slice(0, 5)].join('|').replace(/[^\w\/|.+ -]/g, '').slice(0, 80);
   }
-  var lastCut = null, view = '', token = '', onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '', hwHex = '';
+  var lastCut = null, view = '', token = '', tokenAt = 0, onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '', hwHex = '';
 
   /* ---- scrutins proposés selon la commune enregistrée ---- */
   function cOpt(c) { return { c: norm(c.nom + ' ' + c.pre), n: c.pre + ' ' + c.nom, s: V.parties[c.pa] }; }
@@ -154,7 +154,7 @@
     if (CFG.turnstileKey) { token = ''; mountTurnstile(); }
   }
   function mountTurnstile() {
-    function draw() { if (window.turnstile && document.getElementById('poll-ts')) { tsId = window.turnstile.render('#poll-ts', { sitekey: CFG.turnstileKey, action: 'vote', cData: mine.device, language: window.NVLang === 'ht' ? 'fr' : 'fr', callback: function (tk) { token = tk; onToken(); }, 'expired-callback': function () { token = ''; onToken(); }, 'error-callback': function () { token = ''; onToken(); } }); } }
+    function draw() { if (window.turnstile && document.getElementById('poll-ts')) { tsId = window.turnstile.render('#poll-ts', { sitekey: CFG.turnstileKey, action: 'vote', cData: mine.device, language: window.NVLang === 'ht' ? 'fr' : 'fr', callback: function (tk) { token = tk; tokenAt = Date.now(); onToken(); }, 'expired-callback': function () { token = ''; onToken(); }, 'error-callback': function () { token = ''; onToken(); }, 'refresh-expired': 'auto', 'refresh-timeout': 'auto', retry: 'auto', 'retry-interval': 3000 }); } }
     if (window.turnstile) { draw(); return; }
     var s = document.createElement('script'); s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true; s.onload = draw; document.head.appendChild(s);
   }
@@ -279,6 +279,7 @@
       var mx = rows.length ? rows[0].n : 1, mineC = [].concat((mine.answers[sc.scope] || {}).c || []);
       h += '<section class="poll-r"><div class="poll-h"><h3>' + esc(sc.title) + '</h3>' + (sc.scope === 'pres' ? '<label class="field2">' + esc(t('pk.dept')) + ' <select id="poll-fdept">' + deptOptions(dept, true) + '</select></label>' : '') + '</div>' +
         '<p class="note-s" style="margin-top:4px">' + esc(d.total >= 200 ? t('poll.totalA', { n: fmt(Math.round(d.total / (sc.scope === 'pres' ? 100 : 10)) * (sc.scope === 'pres' ? 100 : 10)) }) : t(d.total > 1 ? 'poll.total' : 'poll.total1', { n: fmt(d.total) })) + (sc.scope === 'pres' && dept ? ' · ' + esc(dept) : '') + '</p>';
+      if (sc.scope !== 'pres' && d.adj > 0) { h += '<p class="note-s"><b>' + esc(t('poll.adjS', { n: fmt(d.adj) })) + '</b></p>'; }
       if (sc.scope === 'pres' && dept && d.total > 0 && d.total < FEW) { h += '<p class="note-s">' + esc(t('poll.few')) + '</p>'; }
       if (sc.multi && d.total) { h += '<p class="note-s">' + esc(t('poll.multiNote', { n: sc.multi })) + '</p>'; }
       if (!d.total) { h += '<p class="empty">' + esc(t('poll.none')) + '</p>'; }
@@ -316,16 +317,29 @@
     if (!votes.length) { msg.textContent = t('poll.nosel'); return; }
     var dept = document.getElementById('poll-dept').value;
     btn.disabled = true; msg.textContent = '';
-    post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined, hw: hwHex || undefined, sg: signals() }).then(function () {
-      votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices, at: Date.now() }; });
-      mine.dept = dept; mine.n = (mine.n || 0) + 1; A.store.set('poll', mine); token = ''; chal = null; justVoted = true;
-      A.toast(t('poll.thanks')); showResults('', true);
-    }, function (er) {
-      token = ''; ensureChallenge(true); if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } }
+    function resetWidget() { token = ''; tokenAt = 0; if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } } }
+    function ready() { return (!CFG.turnstileKey || (token && Date.now() - tokenAt < 4 * 60000)) && chalReady(); }
+    /* attend un jeton anti-robot et un défi frais (20 s au plus) avant de continuer ; sinon continue quand même, le service décidera */
+    function whenReady(go) { var t0 = Date.now(); (function w() { if (ready() || Date.now() - t0 > 20000) { go(); } else { setTimeout(w, 400); } })(); }
+    function fail(er) {
       btn.disabled = true;
       var wait = er.message === 'defi' || er.message === 'defi_tot';
       setMsg(msg, wait ? t('poll.wait') : (er.message === 'empreinte' ? t('poll.fp') : (er.status === 429 ? t('poll.limit') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err')))), !wait);
-    });
+    }
+    function send(again) {
+      post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined, hw: hwHex || undefined, sg: signals() }).then(function () {
+        votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices, at: Date.now() }; });
+        mine.dept = dept; mine.n = (mine.n || 0) + 1; A.store.set('poll', mine); token = ''; chal = null; justVoted = true;
+        A.toast(t('poll.thanks')); showResults('', true);
+      }, function (er) {
+        resetWidget(); ensureChallenge(true);
+        /* jeton anti-robot expiré ou défi périmé : une seule nouvelle tentative automatique, sans que la personne ait à recommencer */
+        var stale = er.message === 'defi' || (er.status === 403 && er.message !== 'reseau' && er.message !== 'hote');
+        if (again && stale) { msg.textContent = t('poll.retry'); setTimeout(function () { whenReady(function () { send(false); }); }, 6500); return; }
+        fail(er);
+      });
+    }
+    if (ready()) { send(true); } else { if (CFG.turnstileKey && Date.now() - tokenAt >= 4 * 60000) { resetWidget(); } msg.textContent = t('poll.retry'); whenReady(function () { msg.textContent = ''; send(true); }); }
   });
   root.addEventListener('click', function (e) {
     if (e.target.closest('[data-pedit]')) { view = 'form'; renderForm(); return; }

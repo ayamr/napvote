@@ -39,8 +39,17 @@ npm run db:local && npm run dev         # http://localhost:8787
 ## Remise à zéro des votes
 `npx wrangler d1 execute napvote-poll --remote --command "DELETE FROM votes"`
 
-## Réseaux refusés
-Les envois venant d'hébergeurs de serveurs, de VPN grand public et de relais privés (liste `HOSTING` dans `src/worker.js`, détectée d'après le nom de l'opérateur réseau) sont refusés avec le message `poll.net`. `BLOCK_HOSTING = "0"` désactive la règle. Les refus sont comptés par jour et par opérateur dans `blocked_daily`.
+## Réseaux refusés et réseaux « doux » (v22)
+Le nom de l'opérateur réseau (`cf.asOrganization`) classe chaque envoi en trois catégories (`netClass()` dans `src/worker.js`, listes `HARD_NET` et `SOFT_NET`) :
+- **dur** : centres de données et hébergeurs de serveurs. Envoi refusé avec le message `poll.net`. `BLOCK_HOSTING = "0"` désactive la règle. Compté par jour et par opérateur dans `blocked_daily` (numéro d'opérateur positif).
+- **doux** : VPN grand public, relais privés (Cloudflare WARP, iCloud Private Relay via Cloudflare, Akamai ou Fastly), proxys d'entreprise. Envoi **accepté** et compté à part dans `blocked_daily` (numéro d'opérateur négatif, libellé « ACCEPTÉ réseau doux »). Ces réseaux sont protégés par la détection après coup, pas par un refus. `SOFT_NETS = "0"` rétablit l'ancien refus ; `SOFT_HOURLY_MAX` (> 0) plafonne les nouveaux appareils par heure et par opérateur doux.
+- **ordinaire** : tout le reste.
+
+## Plafonds par réseau (v22)
+Par adresse (mélangée à un secret) et par jour : `RATE_LIMIT` nouveaux appareils (défaut 100) et `RATE_LIMIT_ALL` envois au total, modifications comprises (défaut 400). Corriger son choix ne consomme donc plus le plafond des nouveaux appareils. Les modifications qui auraient été refusées par l'ancienne règle sont comptées dans `blocked_daily` (code `-30`, « OBSERVATION limite »).
+
+## Anti-robot : causes des refus (v22)
+Quand Turnstile refuse un jeton, la cause renvoyée par Cloudflare est enregistrée dans `attempts.reason` (`robot:timeout-or-duplicate` = jeton expiré ou déjà utilisé, `robot:absent` = aucun jeton, `robot:invalid-input-response`…). Si Cloudflare est injoignable, le service répond 503 (« verification indisponible ») au lieu d'un refus. Côté site, le jeton est renouvelé automatiquement (`refresh-expired`) et un envoi refusé pour jeton ou défi périmé est retenté une fois, sans action de l'électeur.
 
 ## Adresse protégée
 Le service est rattaché à `poll.napvote-ht.com` (route `custom_domain` dans `wrangler.toml`), ce qui permet d'appliquer les règles de sécurité de Cloudflare (WAF, limite de débit, analyse de sécurité). Quand tous les clients utilisent cette adresse, renseigner `VOTE_HOST = "poll.napvote-ht.com"` pour refuser les envois arrivant par `workers.dev`.
@@ -76,3 +85,11 @@ Quand un envoi dont le contenu est valide est refusé (hébergeur, anti-robot, d
 Chaque heure (tâche planifiée), `autoBlocks()` lit les dossiers de preuves des `BLOCK_HOURS` dernières heures : tout réseau (`net`) comptant au moins `BLOCK_MIN` appareils avec un vote de président, dont au moins `BLOCK_SHARE` pour le même candidat, voit les votes de ces appareils inscrits dans `ballot_risk` (statut `retire`, motif « réseau en bloc … (automatique) »). La publication de la même heure les retire de l'instantané. Mêmes seuils pour tous les candidats ; seule la présidentielle est concernée. Sont ignorés : les appareils déjà couverts par `excluded_cells` et ceux au statut `garde`. Pour rétablir un appareil : `UPDATE ballot_risk SET status = 'garde' WHERE dh = '…'`. Pour tout arrêter : `AUTO_BLOCKS = "0"`, puis redéployer.
 
 **Validation automatique des cellules.** Si `AUTO_CELLS = "1"`, `propose()` inscrit lui-même dans `excluded_cells` (statut `validé`, note « validée automatiquement ») toute cellule dont les heures sont terminées et dont l'excédent atteint `AUTO_CELLS_MIN` (55 par défaut ; les propositions s'écrivent dès 40, via `PROPOSE_MIN`), dans la limite de `AUTO_CELLS_MAX` (5) cellules par passe ; les autres restent « proposé » pour validation manuelle. L'ordre horaire est : recomptage, retraits en bloc, propositions, publication. Pour annuler une cellule : `DELETE FROM excluded_cells WHERE rowid = …` ; pour tout arrêter : `AUTO_CELLS = "0"`, puis redéployer.
+
+## Scrutins locaux : réseaux en bloc et vagues (v22)
+Les croisements « opérateur + heure » ne servent qu'à la présidentielle (trop peu de réponses par cellule ailleurs). Pour les autres scrutins (sénateur, député, maire, CASEC, ASEC), la tâche horaire applique les mêmes règles à tous les candidats d'un scrutin, à partir du dossier de preuves (`evidence`, 14 jours) :
+1. **Réseau en bloc** (`autoBlocksLocal()`) : au moins `BLOCK_MIN_LOCAL` appareils (défaut 20) d'un même réseau votent dans les `BLOCK_HOURS` dernières heures, dont `BLOCK_SHARE` pour le même candidat du même scrutin. `AUTO_BLOCKS_LOCAL` : `"0"` désactivé, **`"2"` observation (défaut)** : la détection est inscrite dans `review_flags` (statut `observé`) sans rien retirer ; `"1"` retire ces votes de l'instantané publié (`ballot_risk`, comme pour la présidentielle) et affiche le nombre retiré sous le scrutin.
+2. **Vague de la journée** (`waveFlags()`, toutes les `WAVE_EVERY_H` heures) : au moins `WAVE_MIN` nouveaux appareils (défaut 30) dans la journée d'un scrutin, dont `WAVE_SHARE` (0,6) pour le même candidat, alors que sa part était inférieure de `WAVE_GAP` (0,35) ou plus avant ce jour (au moins `WAVE_BASE_MIN` = 50 répondants avant). **Jamais retiré automatiquement** : une mobilisation légitime y ressemble. Inscrit dans `review_flags` (kind `vague`, statut `à examiner`) avec le nombre de réseaux et d'opérateurs distincts.
+
+La table `review_flags` est créée par la tâche horaire. Lecture : `SELECT kind, scope, day, choice, n, share, base, nets, asns, status FROM review_flags ORDER BY created DESC;`
+Pour retirer une vague après examen : `INSERT INTO excluded_windows(scope, from_ts, to_ts, reason, created) VALUES('dep|…', <début>, <fin>, '…', date('now'));` (secondes Unix ; les bulletins restent en base). Pour rétablir un appareil retiré : `UPDATE ballot_risk SET status = 'garde' WHERE dh = '…' AND scope = '…'`.

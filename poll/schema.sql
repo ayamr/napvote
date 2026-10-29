@@ -78,3 +78,7 @@ CREATE TABLE IF NOT EXISTS ballot_risk (dh TEXT NOT NULL, scope TEXT NOT NULL DE
 -- v17 : envois refusés (14 jours) avec le candidat de président visé, pour mesurer où va la manipulation même quand elle est bloquée. Aucun identifiant : code réseau mélangé au secret.
 CREATE TABLE IF NOT EXISTS attempts (id INTEGER PRIMARY KEY AUTOINCREMENT, t INTEGER NOT NULL, reason TEXT, asn INTEGER, country TEXT, net TEXT, pres TEXT, dept TEXT, scopes INTEGER);
 CREATE INDEX IF NOT EXISTS attempts_t ON attempts(t);
+
+-- v22 : signalements des scrutins locaux (réseaux en bloc observés ou retirés, vagues de la journée à examiner). Créée aussi par la tâche horaire si elle manque.
+CREATE TABLE IF NOT EXISTS review_flags (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT, kind TEXT NOT NULL, scope TEXT NOT NULL, day TEXT NOT NULL, choice TEXT NOT NULL, net TEXT NOT NULL DEFAULT '', n INTEGER, share INTEGER, base INTEGER, nets INTEGER, asns INTEGER, status TEXT NOT NULL, note TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS review_flags_u ON review_flags(kind, scope, day, choice, net);

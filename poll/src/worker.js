@@ -21,9 +21,14 @@ function coarseUA(ua) {
   const o = /(Android)\s(\d+)|(iPhone OS|CPU OS)\s(\d+)|(Windows)|(Mac OS X)|(Linux)/.exec(ua || "");
   return (b ? b[1] + (b[2] || "") : "?") + "|" + (o ? (o[1] || o[3] || o[5] || o[6] || o[7]) + (o[2] || o[4] || "") : "?");
 }
-// Réseaux d'hébergement de serveurs, de VPN et de relais privés : aucun électeur ne vote depuis un serveur. Désactivable avec BLOCK_HOSTING = "0".
-const HOSTING = /host|data ?cent|server|cloud|vps|vpn|proxy|\bcolo\b|colocation|hetzner|\bovh|digitalocean|linode|vultr|choopa|amazon|\baws\b|google llc|google cloud|microsoft|azure|oracle|alibaba|tencent|m247|datacamp|packethub|gthost|leaseweb|contabo|ionos|scaleway|quadranet|frantech|buyvm|psychz|nordvpn|tefincom|expressvpn|surfshark|proton|mullvad|windscribe|private ?internet|london trust|kape technologies|cyberghost|ipvanish|mudhook|tunnelbear|vyprvpn|hotspot ?shield|anchorfree|psiphon|zscaler|private customer|akamai|fastly|ipxo|ucloud|kamatera|clouvider|serverius|zenlayer|ddos|anycast|cdn|latitude|hurricane electric|eventure/i;
-const hostingNet = (org) => !!org && HOSTING.test(org);
+// Réseaux d'hébergement : deux classes.
+//  - « dur » : centres de données et hébergeurs de serveurs. Aucun électeur ne vote depuis un serveur : envoi refusé (désactivable avec BLOCK_HOSTING = "0").
+//  - « doux » : VPN grand public, relais privés (Cloudflare WARP, iCloud Private Relay via Cloudflare/Akamai/Fastly), proxys d'entreprise. De vraies personnes les utilisent :
+//    l'envoi est ACCEPTÉ et compté à part (blocked_daily, codes négatifs) ; ce sont la détection de vagues et le retrait après coup qui protègent les résultats.
+//    SOFT_NETS = "0" rétablit l'ancien refus ; SOFT_HOURLY_MAX > 0 plafonne les nouveaux appareils par heure et par opérateur doux.
+const HARD_NET = /host|data ?cent|server|vps|\bcolo\b|colocation|hetzner|\bovh|digitalocean|linode|vultr|choopa|amazon|\baws\b|google cloud|microsoft|azure|oracle|alibaba|tencent|m247|datacamp|packethub|gthost|globaltelehost|leaseweb|contabo|ionos|scaleway|quadranet|frantech|buyvm|psychz|latitude|kamatera|clouvider|serverius|zenlayer|hurricane electric|eventure|ucloud|ipxo|ddos|stormycloud|gigahost|tor servers|connected cloud/i;
+const SOFT_NET = /vpn|proxy|relay|cloudflare|akamai|fastly|zscaler|google llc|private customer|cdn|anycast|nordvpn|expressvpn|surfshark|proton|mullvad|windscribe|private ?internet|london trust|kape technologies|cyberghost|ipvanish|mudhook|tunnelbear|vyprvpn|hotspot ?shield|anchorfree|psiphon|tefincom/i;
+const netClass = (org) => (!org ? "" : HARD_NET.test(org) ? "dur" : SOFT_NET.test(org) ? "doux" : "");
 const isoWeek = (d) => Math.floor(d.getTime() / (7 * 86400000));
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
@@ -58,13 +63,16 @@ async function options(env) {
   throw new HttpError(503, "liste des choix indisponible");
 }
 
-async function turnstile(env, token, ip) {  // renvoie null si l'anti-robot échoue, sinon le détail de la vérification (action, cdata)
+async function turnstile(env, token, ip, ctx) {  // renvoie null si l'anti-robot échoue, sinon le détail de la vérification (action, cdata) ; ctx.detail garde la cause du refus
   if (!env.TURNSTILE_SECRET) return {};
-  if (!token) return null;
+  if (!token) { if (ctx) ctx.detail = "robot:absent"; return null; }
   const body = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token, remoteip: ip || "" });
-  const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body });
-  const j = await r.json();
-  return j.success ? j : null;
+  let j;
+  try { j = await (await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body })).json(); }
+  catch (e) { throw new HttpError(503, "verification indisponible"); }  // Cloudflare injoignable : pas un refus de l'électeur, il peut réessayer
+  if (j.success) return j;
+  if (ctx) ctx.detail = ("robot:" + ((j["error-codes"] || []).join(",") || "refuse")).slice(0, 40);  // ex. timeout-or-duplicate = jeton expiré ou déjà utilisé
+  return null;
 }
 
 // Défi signé : le site demande un jeton (/challenge) avant d'envoyer. Il lie l'envoi à l'appareil et impose un délai minimum depuis l'ouverture de la page.
@@ -105,7 +113,7 @@ async function vote(req, env) {
   const ctx = {};
   try { return await voteInner(req, env, ctx); }
   catch (e) {
-    if (e instanceof HttpError && ctx.clean && [400, 403, 409, 429].includes(e.status)) { try { await recordAttempt(env, req, ctx, e.message); } catch (x) { /* la statistique ne doit jamais gêner le refus */ } }
+    if (e instanceof HttpError && ctx.clean && [400, 403, 409, 429].includes(e.status)) { try { await recordAttempt(env, req, ctx, ctx.detail || e.message); } catch (x) { /* la statistique ne doit jamais gêner le refus */ } }
     throw e;
   }
 }
@@ -132,13 +140,17 @@ async function voteInner(req, env, ctx) {
   const ip = req.headers.get("CF-Connecting-IP") || "";
   const cfx = req.cf || {};
   if (env.VOTE_HOST && new URL(req.url).hostname !== env.VOTE_HOST) throw new HttpError(403, "hote");  // on force le passage par l'adresse protégée
-  if ((env.BLOCK_HOSTING || "1") !== "0" && hostingNet(cfx.asOrganization)) {
-    try {  // on compte les refus par opérateur, pour surveiller les faux positifs
-      await env.DB.prepare("INSERT INTO blocked_daily(day,asn,org,n) VALUES(?,?,?,1) ON CONFLICT(day,asn) DO UPDATE SET n = n + 1").bind(new Date().toISOString().slice(0, 10), Number(cfx.asn) || 0, String(cfx.asOrganization).slice(0, 60)).run();
-    } catch (e) { /* le refus prime sur la statistique */ }
-    throw new HttpError(403, "reseau");
+  const nclass = netClass(cfx.asOrganization), asnNum = Number(cfx.asn) || 0, today = new Date().toISOString().slice(0, 10);
+  const noteBD = async (code, label) => { try { await env.DB.prepare("INSERT INTO blocked_daily(day,asn,org,n) VALUES(?,?,?,1) ON CONFLICT(day,asn) DO UPDATE SET n = n + 1").bind(today, code, label.slice(0, 60)).run(); } catch (e) { /* la statistique ne doit jamais gêner l'envoi */ } };
+  if (nclass === "dur" || (nclass === "doux" && env.SOFT_NETS === "0")) {
+    if ((env.BLOCK_HOSTING || "1") !== "0") {  // on compte les refus par opérateur, pour surveiller les faux positifs
+      await noteBD(asnNum, String(cfx.asOrganization));
+      throw new HttpError(403, "reseau");
+    }
+  } else if (nclass === "doux") {
+    await noteBD(-asnNum, "ACCEPTÉ réseau doux : " + String(cfx.asOrganization));  // accepté, compté à part
   }
-  const ts = await turnstile(env, b.token, ip);
+  const ts = await turnstile(env, b.token, ip, ctx);
   if (!ts) throw new HttpError(403, "vérification anti-robot refusée");
   const chMode = env.REQUIRE_CHALLENGE || "0";
   if (chMode === "1") {
@@ -154,10 +166,12 @@ async function voteInner(req, env, ctx) {
 
   const now = Math.floor(Date.now() / 1000), day = new Date().toISOString().slice(0, 10);
   const rk = await sha256(ip + "|" + day + "|" + env.SALT);
-  const limit = parseInt(env.RATE_LIMIT || "100", 10);
+  // Deux plafonds par réseau et par jour : les NOUVEAUX appareils (RATE_LIMIT, la vraie mesure d'un envoi en masse) et l'ensemble des envois, modifications comprises (RATE_LIMIT_ALL).
+  // Une famille, un cybercafé ou un opérateur mobile partagé qui corrige son choix ne consomme donc plus le plafond des nouveaux appareils.
+  const limit = parseInt(env.RATE_LIMIT || "100", 10), limitAll = parseInt(env.RATE_LIMIT_ALL || "400", 10);
   if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM rl WHERE day < ?").bind(day).run();  // purge des jours passés, de temps en temps
   const row = await env.DB.prepare("INSERT INTO rl(k,n,day) VALUES(?,1,?) ON CONFLICT(k) DO UPDATE SET n=n+1 RETURNING n").bind(rk, day).first();
-  if (row && row.n > limit) throw new HttpError(429, "trop de votes depuis ce réseau aujourd'hui");
+  if (row && row.n > limitAll) throw new HttpError(429, "trop de votes depuis ce réseau aujourd'hui");
 
   const dh = await sha256(device + "|" + env.SALT), scopesArr = [...seen];
   const sig = /^[\w\/|.+ -]{0,80}$/.test(String(b.sig || "")) ? String(b.sig || "") : "";
@@ -173,7 +187,15 @@ async function voteInner(req, env, ctx) {
   const prev = (await env.DB.prepare("SELECT scope, choice, dept FROM ballots WHERE device=? AND scope IN (" + scopesArr.map(() => "?").join(",") + ")").bind(dh, ...scopesArr).all()).results || [];
   let isNew = false;
   if (!prev.length) isNew = !(await env.DB.prepare("SELECT 1 AS x FROM ballots WHERE device=? LIMIT 1").bind(dh).first());
+  if (isNew) {
+    const rn = await env.DB.prepare("INSERT INTO rl(k,n,day) VALUES(?,1,?) ON CONFLICT(k) DO UPDATE SET n=n+1 RETURNING n").bind(rk + "|n", day).first();
+    if (rn && rn.n > limit) throw new HttpError(429, "trop de votes depuis ce réseau aujourd'hui");
+  } else if (row && row.n > limit) await noteBD(-30, "OBSERVATION limite : modification acceptée (l'ancienne règle la refusait)");
   const grp = await env.DB.prepare("SELECT new_dev, sends FROM cluster WHERE k=? AND day=?").bind(cl, day).first();
+  if (isNew && nclass === "doux") {  // plafond facultatif de nouveaux appareils par heure pour un opérateur « doux » (0 = aucun plafond, détection seulement)
+    const sm = parseInt(env.SOFT_HOURLY_MAX || "0", 10);
+    if (sm > 0) { const r = await env.DB.prepare("SELECT SUM(new_dev) AS n FROM asn_hour WHERE hour=? AND asn=?").bind(new Date().toISOString().slice(0, 13), asnNum).first(); if (r && r.n >= sm) throw new HttpError(429, "trop de nouveaux appareils depuis ce reseau cette heure"); }
+  }
   if (isNew && clMax > 0 && grp && grp.new_dev >= clMax) throw new HttpError(429, "trop de nouveaux appareils depuis ce réseau aujourd'hui");
   if (isNew && fpk && fpMax > 0) {  // trop de nouveaux appareils créés sur le même navigateur cette semaine
     const f = await env.DB.prepare("SELECT new_dev FROM fp_week WHERE k=? AND week=?").bind(fpk, isoWeek(dayDate)).first();
@@ -260,6 +282,14 @@ async function riskRemoved(env) {  // bulletins de la présidentielle retirés a
   let v = 0;
   try { const r = await env.DB.prepare("SELECT v FROM pub_meta WHERE k='risk_pres'").first(); v = r ? Number(r.v) || 0 : 0; } catch (e) { /* table absente */ }
   riskMemo = { at: Date.now(), v };
+  return v;
+}
+let locMemo = { at: 0, v: {} };
+async function riskLocal(env) {  // bulletins retirés des scrutins locaux (nombre par scrutin), pour l'afficher
+  if (Date.now() - locMemo.at < 30000) return locMemo.v;
+  let v = {};
+  try { const r = await env.DB.prepare("SELECT v FROM pub_meta WHERE k='risk_loc'").first(); v = r ? JSON.parse(r.v) || {} : {}; } catch (e) { /* table absente ou valeur illisible */ }
+  locMemo = { at: Date.now(), v };
   return v;
 }
 let cutMemo = { at: 0, v: null };
@@ -354,6 +384,8 @@ async function results(req, env) {
       deptsMemo = { at: now, v: depts };
     }
   }
+  const loc = await riskLocal(env);
+  for (const s of scopes) if (s !== "pres" && out[s] && loc[s] > 0) out[s] = { ...out[s], adj: loc[s] };
   if (scopes.includes("pres") && out.pres) { const rk = await riskRemoved(env); if (rk > 0) out.pres = { ...out.pres, adj: (out.pres.adj || 0) + rk }; }
   const cut = scopes.includes("pres") ? await publishedCut(env) : null;
   return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept, asof: snap || null, ...(cut ? { cut } : {}) };
@@ -384,10 +416,11 @@ async function publish(env) {
     env.DB.prepare("UPDATE tally_pub SET n = MAX(0, n - (SELECT COUNT(*) FROM ballots b JOIN ballot_risk r ON r.dh = b.device AND r.scope = b.scope AND r.status = 'retire' WHERE b.scope = tally_pub.scope AND b.dept = tally_pub.dept AND b.choice = tally_pub.choice)) WHERE scope IN (SELECT scope FROM ballot_risk WHERE status = 'retire')"),
     env.DB.prepare("UPDATE tally_tot_pub SET n = MAX(0, n - (SELECT COUNT(DISTINCT b.device) FROM ballots b JOIN ballot_risk r ON r.dh = b.device AND r.scope = b.scope AND r.status = 'retire' WHERE b.scope = tally_tot_pub.scope AND b.dept = tally_tot_pub.dept)) WHERE scope IN (SELECT scope FROM ballot_risk WHERE status = 'retire')"),
     env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('risk_pres',(SELECT CAST(COUNT(*) AS TEXT) FROM ballot_risk r WHERE r.status = 'retire' AND r.scope = 'pres' AND EXISTS (SELECT 1 FROM ballots b WHERE b.device = r.dh AND b.scope = 'pres'))) ON CONFLICT(k) DO UPDATE SET v = excluded.v"),
+    env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('risk_loc',COALESCE((SELECT json_group_object(scope, n) FROM (SELECT r.scope AS scope, COUNT(*) AS n FROM ballot_risk r WHERE r.status = 'retire' AND r.scope <> 'pres' AND EXISTS (SELECT 1 FROM ballots b WHERE b.device = r.dh AND b.scope = r.scope) GROUP BY r.scope)), '{}')) ON CONFLICT(k) DO UPDATE SET v = excluded.v"),
     env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('snap_at',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(now.toISOString()),
     env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('snap_hour',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(now.toISOString().slice(0, 13)),
   ]);
-  pubMemo = { at: 0, v: null }; cutMemo = { at: 0, v: null }; riskMemo = { at: 0, v: 0 };
+  pubMemo = { at: 0, v: null }; cutMemo = { at: 0, v: null }; riskMemo = { at: 0, v: 0 }; locMemo = { at: 0, v: {} };
 }
 
 // Détection automatique : propose (sans rien retirer) les cellules « opérateur + heure » dont les choix de président s'écartent fortement
@@ -515,8 +548,78 @@ async function autoBlocks(env) {
   for (let i = 0; i < flagged.length; i += 40) await env.DB.batch(flagged.slice(i, i + 40).map(([dh, why]) => env.DB.prepare(ins).bind(dh, why, day)));
   return flagged.length;
 }
+// ---- Scrutins locaux (sénateur, député, maire, CASEC, ASEC) : mêmes règles pour tous les candidats d'un scrutin ----
+// Les croisements « opérateur + heure » de la présidentielle ne s'appliquent pas ici (trop peu de réponses par cellule). Deux contrôles, tous deux calculés à partir du dossier de preuves (14 jours) :
+//  1. réseau en bloc : au moins BLOCK_MIN_LOCAL appareils d'un même réseau votent dans les BLOCK_HOURS dernières heures, dont BLOCK_SHARE pour le même candidat du même scrutin.
+//     AUTO_BLOCKS_LOCAL : "0" désactivé, "2" observation (inscrit dans review_flags sans rien retirer), "1" retrait de l'instantané publié (ballot_risk), comme pour la présidentielle.
+//  2. vague de la journée : au moins WAVE_MIN nouveaux appareils dans la journée d'un scrutin, dont WAVE_SHARE pour le même candidat, alors que sa part était inférieure de WAVE_GAP ou plus
+//     avant ce jour. Jamais retiré automatiquement : une mobilisation légitime ressemble à cela. Inscrit dans review_flags pour examen (retrait possible avec excluded_windows).
+async function ensureTables(env) {
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS review_flags (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT, kind TEXT NOT NULL, scope TEXT NOT NULL, day TEXT NOT NULL, choice TEXT NOT NULL, net TEXT NOT NULL DEFAULT '', n INTEGER, share INTEGER, base INTEGER, nets INTEGER, asns INTEGER, status TEXT NOT NULL, note TEXT)"),
+    env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS review_flags_u ON review_flags(kind, scope, day, choice, net)"),
+  ]);
+}
+function decideBlocs(totals, tops, need, share) {  // totals : « réseau|scrutin » -> appareils ; tops : lignes {net, scope, choice, n}
+  const best = new Map();
+  for (const r of tops) { if (String(r.choice).startsWith("~")) continue; const k = r.net + "|" + r.scope, o = best.get(k); if (!o || r.n > o.n) best.set(k, r); }
+  const out = [];
+  for (const [k, r] of best) { const t = totals.get(k) || 0; if (t >= need && r.n / t >= share) out.push({ net: r.net, scope: r.scope, choice: r.choice, n: r.n, total: t }); }
+  return out;
+}
+function decideWaves(dayTot, dayChoice, baseChoice, baseTot, o) {  // dayTot : « jour|scrutin » -> appareils ; dayChoice : {d, scope, choice, n, nets, asns} ; baseChoice : « scrutin|candidat » -> n ; baseTot : scrutin -> n
+  const out = [];
+  for (const r of dayChoice) {
+    if (String(r.choice).startsWith("~")) continue;
+    const nd = dayTot.get(r.d + "|" + r.scope) || 0;
+    if (nd < o.min || r.n / nd < o.share) continue;
+    const bt = (baseTot.get(r.scope) || 0) - nd; if (bt < o.baseMin) continue;
+    const pb = Math.max(0, (baseChoice.get(r.scope + "|" + r.choice) || 0) - r.n) / bt;
+    if (r.n / nd - pb < o.gap) continue;
+    out.push({ d: r.d, scope: r.scope, choice: r.choice, n: r.n, total: nd, share: Math.round(100 * r.n / nd), base: Math.round(100 * pb), nets: r.nets, asns: r.asns });
+  }
+  return out;
+}
+async function autoBlocksLocal(env) {
+  const mode = env.AUTO_BLOCKS_LOCAL || "2";
+  if (mode === "0") return 0;
+  const need = parseInt(env.BLOCK_MIN_LOCAL || "20", 10), share = parseFloat(env.BLOCK_SHARE || "0.9"), hours = parseInt(env.BLOCK_HOURS || "6", 10);
+  const since = Math.floor(Date.now() / 1000) - hours * 3600, day = new Date().toISOString().slice(0, 10), now = new Date().toISOString();
+  const from = "FROM evidence e JOIN ballots b ON b.device = e.dh WHERE e.t >= ? AND e.net <> '' AND b.scope <> 'pres'";
+  const [tot, top] = await env.DB.batch([
+    env.DB.prepare("SELECT e.net AS net, b.scope AS scope, COUNT(DISTINCT e.dh) AS n " + from + " GROUP BY e.net, b.scope HAVING n >= ?").bind(since, need),
+    env.DB.prepare("SELECT e.net AS net, b.scope AS scope, b.choice AS choice, COUNT(DISTINCT e.dh) AS n " + from + " GROUP BY e.net, b.scope, b.choice HAVING n >= ?").bind(since, Math.ceil(need * share)),
+  ]);
+  const totals = new Map(tot.results.map((r) => [r.net + "|" + r.scope, r.n]));
+  const found = decideBlocs(totals, top.results, need, share);
+  const ins = "INSERT INTO ballot_risk(dh,scope,score,reasons,status,decided) VALUES(?,?,100,?,'retire',?) ON CONFLICT(dh,scope) DO UPDATE SET score = MAX(ballot_risk.score, 100), reasons = excluded.reasons, status = 'retire', decided = excluded.decided WHERE ballot_risk.status <> 'garde'";
+  for (const f of found) {
+    await env.DB.prepare("INSERT INTO review_flags(created,kind,scope,day,choice,net,n,share,base,nets,asns,status,note) VALUES(?,'bloc',?,?,?,?,?,?,NULL,1,NULL,?,?) ON CONFLICT(kind,scope,day,choice,net) DO UPDATE SET n = MAX(review_flags.n, excluded.n), share = excluded.share").bind(now, f.scope, day, f.choice, f.net, f.n, Math.round(100 * f.n / f.total), mode === "1" ? "retiré" : "observé", f.total + " appareils du même réseau en " + hours + " h").run();
+    if (mode !== "1") continue;
+    const devs = (await env.DB.prepare("SELECT DISTINCT e.dh AS dh FROM evidence e JOIN ballots b ON b.device = e.dh AND b.scope = ? AND b.choice = ? WHERE e.t >= ? AND e.net = ?").bind(f.scope, f.choice, since, f.net).all()).results || [];
+    const why = "réseau en bloc : " + f.total + " appareils, " + Math.round(100 * f.n / f.total) + " % pour le même candidat (automatique)";
+    for (let i = 0; i < devs.length; i += 40) await env.DB.batch(devs.slice(i, i + 40).map((d) => env.DB.prepare(ins).bind(d.dh, f.scope, why, day)));
+  }
+  return found.length;
+}
+async function waveFlags(env) {
+  if (new Date().getUTCHours() % parseInt(env.WAVE_EVERY_H || "3", 10) !== 0) return 0;  // balayage lourd : toutes les WAVE_EVERY_H heures seulement
+  const o = { min: parseInt(env.WAVE_MIN || "30", 10), share: parseFloat(env.WAVE_SHARE || "0.6"), gap: parseFloat(env.WAVE_GAP || "0.35"), baseMin: parseInt(env.WAVE_BASE_MIN || "50", 10) };
+  const since = Math.floor(Date.now() / 86400000) * 86400 - 2 * 86400, now = new Date().toISOString();  // minuit UTC d'il y a 2 jours : trois journées, la dernière en cours
+  const from = "FROM evidence e JOIN ballots b ON b.device = e.dh WHERE e.isnew = 1 AND e.t >= ? AND b.scope <> 'pres'";
+  const [tot, ch, bc, bt] = await env.DB.batch([
+    env.DB.prepare("SELECT date(e.t, 'unixepoch') AS d, b.scope AS scope, COUNT(DISTINCT e.dh) AS n " + from + " GROUP BY d, b.scope HAVING n >= ?").bind(since, o.min),
+    env.DB.prepare("SELECT date(e.t, 'unixepoch') AS d, b.scope AS scope, b.choice AS choice, COUNT(DISTINCT e.dh) AS n, COUNT(DISTINCT e.net) AS nets, COUNT(DISTINCT e.asn) AS asns " + from + " GROUP BY d, b.scope, b.choice HAVING n >= ?").bind(since, Math.ceil(o.min * o.share)),
+    env.DB.prepare("SELECT scope, choice, SUM(n) AS n FROM tally WHERE scope <> 'pres' GROUP BY scope, choice"),
+    env.DB.prepare("SELECT scope, SUM(n) AS n FROM tally_tot WHERE scope <> 'pres' GROUP BY scope"),
+  ]);
+  const found = decideWaves(new Map(tot.results.map((r) => [r.d + "|" + r.scope, r.n])), ch.results, new Map(bc.results.map((r) => [r.scope + "|" + r.choice, r.n])), new Map(bt.results.map((r) => [r.scope, r.n])), o);
+  for (const f of found) await env.DB.prepare("INSERT INTO review_flags(created,kind,scope,day,choice,net,n,share,base,nets,asns,status,note) VALUES(?,'vague',?,?,?,'',?,?,?,?,?,'à examiner',?) ON CONFLICT(kind,scope,day,choice,net) DO UPDATE SET n = excluded.n, share = excluded.share, base = excluded.base, nets = excluded.nets, asns = excluded.asns").bind(now, f.scope, f.d, f.choice, f.n, f.share, f.base, f.nets, f.asns, f.total + " nouveaux appareils ce jour-là").run();
+  return found.length;
+}
 async function cron(env) {
   await recount(env);
+  try { await ensureTables(env); await autoBlocksLocal(env); await waveFlags(env); } catch (e) { /* suivi des scrutins locaux : jamais bloquant */ }
   try { await autoBlocks(env); } catch (e) { /* tables absentes : pas de retrait automatique */ }
   try { await propose(env); } catch (e) { /* tables de propositions absentes */ }
   try { await publish(env); } catch (e) { /* tables de publication absentes : résultats en direct */ }
@@ -532,7 +635,7 @@ export default {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 21 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 22 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

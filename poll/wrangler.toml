@@ -11,7 +11,7 @@ preview_urls = false
 ALLOWED_ORIGINS = "https://napvote-ht.com,https://www.napvote-ht.com"
 # liste des candidats autorisés, publiée par le site (régénérée toutes les 2 h)
 OPTIONS_URL = "https://napvote-ht.com/data/poll-options.json"
-# nombre maximal de votes enregistrés par jour et par empreinte réseau (réseaux mobiles partagés)
+# nombre maximal de NOUVEAUX appareils enregistrés par jour et par empreinte réseau (réseaux mobiles partagés)
 RATE_LIMIT = "100"
 # plafond de nouveaux appareils par jour pour un même groupe (réseau + signature) ; 0 = détection seulement, aucun blocage
 CLUSTER_MAX = "0"
@@ -19,8 +19,14 @@ CLUSTER_MAX = "0"
 CLUSTER_TRACK = "10"
 # les choix de président d'un opérateur réseau ne sont comptés qu'à partir de ce nombre d'envois dans la journée
 ASN_TRACK = "30"
-# refuse les envois venant d'hébergeurs de serveurs, de VPN et de relais privés ("0" pour désactiver)
+# refuse les envois venant d'hébergeurs de serveurs et de centres de données ("0" pour désactiver)
 BLOCK_HOSTING = "1"
+# VPN grand public, relais privés (WARP, iCloud Private Relay) : acceptés et comptés à part ; "0" pour les refuser comme avant
+SOFT_NETS = "1"
+# plafond de nouveaux appareils par heure pour un même opérateur « doux » ; 0 = aucun plafond, détection seulement
+SOFT_HOURLY_MAX = "0"
+# plafond de tous les envois (modifications comprises) par réseau et par jour ; RATE_LIMIT ne compte plus que les nouveaux appareils
+RATE_LIMIT_ALL = "400"
 # si renseigné, les envois qui n'arrivent pas par ce nom d'hôte sont refusés (à activer après la transition : VOTE_HOST = "poll.napvote-ht.com")
 VOTE_HOST = ""
 # défi signé + liaison Turnstile à l'appareil : "0" désactivé, "2" observation (compte sans refuser), "1" obligatoire
@@ -39,6 +45,15 @@ AUTO_CELLS_MAX = "5"
 BLOCK_MIN = "30"
 BLOCK_SHARE = "0.9"
 BLOCK_HOURS = "6"
+# scrutins locaux : "0" désactivé, "2" observation (inscrit dans review_flags sans rien retirer), "1" retrait des réseaux en bloc de l'instantané publié
+AUTO_BLOCKS_LOCAL = "2"
+BLOCK_MIN_LOCAL = "20"
+# vagues de la journée dans un scrutin local (jamais retirées automatiquement, signalées pour examen) : voir README
+WAVE_MIN = "30"
+WAVE_SHARE = "0.6"
+WAVE_GAP = "0.35"
+WAVE_BASE_MIN = "50"
+WAVE_EVERY_H = "3"
 
 # recalage exact des totaux, une fois par heure
 [triggers]
