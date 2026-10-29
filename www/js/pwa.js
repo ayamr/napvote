@@ -4,6 +4,10 @@
   if (!A) { return; }
   A.boot();
 
+  /* Adresse de contact : assemblée ici plutôt qu'écrite dans le HTML, pour que Cloudflare ne la remplace pas par « [email protected] » */
+  var MAIL = 'contact' + String.fromCharCode(64) + 'napvote-ht.com';
+  Array.prototype.forEach.call(document.querySelectorAll('a.cmail'), function (a) { a.href = 'mailto:' + MAIL; a.textContent = MAIL; });
+
   var native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
   var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
 

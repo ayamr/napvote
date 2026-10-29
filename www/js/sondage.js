@@ -158,6 +158,10 @@
     if (window.turnstile) { draw(); return; }
     var s = document.createElement('script'); s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true; s.onload = draw; document.head.appendChild(s);
   }
+  /* Adresse de contact assemblée ici (Cloudflare remplace sinon les adresses écrites dans le HTML) ; ajoutée aux messages d'erreur du sondage */
+  var MAIL = 'contact' + String.fromCharCode(64) + 'napvote-ht.com';
+  function contactHtml() { return ' ' + esc(t('poll.contact')) + ' <a href="mailto:' + MAIL + '">' + MAIL + '</a>'; }
+  function setMsg(el, text, help) { el.textContent = text; if (help) { el.insertAdjacentHTML('beforeend', contactHtml()); } }
   function post(path, body) {
     /* text/plain : requête « simple » pour CORS, donc sans pré-vérification (OPTIONS) du navigateur ; le serveur lit le corps comme du JSON dans tous les cas */
     return fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body) })
@@ -267,7 +271,7 @@
   };
   function renderResults(S, data, dept, failed) {
     var h = warn;
-    if (failed) { root.innerHTML = h + '<p class="empty">' + esc(t('poll.err')) + '</p><p><button type="button" class="btn" data-pretry>' + esc(t('err.reload')) + '</button></p>'; return; }
+    if (failed) { root.innerHTML = h + '<p class="empty">' + esc(t('poll.err')) + contactHtml() + '</p><p><button type="button" class="btn" data-pretry>' + esc(t('err.reload')) + '</button></p>'; return; }
     lastCut = data.cut || lastCut;
     h += cutBanner(data.cut) + (needsConfirm(data.cut) ? '<p class="note-s">' + esc(t('poll.confirm')) + ' <button type="button" class="btn sm" data-pedit>' + esc(t('poll.confirmBtn')) + '</button></p>' : '') + '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2>' + (data.asof ? '<p class="note-s">' + esc(t('poll.asof', { h: new Date(data.asof).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })) + '</p>' : '') + (justVoted ? '<p class="note-s"><b>' + esc(t('poll.later')) + '</b></p>' : '') + '<p class="note-s">' + esc(t('poll.dup')) + '</p>' + (((data.scopes.pres || {}).adj > 0) ? '<p class="note-s"><b>' + esc(t('poll.adj', { n: fmt(data.scopes.pres.adj) })) + '</b></p>' : '');
     S.list.forEach(function (sc) {
@@ -319,7 +323,8 @@
     }, function (er) {
       token = ''; ensureChallenge(true); if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } }
       btn.disabled = true;
-      msg.textContent = (er.message === 'defi' || er.message === 'defi_tot') ? t('poll.wait') : (er.message === 'empreinte' ? t('poll.fp') : (er.status === 429 ? t('poll.limit') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err'))));
+      var wait = er.message === 'defi' || er.message === 'defi_tot';
+      setMsg(msg, wait ? t('poll.wait') : (er.message === 'empreinte' ? t('poll.fp') : (er.status === 429 ? t('poll.limit') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err')))), !wait);
     });
   });
   root.addEventListener('click', function (e) {

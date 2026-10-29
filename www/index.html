@@ -58,6 +58,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     <button type="button" data-go="cal" data-i18n="nav.cal">Calendrier</button>
     <button type="button" data-go="elec" data-i18n="nav.elec">Électeurs</button>
     <button type="button" data-go="news" data-i18n="nav.news">Actualités</button>
+    <button type="button" data-go="about" data-i18n="nav.about">À propos</button>
   </nav>
 </div></div>
 
@@ -73,6 +74,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
             <p class="lede" data-i18n="home.lede">Dites-nous où vous votez. Vous verrez la liste complète, du président jusqu’à l’ASEC de votre section.</p>
             <div class="label picker" data-picker="home"></div>
             <p class="indep" data-i18n="home.indep">Initiative citoyenne, non affiliée au CEP.</p>
+            <p class="ctc"><span data-i18n="ctc.home"></span> <a class="cmail"></a></p>
           </div>
 
           <div id="h-saved"></div>
@@ -138,6 +140,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <h1 data-i18n="b.title">Mon bulletin</h1>
         <p data-i18n="b.sub">Les candidats de votre commune, et ce qui s’est passé chez vous de 2015 à 2017.</p>
       </div>
+      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
       <div class="label picker" data-picker="bulletin"></div>
       <div id="b-out" aria-live="polite"></div>
     </div>
@@ -151,6 +154,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <p data-i18n="m.sub">Touchez un département pour zoomer, puis une commune pour voir ses candidats.</p>
         <span class="srcn">CEP · <span class="js-asof"></span> · <span class="js-total">0</span></span>
       </div>
+      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
 
       <div class="ctools">
         <div class="srow">
@@ -192,6 +196,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <p data-i18n="c.sub">Les candidatures inscrites au CEP, poste par poste. Filtrez par département, parti ou nom.</p>
         <span class="srcn">CEP · <span class="js-asof"></span> · <span class="js-total">0</span></span>
       </div>
+      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
       <div id="cl-postes" class="pillrow" role="group" aria-label="Poste"></div>
       <div class="fbar">
         <label class="field" id="cl-dept-wrap"><span class="sr">Département</span><select id="cl-dept"></select></label>
@@ -213,6 +218,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <h1 data-i18n="r.title">Résultats passés</h1>
         <p data-i18n="r.sub">Présidentielle de 2016, sénatoriales et législatives de 2015 et de leurs reprises jusqu’en janvier 2017.</p>
       </div>
+      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
       <div id="r-tabs" class="pillrow" role="group" aria-label="Scrutin"></div>
       <div id="r-out"></div>
     </div>
@@ -225,6 +231,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <h1 data-i18n="poll.title">Sondage : pour qui comptez-vous voter ?</h1>
         <p data-i18n="poll.sub">Répondez en dix secondes, sans compte.</p>
       </div>
+      <p class="ctc"><span data-i18n="ctc.poll"></span> <a class="cmail"></a></p>
       <div class="label picker" data-picker="bulletin" id="poll-picker"></div>
       <div id="poll-out" aria-live="polite"></div>
     </div>
@@ -238,6 +245,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <p data-i18n="cal.sub">Le calendrier officiel 2026-2027 publié par le CEP, en cours d’actualisation.</p>
         <span class="srcn">CEP, note de presse du 28 octobre 2026 et calendrier électoral actualisé 2026-2027</span>
       </div>
+      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
       <div id="c-votes" class="vote-cards"></div>
       <div class="notice">Le CEP a publié le 28 octobre 2026 un calendrier électoral actualisé, issu du décret électoral du 6 octobre 2026 et de consultations avec les forces de sécurité, les acteurs politiques, la société civile et le secteur privé. Le premier tour (présidentielle, législatives et ratification populaire) est fixé au 18 juillet 2027 et le second tour (présidentielle, législatives et collectivités territoriales) au 4 octobre 2027, au lieu du 13 décembre 2026 et du 21 février 2027 dans la version du 27 juillet. La campagne du premier tour s’ouvre le 15 avril 2027 et l’inscription des candidats à la présidentielle, au Sénat et à la Chambre se poursuit jusqu’au 15 novembre 2026.</div>
       <div class="sec-h"><h2 data-i18n="cal.keys">Étapes clés</h2></div>
@@ -259,6 +267,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <p>L’inscription sur le registre électoral avance département par département. Selon le calendrier actualisé du CEP, elle se poursuit jusqu’au 20 mai 2027, date de fermeture du registre ; les listes électorales sont publiées le 19 juin 2027.</p>
         <span class="srcn" id="e-asof"></span>
       </div>
+      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
       <div id="e-kpis" class="kpis"></div>
       <div class="sec-h"><h2 data-i18n="el.dept">Par département</h2></div>
       <ul id="e-dept" class="vbars"></ul>
@@ -273,6 +282,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <h1 data-i18n="news.title">Actualités et communiqués</h1>
         <p data-i18n="news.sub">Communiqués du CEP et titres de la presse. Les articles s’ouvrent sur le site du média.</p>
       </div>
+      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
       <div id="n-feed" class="feed"></div>
     </div>
   </section>
@@ -284,6 +294,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <h1 data-i18n="about.title">À propos de NapVote</h1>
         <p data-i18n="about.sub">Un outil citoyen et indépendant pour savoir qui se présente et ce qui s’est passé aux élections précédentes.</p>
       </div>
+      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
       <div class="about">
         <div class="card"><h3>Indépendance</h3><p>NapVote n’est affilié ni au Conseil Électoral Provisoire (CEP), ni à un parti, ni à un candidat. Les candidatures sont affichées dans l’ordre alphabétique, sans mise en avant.</p></div>
         <div class="card"><h3>D’où viennent les données</h3>
@@ -307,7 +318,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         </div>
         <div class="card"><h3 data-i18n="about.contact">Contact</h3>
           <p data-i18n="about.contact.t">Une erreur, une question, une correction à signaler ? Écrivez-nous :</p>
-          <p style="margin-top:8px"><a href="mailto:contact@napvote-ht.com"><b>contact@napvote-ht.com</b></a></p>
+          <p style="margin-top:8px"><b><a class="cmail"></a></b></p>
         </div>
         <div class="card" id="install-card"><h3 data-i18n="about.install">Installer l’application</h3>
           <p id="install-txt">Sur téléphone, ajoutez NapVote à votre écran d’accueil : elle s’ouvre en plein écran et marche sans connexion.</p>
@@ -327,7 +338,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 <footer>
   <div class="wrap">
-    <p><span id="foot-t"></span> <button type="button" class="lnk inl" data-go="about" data-i18n="foot.more">Sources et limites ›</button> · <a href="mailto:contact@napvote-ht.com">contact@napvote-ht.com</a></p>
+    <p><span id="foot-t"></span> <button type="button" class="lnk inl" data-go="about" data-i18n="foot.more">Sources et limites ›</button> · <a class="cmail"></a></p>
   </div>
 </footer>
 

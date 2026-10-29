@@ -101,6 +101,7 @@
     'about.title': 'À propos de NapVote', 'about.sub': 'Un outil citoyen et indépendant pour savoir qui se présente et ce qui s’est passé aux élections précédentes.',
     'about.theme': 'Apparence', 'theme.auto': 'Auto', 'theme.light': 'Clair', 'theme.dark': 'Sombre',
     'about.install': 'Installer l’application', 'about.contact': 'Contact', 'about.contact.t': 'Une erreur, une question, une correction à signaler ? Écrivez-nous :',
+    'ctc.poll': 'Une difficulté pour participer, une remarque ou l’envie de nous contacter ? Écrivez-nous :', 'ctc.page': 'Une erreur ou une remarque sur cette page ? Écrivez-nous :', 'ctc.home': 'Une question, une remarque, une difficulté ? Écrivez-nous :', 'poll.contact': 'Besoin d’aide ? Écrivez-nous :',
 
     'f.fav.add': 'Ajouter aux favoris', 'f.fav.on': 'Dans mes favoris', 'f.share': 'Partager', 'f.facts': 'Repères', 'f.sources': 'Sources', 'f.hist': 'Parcours électoral',
     'f.map': 'Voir sur la carte ›', 'f.bul': 'Voir le bulletin de cette commune ›', 'f.peers.dep': 'Autres candidats de la circonscription', 'f.peers.list': 'Colistiers (même parti, même liste)',
@@ -209,6 +210,7 @@
     'about.title': 'Konsènan NapVote', 'about.sub': 'Yon zouti sitwayen ki endepandan pou konnen ki moun k ap kandida ak sa ki te pase nan eleksyon anvan yo.',
     'about.theme': 'Aparans', 'theme.auto': 'Otomatik', 'theme.light': 'Klè', 'theme.dark': 'Fonse',
     'about.install': 'Enstale aplikasyon an', 'about.contact': 'Kontak', 'about.contact.t': 'Gen yon erè, yon kesyon oswa yon korèksyon pou siyale ? Ekri nou :',
+    'ctc.poll': 'Ou gen difikilte pou patisipe, yon remak oswa ou vle antre an kontak avèk nou ? Ekri nou :', 'ctc.page': 'Ou jwenn yon erè oswa ou gen yon remak sou paj sa a ? Ekri nou :', 'ctc.home': 'Yon kesyon, yon remak, yon difikilte ? Ekri nou :', 'poll.contact': 'Ou bezwen èd ? Ekri nou :',
 
     'f.fav.add': 'Mete nan favori', 'f.fav.on': 'Nan favori m', 'f.share': 'Pataje', 'f.facts': 'Repè', 'f.sources': 'Sous', 'f.hist': 'Pakou elektoral',
     'f.map': 'Gade sou kat la ›', 'f.bul': 'Wè bilten komin sa a ›', 'f.peers.dep': 'Lòt kandida nan sikonskripsyon an', 'f.peers.list': 'Kolistye (menm pati, menm lis)',

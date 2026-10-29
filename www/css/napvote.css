@@ -188,6 +188,9 @@ main{ padding-bottom:64px; min-height:60vh; }
 .ph{ padding:36px 0 8px; max-width:760px; }
 .ph h1{ font-size:clamp(1.9rem, 5vw, 2.5rem); }
 .ph p{ margin-top:12px; color:var(--ink-2); max-width:62ch; font-size:1.125rem; }
+.ctc{ margin-top:14px; max-width:62ch; font-size:.9375rem; color:var(--ink-2); }
+.ctc a{ color:var(--ink); font-weight:700; text-decoration:underline; text-underline-offset:2px; white-space:nowrap; }
+.cover .ctc{ margin-top:10px; }
 .srcn{ display:block; margin-top:12px; font-size:.875rem; color:var(--ink-3); }
 .blk{ margin-top:40px; }
 .sec-h{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:4px; padding-top:14px; border-top:3px solid var(--ink); }
@@ -250,6 +253,7 @@ input::placeholder{ color:var(--ink-3); }
 .pk-f span{ font-size:.9375rem; font-weight:600; }
 .pk-act{ display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; align-items:center; }
 .pk-msg{ margin-top:10px; min-height:1.2em; font-size:.9rem; color:var(--alert); }
+.pk-msg a, .empty a{ color:inherit; font-weight:700; text-decoration:underline; text-underline-offset:2px; white-space:nowrap; }
 .pk-sum{ display:none; align-items:center; justify-content:space-between; gap:12px; }
 .pk-sum-t{ font-size:1.0625rem; }
 .picker.compact{ padding:10px 16px; margin-top:20px; }
