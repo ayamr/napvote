@@ -398,10 +398,10 @@
     API.daysTo = daysTo; API.fdate = fdate; API.left = left;
 
     var agendaItems = [
-      ['date.1', '2026-10-13', 'Date du calendrier du 27 juillet ; le CEP indique que l’inscription se poursuit'],
-      ['date.2', '2026-10-31', 'Prolongée par le CEP le 5 octobre'],
-      ['date.3', '2026-12-13', 'Date annoncée ; un calendrier actualisé doit être publié'],
-      ['date.4', '2027-02-21', 'Date annoncée ; un calendrier actualisé doit être publié']
+      ['date.2', '2026-11-15', 'Inscription en ligne pour la présidentielle, le Sénat et la Chambre ; dépôt des pièces jusqu’au 30 novembre (calendrier actualisé du CEP)'],
+      ['date.1', '2027-05-20', 'Fermeture du registre électoral (calendrier actualisé du CEP)'],
+      ['date.3', '2027-07-18', 'Calendrier actualisé du CEP, qui remplace la date du 13 décembre 2026'],
+      ['date.4', '2027-10-04', 'Calendrier actualisé du CEP, qui remplace la date du 21 février 2027']
     ].filter(function (a) { return daysTo(a[1]) >= 0; }).slice(0, 4);
     var elAg = document.getElementById('h-agenda');
     if (elAg) {
@@ -422,8 +422,8 @@
     var elVotes = document.getElementById('c-votes');
     if (elVotes) {
       var vc = [
-        ['cal.first', '2026-12-13', 'Présidentielle, législatives et ratification populaire des changements proposés à la Constitution.'],
-        ['cal.second', '2027-02-21', 'Présidentielle, législatives et élections des collectivités territoriales.']
+        ['cal.first', '2027-07-18', 'Présidentielle, législatives et ratification populaire des changements proposés à la Constitution.'],
+        ['cal.second', '2027-10-04', 'Présidentielle, législatives et élections des collectivités territoriales.']
       ];
       elVotes.innerHTML = vc.map(function (v) {
         var n = daysTo(v[1]);
@@ -431,14 +431,11 @@
       }).join('');
     }
     var NOTES = {
-      6: 'Prolongée jusqu’au 31 octobre par le CEP (note du 5 octobre). Elle devait d’abord s’achever le 2 octobre, puis le 14 octobre.',
-      10: 'Reportée : le CEP communiquera de nouvelles dates dans son calendrier actualisé (note du 5 octobre). Dates initiales du calendrier du 27 juillet.',
-      5: 'Ouverte le 20 juillet dans neuf départements et le 30 juillet dans l’Ouest.'
+      '13': 'Calendrier actualisé : la présidentielle, le Sénat et la Chambre des députés s’inscrivent en ligne jusqu’au 15 novembre 2026 et déposent leurs pièces jusqu’au 30 novembre ; les collectivités territoriales jusqu’au 30 novembre et au 30 décembre. La liste définitive est publiée le 11 janvier 2027 (8 février pour les collectivités).',
+      '14.1': 'Ouverte le 20 juillet 2026 dans neuf départements et le 30 juillet dans l’Ouest.',
+      '20.3': 'Le calendrier du 27 juillet prévoyait cette campagne à l’automne 2026 ; le CEP l’avait reportée le 5 octobre.'
     };
-    var stepLi = function (tt, a, b, key, note, pp) {
-      if (pp) {
-        return '<li class="st"><div class="st-top"><h3>' + esc(tt) + '</h3><span class="pill now">Reportée</span></div><div class="st-date">Dates à communiquer (initialement ' + esc(frange(a, b)) + ')</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</li>';
-      }
+    var stepLi = function (tt, a, b, key, note) {
       if (!a) {
         return '<li class="st"><div class="st-top"><h3>' + esc(tt) + '</h3><span class="pill">À confirmer</span></div><div class="st-date">Nouvelle date non communiquée</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</li>';
       }
@@ -446,13 +443,13 @@
       return '<li class="st ' + st2 + '"><div class="st-top"><h3>' + esc(tt) + '</h3><span class="pill ' + (st2 === 'next' ? '' : st2) + '">' + STL[st2] + '</span></div><div class="st-date">' + esc(frange(a, b)) + '</div>' + (note ? '<p>' + esc(note) + '</p>' : '') + '</li>';
     };
     var elKey = document.getElementById('c-key');
-    if (elKey) { elKey.innerHTML = E.cal.filter(function (c) { return c.key; }).map(function (c) { return stepLi(c.t, c.a, c.b, true, NOTES[c.n], c.pp); }).join(''); }
+    if (elKey) { elKey.innerHTML = E.cal.filter(function (c) { return c.key; }).sort(function (x, y) { return x.a < y.a ? -1 : (x.a > y.a ? 1 : 0); }).map(function (c) { return stepLi(c.t, c.a, c.b, true, NOTES[c.n]); }).join(''); }
     var elReg = document.getElementById('c-reg');
-    if (elReg) { elReg.innerHTML = E.reg.map(function (r) { return stepLi(r.t, r.a, r.b, false, r.a ? '' : 'Elle était prévue le 14 octobre avant le réaménagement du calendrier annoncé par le CEP le 5 octobre.'); }).join(''); }
+    if (elReg) { elReg.innerHTML = E.reg.map(function (r) { return stepLi(r.t, r.a, r.b, false, ''); }).join(''); }
     var elAll = document.getElementById('c-all');
     if (elAll) {
       elAll.innerHTML = '<table class="ctab2"><thead><tr><th>N°</th><th>Étape</th><th>Dates</th></tr></thead><tbody>' + E.cal.map(function (c) {
-        return '<tr><td>' + c.n + '</td><td>' + esc(c.t) + '</td><td class="dt">' + (c.pp ? 'À communiquer' : esc(frange(c.a, c.b))) + '</td></tr>';
+        return '<tr><td>' + c.n + '</td><td>' + esc(c.t) + '</td><td class="dt">' + (c.a ? esc(frange(c.a, c.b)) : 'Non précisées') + '</td></tr>';
       }).join('') + '</tbody></table>';
     }
 

@@ -94,8 +94,8 @@
     'hx.last': 'Dernier élu', 'hx.votes': 'Voix · part', 'hx.decisive': 'Scrutin décisif', 'hx.valid': 'Votes valides', 'hx.c15': 'candidats en 2015', 'hx.c26': 'inscrits en 2026',
     'hx.prov': 'Provisoire', 'hx.wiki': 'Non confirmé par le CEP',
 
-    'cal.title': 'Calendrier électoral', 'cal.sub': 'Le calendrier officiel 2026-2027 publié par le CEP, en cours d’actualisation.',
-    'cal.first': 'Premier tour', 'cal.second': 'Second tour', 'cal.keys': 'Étapes clés', 'cal.reg': 'Inscription des candidats', 'cal.all': 'Voir les 28 étapes du calendrier officiel',
+    'cal.title': 'Calendrier électoral', 'cal.sub': 'Le calendrier électoral 2026-2027 actualisé par le CEP.',
+    'cal.first': 'Premier tour', 'cal.second': 'Second tour', 'cal.keys': 'Étapes clés', 'cal.reg': 'Inscription des candidats', 'cal.all': 'Voir toutes les étapes du calendrier officiel',
     'el.title': 'Électeurs inscrits', 'el.dept': 'Par département',
     'news.title': 'Actualités et communiqués', 'news.sub': 'Communiqués du CEP et titres de la presse. Les articles s’ouvrent sur le site du média.',
     'about.title': 'À propos de NapVote', 'about.sub': 'Un outil citoyen et indépendant pour savoir qui se présente et ce qui s’est passé aux élections précédentes.',
@@ -202,8 +202,8 @@
     'hx.last': 'Dènye eli a', 'hx.votes': 'Vòt · pousantaj', 'hx.decisive': 'Eleksyon ki deside a', 'hx.valid': 'Vòt ki valab', 'hx.c15': 'kandida an 2015', 'hx.c26': 'enskri an 2026',
     'hx.prov': 'Pwovizwa', 'hx.wiki': 'CEP pa konfime l',
 
-    'cal.title': 'Kalandriye elektoral', 'cal.sub': 'Kalandriye ofisyèl 2026-2027 CEP la pibliye, k ap mete ajou.',
-    'cal.first': 'Premye tou', 'cal.second': 'Dezyèm tou', 'cal.keys': 'Etap prensipal yo', 'cal.reg': 'Enskripsyon kandida yo', 'cal.all': 'Gade 28 etap kalandriye ofisyèl la',
+    'cal.title': 'Kalandriye elektoral', 'cal.sub': 'Kalandriye elektoral 2026-2027 CEP la mete ajou.',
+    'cal.first': 'Premye tou', 'cal.second': 'Dezyèm tou', 'cal.keys': 'Etap prensipal yo', 'cal.reg': 'Enskripsyon kandida yo', 'cal.all': 'Gade tout etap kalandriye ofisyèl la',
     'el.title': 'Elektè ki enskri', 'el.dept': 'Pa depatman',
     'news.title': 'Nouvèl ak kominike', 'news.sub': 'Kominike CEP la ak tit jounal yo. Atik yo louvri sou sit medya a.',
     'about.title': 'Konsènan NapVote', 'about.sub': 'Yon zouti sitwayen ki endepandan pou konnen ki moun k ap kandida ak sa ki te pase nan eleksyon anvan yo.',

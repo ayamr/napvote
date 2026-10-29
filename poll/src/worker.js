@@ -452,7 +452,8 @@ async function propose(env) {
     cand.sort((x, y) => score(y[1]) - score(x[1]));
     chosen.push(cand[0][0]); flagged[cand[0][0]] = cand[0][1];
   }
-  let added = 0;
+  let added = 0, autoDone = 0;
+  const nowHour = new Date().toISOString().slice(0, 13), autoMin = parseInt(env.AUTO_CELLS_MIN || "40", 10), autoMax = parseInt(env.AUTO_CELLS_MAX || "5", 10);
   for (const [asn, list] of Object.entries(flagged)) {
     list.sort((a, b) => (a.hour < b.hour ? -1 : 1));
     const groups = []; let cur = null;
@@ -463,8 +464,23 @@ async function propose(env) {
     for (const g of groups) {
       const dup = await env.DB.prepare("SELECT 1 AS x FROM proposals WHERE asn=? AND hour_from<=? AND hour_to>=? UNION ALL SELECT 1 FROM excluded_cells WHERE asn=? AND hour_from<=? AND hour_to>=?").bind(Number(asn), g.to, g.from, Number(asn), g.to, g.from).first();
       if (dup) continue;
-      await env.DB.prepare("INSERT INTO proposals(created,asn,org,hour_from,hour_to,choices,excess,top2,new_pct) VALUES(?,?,?,?,?,?,?,?,?)").bind(new Date().toISOString(), Number(asn), (orgs[asn] || "").slice(0, 60), g.from, g.to, g.t, Math.round(g.excSum / g.t), Math.round(g.top / g.t), Math.round(g.nw / g.t)).run();
+      const exc = Math.round(g.excSum / g.t);
+      // Validation automatique (AUTO_CELLS = "1") : heures terminées seulement, excédent d'au moins AUTO_CELLS_MIN, au plus AUTO_CELLS_MAX cellules par passe ; le reste attend une validation manuelle.
+      const auto = env.AUTO_CELLS === "1" && g.to < nowHour && exc >= autoMin && autoDone < autoMax;
+      await env.DB.prepare("INSERT INTO proposals(created,asn,org,hour_from,hour_to,choices,excess,top2,new_pct,status,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)").bind(new Date().toISOString(), Number(asn), (orgs[asn] || "").slice(0, 60), g.from, g.to, g.t, exc, Math.round(g.top / g.t), Math.round(g.nw / g.t), auto ? "validé" : "proposé", auto ? "validée automatiquement" : null).run();
+      if (auto) {
+        await env.DB.prepare("INSERT INTO excluded_cells(asn,hour_from,hour_to,dept,reason,created) VALUES(?,?,?,'*',?,?)").bind(Number(asn), g.from, g.to, "Validation automatique : vague identifiée (excédent " + exc + ", " + (orgs[asn] || "").slice(0, 40) + ")", new Date().toISOString().slice(0, 10)).run();
+        autoDone++;
+      }
       added++;
+    }
+  }
+  // Propositions écrites pendant une heure encore ouverte : validées à la passe suivante, une fois l'heure terminée.
+  if (env.AUTO_CELLS === "1" && autoDone < autoMax) {
+    const pend = (await env.DB.prepare("SELECT id, asn, org, hour_from, hour_to, excess FROM proposals WHERE status='proposé' AND hour_to < ? AND excess >= ? ORDER BY id LIMIT ?").bind(nowHour, autoMin, autoMax - autoDone).all()).results || [];
+    for (const x of pend) {
+      await env.DB.prepare("INSERT INTO excluded_cells(asn,hour_from,hour_to,dept,reason,created) VALUES(?,?,?,'*',?,?)").bind(x.asn, x.hour_from, x.hour_to, "Validation automatique : vague identifiée (excédent " + x.excess + ", " + String(x.org || "").slice(0, 40) + ")", new Date().toISOString().slice(0, 10)).run();
+      await env.DB.prepare("UPDATE proposals SET status='validé', note='validée automatiquement' WHERE id=?").bind(x.id).run();
     }
   }
   return added;
@@ -502,8 +518,8 @@ async function autoBlocks(env) {
 async function cron(env) {
   await recount(env);
   try { await autoBlocks(env); } catch (e) { /* tables absentes : pas de retrait automatique */ }
-  try { await publish(env); } catch (e) { /* tables de publication absentes : résultats en direct */ }
   try { await propose(env); } catch (e) { /* tables de propositions absentes */ }
+  try { await publish(env); } catch (e) { /* tables de publication absentes : résultats en direct */ }
 }
 
 export default {
@@ -516,7 +532,7 @@ export default {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 19 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 21 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

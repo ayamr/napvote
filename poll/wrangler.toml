@@ -31,6 +31,10 @@ FP_MAX = "0"
 PROPOSE_MIN = "40"
 # retrait automatique chaque heure des réseaux « en bloc » (présidentielle) : "0" pour désactiver
 AUTO_BLOCKS = "1"
+# validation automatique des cellules « opérateur + heures » (heures terminées, excès >= AUTO_CELLS_MIN, au plus AUTO_CELLS_MAX par passe) : "0" pour désactiver
+AUTO_CELLS = "1"
+AUTO_CELLS_MIN = "55"
+AUTO_CELLS_MAX = "5"
 # au moins ce nombre d'appareils sur un réseau, dans les dernières heures, dont cette part pour le même candidat
 BLOCK_MIN = "30"
 BLOCK_SHARE = "0.9"
