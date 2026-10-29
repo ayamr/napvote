@@ -100,7 +100,7 @@
     'news.title': 'Actualités et communiqués', 'news.sub': 'Communiqués du CEP et titres de la presse. Les articles s’ouvrent sur le site du média.',
     'about.title': 'À propos de NapVote', 'about.sub': 'Un outil citoyen et indépendant pour savoir qui se présente et ce qui s’est passé aux élections précédentes.',
     'about.theme': 'Apparence', 'theme.auto': 'Auto', 'theme.light': 'Clair', 'theme.dark': 'Sombre',
-    'about.install': 'Installer l’application',
+    'about.install': 'Installer l’application', 'about.contact': 'Contact', 'about.contact.t': 'Une erreur, une question, une correction à signaler ? Écrivez-nous :',
 
     'f.fav.add': 'Ajouter aux favoris', 'f.fav.on': 'Dans mes favoris', 'f.share': 'Partager', 'f.facts': 'Repères', 'f.sources': 'Sources', 'f.hist': 'Parcours électoral',
     'f.map': 'Voir sur la carte ›', 'f.bul': 'Voir le bulletin de cette commune ›', 'f.peers.dep': 'Autres candidats de la circonscription', 'f.peers.list': 'Colistiers (même parti, même liste)',
@@ -208,7 +208,7 @@
     'news.title': 'Nouvèl ak kominike', 'news.sub': 'Kominike CEP la ak tit jounal yo. Atik yo louvri sou sit medya a.',
     'about.title': 'Konsènan NapVote', 'about.sub': 'Yon zouti sitwayen ki endepandan pou konnen ki moun k ap kandida ak sa ki te pase nan eleksyon anvan yo.',
     'about.theme': 'Aparans', 'theme.auto': 'Otomatik', 'theme.light': 'Klè', 'theme.dark': 'Fonse',
-    'about.install': 'Enstale aplikasyon an',
+    'about.install': 'Enstale aplikasyon an', 'about.contact': 'Kontak', 'about.contact.t': 'Gen yon erè, yon kesyon oswa yon korèksyon pou siyale ? Ekri nou :',
 
     'f.fav.add': 'Mete nan favori', 'f.fav.on': 'Nan favori m', 'f.share': 'Pataje', 'f.facts': 'Repè', 'f.sources': 'Sous', 'f.hist': 'Pakou elektoral',
     'f.map': 'Gade sou kat la ›', 'f.bul': 'Wè bilten komin sa a ›', 'f.peers.dep': 'Lòt kandida nan sikonskripsyon an', 'f.peers.list': 'Kolistye (menm pati, menm lis)',
