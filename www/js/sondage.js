@@ -159,7 +159,8 @@
     var s = document.createElement('script'); s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true; s.onload = draw; document.head.appendChild(s);
   }
   function post(path, body) {
-    return fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    /* text/plain : requête « simple » pour CORS, donc sans pré-vérification (OPTIONS) du navigateur ; le serveur lit le corps comme du JSON dans tous les cas */
+    return fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || 'erreur'); e.status = r.status; throw e; } return j; }); });
   }
 
