@@ -278,7 +278,7 @@
       var d = data.scopes[sc.scope] || { total: 0, choices: {} }, rows = Object.keys(d.choices).map(function (k) { return { c: k, n: d.choices[k] }; }).sort(function (a, b) { return b.n - a.n; });
       var mx = rows.length ? rows[0].n : 1, mineC = [].concat((mine.answers[sc.scope] || {}).c || []);
       h += '<section class="poll-r"><div class="poll-h"><h3>' + esc(sc.title) + '</h3>' + (sc.scope === 'pres' ? '<label class="field2">' + esc(t('pk.dept')) + ' <select id="poll-fdept">' + deptOptions(dept, true) + '</select></label>' : '') + '</div>' +
-        '<p class="note-s" style="margin-top:4px">' + esc(d.total >= 200 ? t('poll.totalA', { n: fmt(Math.round(d.total / 100) * 100) }) : t(d.total > 1 ? 'poll.total' : 'poll.total1', { n: fmt(d.total) })) + (sc.scope === 'pres' && dept ? ' · ' + esc(dept) : '') + '</p>';
+        '<p class="note-s" style="margin-top:4px">' + esc(d.total >= 200 ? t('poll.totalA', { n: fmt(Math.round(d.total / (sc.scope === 'pres' ? 100 : 10)) * (sc.scope === 'pres' ? 100 : 10)) }) : t(d.total > 1 ? 'poll.total' : 'poll.total1', { n: fmt(d.total) })) + (sc.scope === 'pres' && dept ? ' · ' + esc(dept) : '') + '</p>';
       if (sc.scope === 'pres' && dept && d.total > 0 && d.total < FEW) { h += '<p class="note-s">' + esc(t('poll.few')) + '</p>'; }
       if (sc.multi && d.total) { h += '<p class="note-s">' + esc(t('poll.multiNote', { n: sc.multi })) + '</p>'; }
       if (!d.total) { h += '<p class="empty">' + esc(t('poll.none')) + '</p>'; }
