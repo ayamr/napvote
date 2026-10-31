@@ -42,5 +42,27 @@
   "page": "https://commons.wikimedia.org/wiki/File:Michel_Martelly_(cropped).jpg",
   "thumb": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Michel_Martelly_%28cropped%29.jpg",
   "verified": "Wikipédia fr : Michel Martelly, président de la République 2011-2016 ; correspond à la fiche NapVote (candidat à la présidence)"
+ },
+ {
+  "nom": "JEUDY",
+  "pre": "WILSON",
+  "po": 0,
+  "file": "Wilson_Jeudy_haiti.png",
+  "author": "OlistikBlok",
+  "license": "CC BY-SA 4.0",
+  "page": "https://commons.wikimedia.org/wiki/File:Wilson_Jeudy_haiti.png",
+  "thumb": "https://upload.wikimedia.org/wikipedia/commons/f/f4/Wilson_Jeudy_haiti.png",
+  "verified": "Fichier Commons utilisé sur la page Wikipédia en « 2027 Haitian general election » pour Wilson Jeudy ; correspond à la fiche NapVote (Président, parti VAR). À confirmer par une seconde source."
+ },
+ {
+  "nom": "HENRISME",
+  "pre": "LUCNA",
+  "po": 1,
+  "file": "Lucna.jpg",
+  "author": "Jacinthe Michelet",
+  "license": "CC0",
+  "page": "https://commons.wikimedia.org/wiki/File:Lucna.jpg",
+  "thumb": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Lucna.jpg/500px-Lucna.jpg",
+  "verified": "Wikipédia fr : Lucna Henrisme, née à Jérémie (Grand'Anse), médecin et consultante humanitaire ; correspond à la fiche NapVote (Sénatrice Grand'Anse, parti VIKTWA)."
  }
 ]
