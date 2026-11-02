@@ -70,8 +70,8 @@
       return { c: norm(V.parties[g.pa]), n: V.parties[g.pa], s: t('poll.titulaire', { n: tit.pre + ' ' + tit.nom }) };
     });
   }
-  function scopes() {
-    var out = [{ scope: 'pres', title: t('b.pres'), opts: A.pres.map(cOpt) }], loc = A.loc();
+  function scopes(forLoc) {
+    var out = [{ scope: 'pres', title: t('b.pres'), opts: A.pres.map(cOpt) }], loc = forLoc || A.loc();
     if (!loc) { return { list: out, loc: null }; }
     var p = A.parts(loc), dn = V.deptNames[V.places[loc.pi].d];
     if (p.sen.length) { out.push({ scope: 'sen|' + norm(dn), title: t('b.sen', { d: dn }), opts: p.sen.map(cOpt), multi: 3 }); }
@@ -259,7 +259,7 @@
     var f = FIXED.filter(function (x) { return x.c === c; })[0];
     return f ? f.n : c;
   }
-  A.pollScopes = scopes; A.pollNameOf = nameOf; A.pollPost = post;  // utilisés par la page « Résultats du sondage » (sondage-res.js)
+  A.pollScopes = function (l) { return scopes(l); }; A.pollNameOf = nameOf; A.pollPost = post;  // utilisés par la page « Résultats du sondage » (sondage-res.js)
   A.pollSummary = function () { // choix de l'électeur, du président jusqu'au maire, pour la carte de partage
     var S = scopes(), items = [];
     S.list.forEach(function (sc) {

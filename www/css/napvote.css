@@ -694,3 +694,7 @@ img.av:not(.big){ border-radius:50%; }
 .sres-m li{ margin:6px 0; }
 .sres-rank .rk-n{ min-width:0; line-height:1.25; }
 .sres-rank .rk-n small{ display:block; margin:0; }
+
+.sres-top{ margin:0 0 12px; }
+.sres-where{ margin:18px 0 0; }
+.sres-act{ margin:14px 0 4px; }
