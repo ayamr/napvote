@@ -698,3 +698,6 @@ img.av:not(.big){ border-radius:50%; }
 .sres-top{ margin:0 0 12px; }
 .sres-where{ margin:18px 0 0; }
 .sres-act{ margin:14px 0 4px; }
+
+.rk-s{ display:block; margin-top:2px; font-weight:400; font-size:.8125rem; color:var(--ink-3); }
+li.upn .rk-l{ text-transform:uppercase; } li.upn .rk-s{ text-transform:none; } li.ups .rk-s{ text-transform:uppercase; }

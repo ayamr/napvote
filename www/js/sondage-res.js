@@ -61,7 +61,7 @@
     if (!tot) { return h + '<p class="empty">' + esc(t('poll.none')) + '</p></section>'; }
     function row(r, i) {
       var fixed = r.c.charAt(0) === '~';
-      return '<li><div class="rk hist-r' + (i === 0 && !fixed ? ' win' : '') + '"><span class="rk-l">' + esc(A.pollNameOf(sc, r.c)) + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pct(r.n, tot) + ' <small>' + esc(t('sres.n', { n: fmt(r.n) })) + '</small></span></div></li>';
+      return '<li' + (fixed ? '' : (['may', 'cas', 'asec'].indexOf(sc.scope.split('|')[0]) >= 0 ? ' class="upn"' : ' class="ups"')) + '><div class="rk hist-r' + (i === 0 && !fixed ? ' win' : '') + '"><span class="rk-l">' + esc(A.pollNameOf(sc, r.c)) + (A.pollSubOf(sc, r.c) ? '<small class="rk-s">' + esc(A.pollSubOf(sc, r.c)) + '</small>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pct(r.n, tot) + ' <small>' + esc(t('sres.n', { n: fmt(r.n) })) + '</small></span></div></li>';
     }
     h += '<ol class="rank sres-rank">' + rows.slice(0, TOP).map(row).join('') + '</ol>';
     if (rows.length > TOP) { h += '<details class="sec"><summary><span>' + esc(t('sres.more', { n: rows.length - TOP })) + '</span></summary><ol class="rank sres-rank" start="' + (TOP + 1) + '">' + rows.slice(TOP).map(function (r, i) { return row(r, TOP + i); }).join('') + '</ol></details>'; }
@@ -118,7 +118,7 @@
     var sc = S.list.filter(function (x) { return x.scope === scope; })[0]; if (!sc) { return null; }
     var d = data.scopes[scope] || { total: 0 };
     return { scope: scope, title: sc.title, place: placeName(curLoc()), total: d.total, adj: d.adj || 0, asof: data.asof || '', multi: sc.multi || 0, link: linkFor(scope),
-      rows: rowsOf(sc).map(function (r) { return { name: A.pollNameOf(sc, r.c), n: r.n, pc: pct(r.n, d.total), fixed: r.c.charAt(0) === '~' }; }) };
+      rows: rowsOf(sc).map(function (r) { return { name: A.pollNameOf(sc, r.c), sub: A.pollSubOf(sc, r.c), n: r.n, pc: pct(r.n, d.total), fixed: r.c.charAt(0) === '~' }; }) };
   };
 
   function copy(u) {

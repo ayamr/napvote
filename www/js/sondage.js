@@ -260,6 +260,8 @@
     return f ? f.n : c;
   }
   A.pollScopes = function (l) { return scopes(l); }; A.pollNameOf = nameOf; A.pollPost = post;  // utilisés par la page « Résultats du sondage » (sondage-res.js)
+  function subOf(sc, c) { var o = null; sc.opts.forEach(function (x) { if (x.c === c) { o = x; } }); return o && o.s ? o.s : ''; }  // parti du candidat, ou titulaire de la liste (maire, CASEC, ASEC)
+  A.pollSubOf = subOf;
   A.pollSummary = function () { // choix de l'électeur, du président jusqu'au maire, pour la carte de partage
     var S = scopes(), items = [];
     S.list.forEach(function (sc) {
@@ -287,7 +289,7 @@
       else {
         h += '<ul class="rank">' + rows.map(function (r) {
           var pc = Math.round(100 * r.n / d.total);
-          return '<li><div class="rk hist-r"><span class="rk-l">' + esc(nameOf(sc, r.c)) + (mineC.indexOf(r.c) >= 0 ? ' <span class="poll-me">✓ ' + esc(t('poll.mine')) + '</span>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pc.toLocaleString('fr-FR') + ' %</span></div></li>';
+          return '<li' + (r.c.charAt(0) === '~' ? '' : (['may', 'cas', 'asec'].indexOf(sc.scope.split('|')[0]) >= 0 ? ' class="upn"' : ' class="ups"')) + '><div class="rk hist-r"><span class="rk-l">' + esc(nameOf(sc, r.c)) + (subOf(sc, r.c) ? '<small class="rk-s">' + esc(subOf(sc, r.c)) + '</small>' : '') + (mineC.indexOf(r.c) >= 0 ? ' <span class="poll-me">✓ ' + esc(t('poll.mine')) + '</span>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pc.toLocaleString('fr-FR') + ' %</span></div></li>';
         }).join('') + '</ul>';
       }
       h += '</section>';

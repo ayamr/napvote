@@ -4,7 +4,7 @@
   'use strict';
   var A = window.VVApp, root = document.getElementById('sres-out');
   if (!A || !root || !A.sresInfo) { return; }
-  var W = 1080, PAD = 64, TOPN = 8;
+  var W = 1080, PAD = 64, TOPN = 6;  // 6 lignes : l'image reste dans le format 9:16 des statuts (1080 x 1920)
   var C = { navy: '#0B2447', ink: '#14243B', ink3: '#5C6B82', line: '#D3DAE4', bg: '#F4F6F9', white: '#FFFFFF', bar: '#0F3D8A', track: '#E3E9F2' };
   var SANS = '"Source Sans 3", "Helvetica Neue", Arial, sans-serif', SERIF = '"Source Serif 4", Georgia, "Times New Roman", serif';
   var cap = window.Capacitor, dlg = null, blob = null, url = '', info = null;
@@ -33,6 +33,8 @@
 
   function draw(ctx, I, dry) {
     var y = 0, inner = W - 2 * PAD, cands = I.rows.filter(function (r) { return !r.fixed; }), shown = cands.slice(0, TOPN), hidden = I.rows.length - shown.length;
+    var lst = ['may', 'cas', 'asec'].indexOf(String(I.scope).split('|')[0]) >= 0;  // listes : le parti en majuscules, le titulaire tel quel ; sinon : « Prénom NOM » tel quel, le parti en majuscules
+    shown = shown.map(function (r) { return { name: lst ? r.name.toLocaleUpperCase('fr') : r.name, sub: lst ? (r.sub || '') : (r.sub || '').toLocaleUpperCase('fr'), n: r.n, pc: r.pc }; });
     if (!dry) {
       ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, ctx.canvas.height);
       ctx.fillStyle = C.navy; ctx.fillRect(0, 0, W, 190);
@@ -57,7 +59,12 @@
       ctx.fillStyle = C.ink;
       ls.forEach(function (l, j) { if (!dry) { ctx.fillText(l, PAD, y + j * 46); } });
       if (!dry) { ctx.textAlign = 'right'; ctx.fillStyle = i === 0 ? C.navy : C.ink; ctx.font = '700 42px ' + SANS; ctx.fillText(r.pc, W - PAD, y); ctx.textAlign = 'left'; }
-      y += (ls.length - 1) * 46 + 22;
+      y += (ls.length - 1) * 46;
+      if (r.sub) {
+        ctx.fillStyle = C.ink3; ctx.font = '400 28px ' + SANS;
+        wrap(ctx, r.sub, inner - pcw).forEach(function (l) { y += 36; if (!dry) { ctx.fillText(l, PAD, y); } });
+      }
+      y += 22;
       if (!dry) {
         ctx.fillStyle = C.track; ctx.fillRect(PAD, y, inner, 16);
         var mx = shown[0].n || 1; ctx.fillStyle = i === 0 ? C.navy : C.bar; ctx.fillRect(PAD, y, Math.max(4, inner * r.n / mx), 16);
