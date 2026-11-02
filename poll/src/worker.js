@@ -558,7 +558,43 @@ async function ensureTables(env) {
   await env.DB.batch([
     env.DB.prepare("CREATE TABLE IF NOT EXISTS review_flags (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT, kind TEXT NOT NULL, scope TEXT NOT NULL, day TEXT NOT NULL, choice TEXT NOT NULL, net TEXT NOT NULL DEFAULT '', n INTEGER, share INTEGER, base INTEGER, nets INTEGER, asns INTEGER, status TEXT NOT NULL, note TEXT)"),
     env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS review_flags_u ON review_flags(kind, scope, day, choice, net)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS tally_day (day TEXT NOT NULL, scope TEXT NOT NULL, choice TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (scope, day, choice))"),
   ]);
+}
+
+// Historique journalier des résultats publiés (jour d'Haïti, UTC-5) : la ligne du jour est réécrite à chaque publication, elle garde donc l'état de fin de journée.
+// choice = '*' : nombre de participants. Même chiffres que ceux affichés (la présidentielle subit le même retrait des surplus).
+async function snapshotDay(env) {
+  const day = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);
+  const up = " ON CONFLICT(scope, day, choice) DO UPDATE SET n = excluded.n WHERE n <> excluded.n";
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO tally_day(day, scope, choice, n) SELECT ?, scope, choice, SUM(n) FROM tally_pub WHERE scope <> 'pres' GROUP BY scope, choice" + up).bind(day),
+    env.DB.prepare("INSERT INTO tally_day(day, scope, choice, n) SELECT ?, scope, '*', SUM(n) FROM tally_tot_pub WHERE scope <> 'pres' GROUP BY scope" + up).bind(day),
+  ]);
+  const ex = await loadExcl(env, 0, "tally_pub"), ch = {}, tot = {};
+  for (const r of (await env.DB.prepare("SELECT dept, choice, n FROM tally_pub WHERE scope = 'pres'").all()).results || []) ch[r.choice] = (ch[r.choice] || 0) + Math.max(0, r.n - (ex.byChoice.get(r.dept + "\u0001" + r.choice) || 0));
+  for (const r of (await env.DB.prepare("SELECT dept, n FROM tally_tot_pub WHERE scope = 'pres'").all()).results || []) tot[r.dept] = Math.max(0, r.n - (ex.byDept.get(r.dept) || 0));
+  ch["*"] = Object.values(tot).reduce((a, b) => a + b, 0);
+  await env.DB.batch(Object.entries(ch).map(([c, n]) => env.DB.prepare("INSERT INTO tally_day(day, scope, choice, n) VALUES(?, 'pres', ?, ?)" + up).bind(day, c, n)));
+}
+
+// Évolution d'un scrutin : jours enregistrés, participants et voix des 8 premiers (au dernier jour).
+const trendMemo = new Map();
+async function trend(req, env) {
+  let b; try { b = await req.json(); } catch (e) { throw new HttpError(400, "requête invalide"); }
+  const scope = String(b.scope || "");
+  if (!scope || scope.length > 200) throw new HttpError(400, "scrutin invalide");
+  const hit = trendMemo.get(scope);
+  if (hit && Date.now() - hit.at < 10 * 60000) return hit.v;
+  let rows = [];
+  try { rows = (await env.DB.prepare("SELECT day, choice, n FROM tally_day WHERE scope = ? ORDER BY day").bind(scope).all()).results || []; } catch (e) { /* historique pas encore créé */ }
+  const days = [...new Set(rows.map((r) => r.day))], last = days[days.length - 1];
+  const top = rows.filter((r) => r.day === last && r.choice !== "*" && !r.choice.startsWith("~")).sort((a, c) => c.n - a.n).slice(0, 8).map((r) => r.choice);
+  const out = days.map((d) => { const o = { d, t: 0, c: {} }; for (const r of rows) if (r.day === d) { if (r.choice === "*") o.t = r.n; else if (top.includes(r.choice)) o.c[r.choice] = r.n; } return o; });
+  const v = { scope, days: out };
+  if (trendMemo.size > 500) trendMemo.clear();
+  trendMemo.set(scope, { at: Date.now(), v });
+  return v;
 }
 function decideBlocs(totals, tops, need, share) {  // totals : « réseau|scrutin » -> appareils ; tops : lignes {net, scope, choice, n}
   const best = new Map();
@@ -623,6 +659,7 @@ async function cron(env) {
   try { await autoBlocks(env); } catch (e) { /* tables absentes : pas de retrait automatique */ }
   try { await propose(env); } catch (e) { /* tables de propositions absentes */ }
   try { await publish(env); } catch (e) { /* tables de publication absentes : résultats en direct */ }
+  try { await snapshotDay(env); } catch (e) { /* historique : jamais bloquant */ }
 }
 
 export default {
@@ -633,9 +670,10 @@ export default {
     const url = new URL(req.url);
     try {
       if (url.pathname === "/results" && req.method === "POST") return json(await results(req, env), cors);
+      if (url.pathname === "/trend" && req.method === "POST") return json(await trend(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 22 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 23 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

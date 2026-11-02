@@ -259,6 +259,7 @@
     var f = FIXED.filter(function (x) { return x.c === c; })[0];
     return f ? f.n : c;
   }
+  A.pollScopes = scopes; A.pollNameOf = nameOf; A.pollPost = post;  // utilisés par la page « Résultats du sondage » (sondage-res.js)
   A.pollSummary = function () { // choix de l'électeur, du président jusqu'au maire, pour la carte de partage
     var S = scopes(), items = [];
     S.list.forEach(function (sc) {

@@ -93,3 +93,8 @@ Les croisements « opérateur + heure » ne servent qu'à la présidentielle (tr
 
 La table `review_flags` est créée par la tâche horaire. Lecture : `SELECT kind, scope, day, choice, n, share, base, nets, asns, status FROM review_flags ORDER BY created DESC;`
 Pour retirer une vague après examen : `INSERT INTO excluded_windows(scope, from_ts, to_ts, reason, created) VALUES('dep|…', <début>, <fin>, '…', date('now'));` (secondes Unix ; les bulletins restent en base). Pour rétablir un appareil retiré : `UPDATE ballot_risk SET status = 'garde' WHERE dh = '…' AND scope = '…'`.
+
+## Historique et page « Résultats du sondage » (v23)
+- La tâche horaire écrit, après chaque publication, l'état des résultats publiés dans `tally_day` (une ligne par jour d'Haïti, scrutin et choix ; `choice = '*'` = participants). La présidentielle y subit le même retrait des surplus que l'affichage.
+- `POST /trend {scope}` renvoie les jours enregistrés avec les 8 premiers choix (cache mémoire 10 min). L'historique commence au déploiement de la v23 : il n'est pas reconstitué pour les jours passés, ce qui évite d'afficher des chiffres bruts différents des chiffres publiés.
+- Côté site : `www/js/sondage-res.js` (page `#sres`), lien partageable `?c=<commune>~<département>#sres`.

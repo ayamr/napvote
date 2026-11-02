@@ -82,3 +82,6 @@ CREATE INDEX IF NOT EXISTS attempts_t ON attempts(t);
 -- v22 : signalements des scrutins locaux (réseaux en bloc observés ou retirés, vagues de la journée à examiner). Créée aussi par la tâche horaire si elle manque.
 CREATE TABLE IF NOT EXISTS review_flags (id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT, kind TEXT NOT NULL, scope TEXT NOT NULL, day TEXT NOT NULL, choice TEXT NOT NULL, net TEXT NOT NULL DEFAULT '', n INTEGER, share INTEGER, base INTEGER, nets INTEGER, asns INTEGER, status TEXT NOT NULL, note TEXT);
 CREATE UNIQUE INDEX IF NOT EXISTS review_flags_u ON review_flags(kind, scope, day, choice, net);
+
+-- v23 : historique journalier des résultats publiés (jour d'Haïti, UTC-5). choice = '*' : nombre de participants. Créée par la tâche horaire (ensureTables), remplie par snapshotDay après publish. Lue par POST /trend.
+CREATE TABLE IF NOT EXISTS tally_day (day TEXT NOT NULL, scope TEXT NOT NULL, choice TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (scope, day, choice));
