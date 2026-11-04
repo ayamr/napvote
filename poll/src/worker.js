@@ -653,13 +653,20 @@ async function waveFlags(env) {
   for (const f of found) await env.DB.prepare("INSERT INTO review_flags(created,kind,scope,day,choice,net,n,share,base,nets,asns,status,note) VALUES(?,'vague',?,?,?,'',?,?,?,?,?,'à examiner',?) ON CONFLICT(kind,scope,day,choice,net) DO UPDATE SET n = excluded.n, share = excluded.share, base = excluded.base, nets = excluded.nets, asns = excluded.asns").bind(now, f.scope, f.d, f.choice, f.n, f.share, f.base, f.nets, f.asns, f.total + " nouveaux appareils ce jour-là").run();
   return found.length;
 }
+// Chaque étape de la tâche horaire est isolée et son résultat (durée, ou erreur) est inscrit dans pub_meta (clés step_*) : une étape qui échoue ne passe plus inaperçue.
+async function step(env, name, fn) {
+  const t0 = Date.now(); let res = "ok";
+  try { await fn(); } catch (e) { res = "ERREUR " + String((e && e.message) || e).slice(0, 300); console.error("cron", name, res); }
+  const dt = Date.now() - t0;
+  try { await env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind("step_" + name, new Date().toISOString() + " " + dt + " ms " + res).run(); } catch (e) { /* table absente */ }
+}
 async function cron(env) {
-  await recount(env);
-  try { await ensureTables(env); await autoBlocksLocal(env); await waveFlags(env); } catch (e) { /* suivi des scrutins locaux : jamais bloquant */ }
-  try { await autoBlocks(env); } catch (e) { /* tables absentes : pas de retrait automatique */ }
-  try { await propose(env); } catch (e) { /* tables de propositions absentes */ }
-  try { await publish(env); } catch (e) { /* tables de publication absentes : résultats en direct */ }
-  try { await snapshotDay(env); } catch (e) { /* historique : jamais bloquant */ }
+  await step(env, "recount", () => recount(env));
+  await step(env, "local", async () => { await ensureTables(env); await autoBlocksLocal(env); await waveFlags(env); });  // suivi des scrutins locaux : jamais bloquant
+  await step(env, "autoblocks", () => autoBlocks(env));  // tables absentes : pas de retrait automatique
+  await step(env, "propose", () => propose(env));
+  await step(env, "publish", () => publish(env));  // en cas d'échec : résultats précédents conservés, erreur visible dans pub_meta
+  await step(env, "snapshotday", () => snapshotDay(env));  // historique : jamais bloquant
 }
 
 export default {
@@ -673,7 +680,7 @@ export default {
       if (url.pathname === "/trend" && req.method === "POST") return json(await trend(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 23 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 24 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

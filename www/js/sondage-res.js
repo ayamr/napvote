@@ -49,8 +49,7 @@
   }
 
   function rowsOf(sc) {
-    var d = data.scopes[sc.scope] || { total: 0, choices: {} };
-    return Object.keys(d.choices).map(function (k) { return { c: k, n: d.choices[k] }; }).sort(function (a, b) { return b.n - a.n; });
+    return A.pollRows(sc, data.scopes[sc.scope] || { total: 0, choices: {} });
   }
   function scopeHtml(sc) {
     var d = data.scopes[sc.scope] || { total: 0, choices: {} }, tot = d.total, rows = rowsOf(sc), mx = rows.length ? rows[0].n : 1;
@@ -118,7 +117,7 @@
     var sc = S.list.filter(function (x) { return x.scope === scope; })[0]; if (!sc) { return null; }
     var d = data.scopes[scope] || { total: 0 };
     return { scope: scope, title: sc.title, place: placeName(curLoc()), total: d.total, adj: d.adj || 0, asof: data.asof || '', multi: sc.multi || 0, link: linkFor(scope),
-      rows: rowsOf(sc).map(function (r) { return { name: A.pollNameOf(sc, r.c), sub: A.pollSubOf(sc, r.c), n: r.n, pc: pct(r.n, d.total), fixed: r.c.charAt(0) === '~' }; }) };
+      rows: rowsOf(sc).filter(function (r) { return r.n > 0; }).map(function (r) { return { name: A.pollNameOf(sc, r.c), sub: A.pollSubOf(sc, r.c), n: r.n, pc: pct(r.n, d.total), fixed: r.c.charAt(0) === '~' }; }) };
   };
 
   function copy(u) {

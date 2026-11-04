@@ -260,6 +260,13 @@
     return f ? f.n : c;
   }
   A.pollScopes = function (l) { return scopes(l); }; A.pollNameOf = nameOf; A.pollPost = post;  // utilisés par la page « Résultats du sondage » (sondage-res.js)
+  /* classement d'un scrutin : toutes les options du bulletin, y compris celles à 0 voix (une liste ne disparaît pas parce que personne ne l'a encore choisie) */
+  function rowsOf(sc, d) {
+    var rows = Object.keys(d.choices || {}).map(function (k) { return { c: k, n: d.choices[k] }; });
+    sc.opts.forEach(function (o) { if (!(o.c in (d.choices || {}))) { rows.push({ c: o.c, n: 0 }); } });
+    return rows.sort(function (x, y) { return y.n - x.n || (x.n ? 0 : nameOf(sc, x.c).localeCompare(nameOf(sc, y.c), 'fr')); });
+  }
+  A.pollRows = rowsOf;
   function subOf(sc, c) { var o = null; sc.opts.forEach(function (x) { if (x.c === c) { o = x; } }); return o && o.s ? o.s : ''; }  // parti du candidat, ou titulaire de la liste (maire, CASEC, ASEC)
   A.pollSubOf = subOf;
   A.pollSummary = function () { // choix de l'électeur, du président jusqu'au maire, pour la carte de partage
@@ -278,7 +285,7 @@
     lastCut = data.cut || lastCut;
     h += cutBanner(data.cut) + (needsConfirm(data.cut) ? '<p class="note-s">' + esc(t('poll.confirm')) + ' <button type="button" class="btn sm" data-pedit>' + esc(t('poll.confirmBtn')) + '</button></p>' : '') + '<h2 class="poll-rt">' + esc(t('poll.results')) + '</h2>' + (data.asof ? '<p class="note-s">' + esc(t('poll.asof', { h: new Date(data.asof).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })) + '</p>' : '') + (justVoted ? '<p class="note-s"><b>' + esc(t('poll.later')) + '</b></p>' : '') + '<p class="note-s">' + esc(t('poll.dup')) + '</p>' + (((data.scopes.pres || {}).adj > 0) ? '<p class="note-s"><b>' + esc(t('poll.adj', { n: fmt(data.scopes.pres.adj) })) + '</b></p>' : '');
     S.list.forEach(function (sc) {
-      var d = data.scopes[sc.scope] || { total: 0, choices: {} }, rows = Object.keys(d.choices).map(function (k) { return { c: k, n: d.choices[k] }; }).sort(function (a, b) { return b.n - a.n; });
+      var d = data.scopes[sc.scope] || { total: 0, choices: {} }, rows = rowsOf(sc, d);
       var mx = rows.length ? rows[0].n : 1, mineC = [].concat((mine.answers[sc.scope] || {}).c || []);
       h += '<section class="poll-r"><div class="poll-h"><h3>' + esc(sc.title) + '</h3>' + (sc.scope === 'pres' ? '<label class="field2">' + esc(t('pk.dept')) + ' <select id="poll-fdept">' + deptOptions(dept, true) + '</select></label>' : '') + '</div>' +
         '<p class="note-s" style="margin-top:4px">' + esc(d.total >= 200 ? t('poll.totalA', { n: fmt(Math.round(d.total / (sc.scope === 'pres' ? 100 : 10)) * (sc.scope === 'pres' ? 100 : 10)) }) : t(d.total > 1 ? 'poll.total' : 'poll.total1', { n: fmt(d.total) })) + (sc.scope === 'pres' && dept ? ' · ' + esc(dept) : '') + '</p>';
