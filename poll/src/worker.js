@@ -654,19 +654,30 @@ async function waveFlags(env) {
   return found.length;
 }
 // Chaque étape de la tâche horaire est isolée et son résultat (durée, ou erreur) est inscrit dans pub_meta (clés step_*) : une étape qui échoue ne passe plus inaperçue.
-async function step(env, name, fn) {
+// D1 refuse parfois une requête quand la base est « surchargée » (trop de ressources consommées sur 10 s, surtout pendant le recompte complet) : l'étape est alors retentée après une pause.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function step(env, name, fn, tries) {
   const t0 = Date.now(); let res = "ok";
-  try { await fn(); } catch (e) { res = "ERREUR " + String((e && e.message) || e).slice(0, 300); console.error("cron", name, res); }
+  for (let i = 1; i <= (tries || 1); i++) {
+    try { await fn(); res = i > 1 ? "ok (essai " + i + ")" : "ok"; break; }
+    catch (e) {
+      res = "ERREUR " + String((e && e.message) || e).slice(0, 300); console.error("cron", name, i, res);
+      if (i < (tries || 1) && /overload|too many|timeout|busy/i.test(res)) await sleep(12000); else break;
+    }
+  }
   const dt = Date.now() - t0;
-  try { await env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind("step_" + name, new Date().toISOString() + " " + dt + " ms " + res).run(); } catch (e) { /* table absente */ }
+  for (let i = 0; i < 3; i++) {
+    try { await env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind("step_" + name, new Date().toISOString() + " " + dt + " ms " + res).run(); break; } catch (e) { await sleep(3000); }
+  }
 }
+// Le tableau des résultats est tenu à jour à chaque vote : le recompte complet (une lecture de toute la table des bulletins, 10 s et plus) n'est qu'une correction. Une fois par jour suffit (05 h UTC), ou à chaque passe si RECOUNT_EVERY = "1".
 async function cron(env) {
-  await step(env, "recount", () => recount(env));
-  await step(env, "local", async () => { await ensureTables(env); await autoBlocksLocal(env); await waveFlags(env); });  // suivi des scrutins locaux : jamais bloquant
-  await step(env, "autoblocks", () => autoBlocks(env));  // tables absentes : pas de retrait automatique
-  await step(env, "propose", () => propose(env));
-  await step(env, "publish", () => publish(env));  // en cas d'échec : résultats précédents conservés, erreur visible dans pub_meta
-  await step(env, "snapshotday", () => snapshotDay(env));  // historique : jamais bloquant
+  if (env.RECOUNT_EVERY === "1" || new Date().getUTCHours() === 5) await step(env, "recount", () => recount(env), 3);
+  await step(env, "local", async () => { await ensureTables(env); await autoBlocksLocal(env); await waveFlags(env); }, 2);  // suivi des scrutins locaux : jamais bloquant
+  await step(env, "autoblocks", () => autoBlocks(env), 3);  // tables absentes : pas de retrait automatique
+  await step(env, "propose", () => propose(env), 2);
+  await step(env, "publish", () => publish(env), 4);  // en cas d'échec : résultats précédents conservés, erreur visible dans pub_meta
+  await step(env, "snapshotday", () => snapshotDay(env), 2);  // historique : jamais bloquant
 }
 
 export default {
@@ -680,7 +691,7 @@ export default {
       if (url.pathname === "/trend" && req.method === "POST") return json(await trend(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 24 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 25 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);
