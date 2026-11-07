@@ -258,7 +258,8 @@ async function voteInner(req, env, ctx) {
     const old7 = new Date(Date.now() - 8 * 86400000).toISOString().slice(0, 10), old60 = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
     stmts.push(env.DB.prepare("DELETE FROM attempts WHERE t < ?").bind(Math.floor(Date.now() / 1000) - 14 * 86400), env.DB.prepare("DELETE FROM evidence WHERE t < ?").bind(Math.floor(Date.now() / 1000) - 14 * 86400), env.DB.prepare("DELETE FROM hw_day WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM hw_fp WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM cluster WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM group_choice WHERE day < ?").bind(old7), env.DB.prepare("DELETE FROM asn_daily WHERE day < ?").bind(old60));
     const old14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 13);
-    stmts.push(env.DB.prepare("DELETE FROM asn_hour WHERE hour < ?").bind(old14), env.DB.prepare("DELETE FROM asn_choice WHERE hour < ?").bind(old14));
+    // Les heures couvertes par une cellule retirée (excluded_cells) sont gardées : le retrait de l'excédent est recalculé à chaque affichage à partir de ces lignes, les purger ferait revenir les votes retirés.
+    stmts.push(env.DB.prepare("DELETE FROM asn_hour WHERE hour < ? AND NOT EXISTS (SELECT 1 FROM excluded_cells e WHERE e.asn = asn_hour.asn AND asn_hour.hour >= e.hour_from AND asn_hour.hour <= e.hour_to)").bind(old14), env.DB.prepare("DELETE FROM asn_choice WHERE hour < ? AND NOT EXISTS (SELECT 1 FROM excluded_cells e WHERE e.asn = asn_choice.asn AND asn_choice.hour >= e.hour_from AND asn_choice.hour <= e.hour_to)").bind(old14));
     stmts.push(env.DB.prepare("DELETE FROM fp_week WHERE week < ?").bind(isoWeek(dayDate) - 1), env.DB.prepare("DELETE FROM challenge_used WHERE t < ?").bind(Date.now() - 86400000));
   }
   await env.DB.batch(stmts);
@@ -691,7 +692,7 @@ export default {
       if (url.pathname === "/trend" && req.method === "POST") return json(await trend(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 25 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 26 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);
