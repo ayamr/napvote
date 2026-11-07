@@ -320,18 +320,34 @@ LEFT JOIN moy m ON m.dept = cell.dept AND m.choice = cell.choice
 LEFT JOIN nat nt ON nt.choice = cell.choice
 LEFT JOIN asn_hour h ON h.hour = cell.hour AND h.asn = cell.asn AND h.dept = cell.dept
 GROUP BY cell.dept, cell.choice`;
-let exclMemo = { at: 0, v: null };
+let exclMemo = { at: 0, v: null, t: "" };
+// Le calcul du retrait (EXCL_SQL) relit des centaines de milliers de lignes : il est fait UNE fois par publication (storeExcl) et rangé dans excl_pub ; l'affichage ne lit que ce petit tableau.
+// Tant que la première publication n'a pas rempli excl_pub (pub_meta.excl_at absent), ou pour un autre tableau que tally_pub, on retombe sur le calcul direct.
 async function loadExcl(env, maxAge, tallyTable) {
-  if (exclMemo.v && Date.now() - exclMemo.at < maxAge) return exclMemo.v;
+  if (exclMemo.v && exclMemo.t === tallyTable && Date.now() - exclMemo.at < maxAge) return exclMemo.v;
   const byChoice = new Map(), byDept = new Map();
+  const add = (dept, choice, x) => { x = Math.round(x || 0); if (x <= 0) return; byChoice.set(dept + "\u0001" + choice, x); byDept.set(dept, (byDept.get(dept) || 0) + x); };
   try {
-    for (const r of (await env.DB.prepare(EXCL_SQL.replace("FROM TALLY t", "FROM " + tallyTable + " t")).all()).results || []) {
-      const x = Math.round(r.x || 0); if (x <= 0) continue;
-      byChoice.set(r.dept + "\u0001" + r.choice, x); byDept.set(r.dept, (byDept.get(r.dept) || 0) + x);
+    let stored = false;
+    if (tallyTable === "tally_pub") {
+      const m = await env.DB.prepare("SELECT v FROM pub_meta WHERE k = 'excl_at'").first();
+      if (m) { stored = true; for (const r of (await env.DB.prepare("SELECT dept, choice, x FROM excl_pub").all()).results || []) add(r.dept, r.choice, r.x); }
     }
+    if (!stored) for (const r of (await env.DB.prepare(EXCL_SQL.replace("FROM TALLY t", "FROM " + tallyTable + " t")).all()).results || []) add(r.dept, r.choice, r.x);
   } catch (e) { /* table absente ou erreur : aucun retrait plutôt qu'un échec */ }
-  exclMemo = { at: Date.now(), v: { byChoice, byDept } };
+  exclMemo = { at: Date.now(), v: { byChoice, byDept }, t: tallyTable };
   return exclMemo.v;
+}
+async function storeExcl(env) {  // à lancer juste après publish() : le calcul lit tally_pub et l'heure de l'instantané
+  const rows = ((await env.DB.prepare(EXCL_SQL.replace("FROM TALLY t", "FROM tally_pub t")).all()).results || [])
+    .map((r) => ({ d: r.dept, c: r.choice, x: Math.round(r.x || 0) })).filter((r) => r.x > 0);
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS excl_pub (dept TEXT NOT NULL, choice TEXT NOT NULL, x INTEGER NOT NULL, PRIMARY KEY (dept, choice))"),
+    env.DB.prepare("DELETE FROM excl_pub"),
+    env.DB.prepare("INSERT INTO excl_pub(dept, choice, x) SELECT json_extract(value, '$.d'), json_extract(value, '$.c'), json_extract(value, '$.x') FROM json_each(?)").bind(JSON.stringify(rows)),
+    env.DB.prepare("INSERT INTO pub_meta(k,v) VALUES('excl_at',?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(new Date().toISOString()),
+  ]);
+  exclMemo = { at: 0, v: null, t: "" };
 }
 
 async function results(req, env) {
@@ -402,12 +418,23 @@ async function recount(env) {
   ]);
 }
 
+// Même candidat sous deux graphies : [scrutin, ancienne clé, clé actuelle]. Les bulletins ne sont pas modifiés ; seule la publication regroupe les voix.
+const ALIASES = [
+  ["sen|ouest", "benoit irvenson", "benoit irvenson steven"],
+  ["dep|jean rabel", "pericles germa", "fleurinor germa pericles"],
+  ["dep|petion ville", "charles merisier widad", "merisier widad"],
+];
 // Publication horaire : copie des totaux en direct vers l'instantané affiché (n'écrit que les lignes qui changent).
 async function publish(env) {
   const now = new Date();
   await env.DB.batch([
     env.DB.prepare("INSERT INTO tally_pub(scope,dept,choice,n) SELECT scope,dept,choice,n FROM tally WHERE 1 ON CONFLICT(scope,dept,choice) DO UPDATE SET n = excluded.n WHERE n <> excluded.n"),
     env.DB.prepare("DELETE FROM tally_pub WHERE NOT EXISTS (SELECT 1 FROM tally t WHERE t.scope = tally_pub.scope AND t.dept = tally_pub.dept AND t.choice = tally_pub.choice)"),
+    // anciennes graphies d'un même candidat (le CEP a corrigé nom et prénom en cours de route) : les voix reçues sous l'ancienne clé sont ajoutées à la clé actuelle, l'ancienne ligne disparaît de l'instantané
+    ...ALIASES.flatMap(([scope, from, to]) => [
+      env.DB.prepare("INSERT INTO tally_pub(scope,dept,choice,n) SELECT scope,dept,?,n FROM tally_pub WHERE scope = ? AND choice = ? ON CONFLICT(scope,dept,choice) DO UPDATE SET n = n + excluded.n").bind(to, scope, from),
+      env.DB.prepare("DELETE FROM tally_pub WHERE scope = ? AND choice = ?").bind(scope, from),
+    ]),
     env.DB.prepare("INSERT INTO tally_tot_pub(scope,dept,n) SELECT scope,dept,n FROM tally_tot WHERE 1 ON CONFLICT(scope,dept) DO UPDATE SET n = excluded.n WHERE n <> excluded.n"),
     env.DB.prepare("DELETE FROM tally_tot_pub WHERE NOT EXISTS (SELECT 1 FROM tally_tot t WHERE t.scope = tally_tot_pub.scope AND t.dept = tally_tot_pub.dept)"),
     // périodes retirées (table excluded_windows) : on retire de l'instantané les bulletins dont le dernier choix date de la période ; les bulletins ne sont pas touchés
@@ -678,6 +705,7 @@ async function cron(env) {
   await step(env, "autoblocks", () => autoBlocks(env), 3);  // tables absentes : pas de retrait automatique
   await step(env, "propose", () => propose(env), 2);
   await step(env, "publish", () => publish(env), 4);  // en cas d'échec : résultats précédents conservés, erreur visible dans pub_meta
+  await step(env, "excl", () => storeExcl(env), 3);  // retrait des cellules calculé une fois par publication (lecture seule ensuite)
   await step(env, "snapshotday", () => snapshotDay(env), 2);  // historique : jamais bloquant
 }
 
@@ -692,7 +720,7 @@ export default {
       if (url.pathname === "/trend" && req.method === "POST") return json(await trend(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 26 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 29 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);
