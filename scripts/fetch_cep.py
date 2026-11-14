@@ -14,6 +14,7 @@ SRC = os.path.join(D, "src")
 BASE = "https://tableau.cephaiti.ht/api/tableau/candidats"
 STATS = "https://stats.cephaiti.ht/api/{}/search"
 NOTES = "https://cephaiti.ht/notes-communiques/"
+CIV = "https://cephaiti.ht/civ/"  # centres d'inscription et de vote : la liste complète est incluse dans le code de la page
 POSTES = ["Président", "Sénateur", "Député", "Maire", "CASEC", "ASEC"]
 PS = 10  # le CEP plafonne la taille de page à 10
 UA = {"User-Agent": "NapVote/1.0 (citizen election tracker)"}
@@ -77,9 +78,50 @@ def out(k, v):
     print("[out] %s=%s" % (k, v), file=sys.stderr)
 
 
+def fetch_civ():
+    """Centres d'inscription et de vote (CIV) : lit le tableau `const CENTRES = [...]` de la page publique du CEP.
+    Écrit data/civ_cep.json si la liste a changé. Retourne True si le fichier a été modifié. Ne bloque jamais la collecte principale."""
+    path = os.path.join(D, "civ_cep.json")
+    prev = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else None
+    html = http(CIV).decode("utf-8", "ignore")
+    i = html.find("const CENTRES = ")
+    if i < 0:
+        raise RuntimeError("tableau CENTRES introuvable (page modifiée ?)")
+    raw, _ = json.JSONDecoder().raw_decode(html[i + len("const CENTRES = "):])
+    items = []
+    for c in raw:
+        def txt(k):
+            return re.sub(r"\s+", " ", (c.get(k) or "")).strip()
+        lat, lon = c.get("latitude"), c.get("longitude")
+        ok = isinstance(lat, (int, float)) and isinstance(lon, (int, float)) and 17.5 <= lat <= 20.5 and -75 <= lon <= -71
+        items.append({"id": int(c["id"]), "dep": txt("departement"), "com": txt("commune"), "sec": txt("section"), "nom": txt("nom_cv"),
+                      "adr": txt("adresse_cv"), "type": txt("remarques"), "bv": int(c.get("nombre_actuel_bv") or 0), "cap": int(c.get("capacite_bv") or 0),
+                      "lat": round(lat, 6) if ok else None, "lon": round(lon, 6) if ok else None})
+    items.sort(key=lambda x: x["id"])
+    coms = {(x["dep"], x["com"]) for x in items}
+    if len(items) < 1000 or len(coms) < 100 or len({x["dep"] for x in items}) != 10:
+        raise RuntimeError("liste suspecte : %d centres, %d communes" % (len(items), len(coms)))
+    if prev and len(items) < 0.9 * len(prev["items"]):
+        raise RuntimeError("baisse suspecte : %d -> %d centres ; mise à jour refusée" % (len(prev["items"]), len(items)))
+    m = re.search(r"Données mises à jour le\s*(\d{2})/(\d{2})/(\d{4})\s*à\s*(\d{1,2}):(\d{2})\s*([AP]M)", re.sub(r"<[^>]+>", " ", html))
+    maj = None
+    if m:
+        h = int(m.group(4)) % 12 + (12 if m.group(6) == "PM" else 0)
+        maj = "%s-%s-%sT%02d:%s" % (m.group(3), m.group(2), m.group(1), h, m.group(5))
+    if prev and prev["items"] == items:
+        print("centres CIV : aucun changement (%d)" % len(items), file=sys.stderr)
+        return False
+    json.dump({"collected": now_local().isoformat(timespec="seconds"), "maj_cep": maj, "items": items}, open(path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    print("centres CIV : %d centres, %d communes, %d bureaux (mise à jour CEP %s)" % (len(items), len(coms), sum(x["bv"] for x in items), maj), file=sys.stderr)
+    return True
+
+
 def main():
     os.makedirs(SRC, exist_ok=True)
     t0 = time.time()
+    if "--civ" in sys.argv:  # test : centres seulement
+        fetch_civ()
+        return
     path = os.path.join(D, "candidats_cep.json")
     prev = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else None
 
@@ -142,7 +184,7 @@ def main():
 
     # ---- statistiques d'inscription (non bloquant) ----
     stats_changed = False
-    for name, fn in [("stats-summary", "api_stats-summary.json"), ("stats-geography", "api_stats-geography.json"), ("stats-timeline", "api_stats-timeline.json"), ("geography", "api_geography.json")]:
+    for name, fn in [("stats-summary", "api_stats-summary.json"), ("stats-geography", "api_stats-geography.json"), ("stats-timeline", "api_stats-timeline.json"), ("stats-demographic", "api_stats-demographic.json"), ("geography", "api_geography.json")]:
         try:
             raw = http(STATS.format(name), data=b"{}")
             json.loads(raw)
@@ -152,6 +194,13 @@ def main():
                 stats_changed = True
         except Exception as e:  # noqa: BLE001
             print("avertissement statistiques %s : %s" % (name, e), file=sys.stderr)
+
+    # ---- centres d'inscription et de vote (non bloquant) ----
+    civ_changed = False
+    try:
+        civ_changed = fetch_civ()
+    except Exception as e:  # noqa: BLE001
+        print("avertissement centres CIV :", e, file=sys.stderr)
 
     # ---- veille des notes du CEP (non bloquant) ----
     notes_new = []
@@ -170,8 +219,8 @@ def main():
         open(os.path.join(D, "notes_new.txt"), "w").write("\n".join(notes_new))
         print("nouvelles pages sur le site du CEP :", *notes_new, sep="\n  ", file=sys.stderr)
 
-    json.dump({"iso": stamp.isoformat(timespec="seconds"), "date": stamp.date().isoformat(), "changed": changed or stats_changed}, open(os.path.join(SRC, "fetched.json"), "w"))
-    out("changed", "true" if (changed or stats_changed) else "false")
+    json.dump({"iso": stamp.isoformat(timespec="seconds"), "date": stamp.date().isoformat(), "changed": changed or stats_changed or civ_changed}, open(os.path.join(SRC, "fetched.json"), "w"))
+    out("changed", "true" if (changed or stats_changed or civ_changed) else "false")
     out("notes_new", str(len(notes_new)))
     print("terminé en %.0f s" % (time.time() - t0), file=sys.stderr)
 

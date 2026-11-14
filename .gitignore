@@ -27,6 +27,8 @@ ios/DerivedData/
 www/sw.js
 www/data/live.json
 www/data/poll-options.json
+www/data/civ.json
+www/data/enskri.json
 poll/node_modules/
 poll/.state/
 poll/.wrangler/

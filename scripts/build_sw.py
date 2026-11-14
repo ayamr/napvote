@@ -21,7 +21,7 @@ for blk in re.findall(r"@font-face\s*\{(.*?)\}",css,re.S):
     m=re.search(r"url\(\.\./(fonts/[^)]+)\)",blk)
     if m and (re.search(r"unicode-range:\s*U\+0100",blk) or "font-style: italic" in blk): lazy_fonts.add(m.group(1))
 used=set(re.findall(r"url\(\.\./(fonts/[^)]+)\)",css)) - lazy_fonts
-LAZY={"js/vendor/d3.min.js","js/map.js","data/poll-options.json"}|lazy_fonts
+LAZY={"js/vendor/d3.min.js","js/map.js","data/poll-options.json","data/civ.json","data/enskri.json"}|lazy_fonts
 LAZY={f for f in LAZY if f not in used}
 pre=[f for f in files if f not in LAZY]
 urls=["./"]+pre
