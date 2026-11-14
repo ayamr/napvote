@@ -50,6 +50,7 @@
     'en.cin.unk': 'Le délai de remise de la carte et les heures d’ouverture ne sont pas publiés sur les pages de l’ONI que nous avons lues. Passe au bureau de ta commune et demande l’horaire sur place.',
     'en.cin.gap': 'Une partie de l’écart entre jeunes et aînés vient peut-être du manque de CIN chez les jeunes : on ne sait pas dans quelle mesure, ce chiffre n’est pas publié.',
     'en.cin.cep': 'Le CEP cible lui aussi les jeunes : sa campagne pour les primo-votants a été lancée le 23 septembre au Lycée national de Pétion-Ville.',
+    'en.cin.know':'À savoir',
     'en.cin.src': 'Sources (ONI, consultées le 14 novembre 2026) :',
     'en.steps.h': 'Trois étapes',
     'en.s1': 'Prends ta CIN.',

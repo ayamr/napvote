@@ -35,30 +35,25 @@
 
   /* ---------- rendu ---------- */
   function hero() {
-    var j = D.jeunes, fm = D.fermeture;
+    var j = D.jeunes, fm = D.fermeture, old = D.age[D.age.length - 1];
     var sub = D.ok ? t(fm ? 'en.sub' : 'en.sub2', { a: pc(j.pct_pop), b: pc(j.pct_ins), j: fm ? fmt(fm.jours) : '' }) : t('en.sub0');
-    return '<div class="en-hero"><div class="wrap">' +
+    var stat = !D.ok ? '' : '<div class="en-hr"><div class="en-stat"><div class="en-n">' + esc(t('en.big.a', { n: j.un_sur })) + '</div>' +
+      '<p class="en-lead">' + esc(t('en.big.b', { m: Math.round(100 / old.taux) })) + '</p>' +
+      '<p>' + esc(t('en.big.c')) + '</p>' +
+      '<p class="en-small">' + esc(t('en.big.src', { d: D.t ? dFr(D.t) : '' })) + '</p></div></div>';
+    return '<div class="en-hero"><div class="wrap en-hg"><div class="en-hl">' +
       '<h1>' + esc(t('en.h1')) + '</h1>' +
       '<p class="en-sub">' + esc(sub) + '</p>' +
       '<div class="en-cta"><button type="button" class="btn primary" data-en-go="en-find">' + esc(t('en.cta.find')) + '</button>' +
-      '<button type="button" class="btn ghost" data-en-share>' + esc(t('en.cta.share')) + '</button></div>' +
-      '</div></div>';
+      '<button type="button" class="btn ghost" data-en-share>' + esc(t('en.cta.share')) + '</button></div></div>' + stat + '</div></div>';
   }
   function open() {
     var fm = D.fermeture;
     if (!fm) { return ''; }
-    return '<div class="en-open" role="note"><h2>' + esc(t('en.open.t')) + '</h2>' +
-      '<p>' + esc(t('en.open.p', { d: dFr(fm.date) })) + '</p>' +
-      '<p>' + esc(t('en.open.cin')) + '</p>' +
-      '<p class="en-small">' + esc(t('en.open.src')) + '</p></div>';
-  }
-  function big() {
-    if (!D.ok) { return ''; }
-    var j = D.jeunes, old = D.age[D.age.length - 1];
-    return '<div class="en-big"><div class="en-n">' + esc(t('en.big.a', { n: j.un_sur })) + '</div>' +
-      '<p class="en-lead">' + esc(t('en.big.b', { m: Math.round(100 / old.taux) })) + '</p>' +
-      '<p>' + esc(t('en.big.c')) + '</p>' +
-      '<p class="srcn">' + esc(t('en.big.src', { d: D.t ? dFr(D.t) : '' })) + '</p></div>';
+    return '<div class="en-open" role="note"><div class="en-o1"><h2>' + esc(t('en.open.t')) + '</h2>' +
+      '<p>' + esc(t('en.open.p', { d: dFr(fm.date) })) + '</p></div>' +
+      '<div class="en-o2"><p>' + esc(t('en.open.cin')) + '</p>' +
+      '<p class="en-small">' + esc(t('en.open.src')) + '</p></div></div>';
   }
   function calc() {
     var p = D.pres2016;
@@ -68,7 +63,7 @@
       '<div class="en-c"><b>' + esc(t('en.calc.1', { n: fmt(p.voix_gagnant) })) + '</b><span>' + esc(t('en.calc.1b', { w: p.gagnant, p: pc(p.pct_gagnant), tot: fmt(p.voix_total) })) + '</span></div>' +
       '<div class="en-c"><b>' + esc(t('en.calc.2', { n: fmt(D.inscrits) })) + '</b><span>' + esc(t('en.calc.2b', { x: pc(p.inscrits_vs_gagnant) })) + '</span></div>' +
       '<div class="en-c"><b>' + esc(t('en.calc.3', { n: pc(D.age[0].pop / 1e6) })) + '</b><span>' + esc(t('en.calc.3b', { x: pc(p.jeunes_vs_gagnant) })) + '</span></div>' +
-      '</div><p class="en-lead">' + esc(t('en.calc.end', { n: pc(D.age[0].pop / 1e6) })) + '</p>' +
+      '</div><p class="en-lead en-wide">' + esc(t('en.calc.end', { n: pc(D.age[0].pop / 1e6) })) + '</p>' +
       '<p class="srcn">' + esc(t('en.calc.note')) + '</p></div>';
   }
   function ages() {
@@ -80,24 +75,22 @@
         '<span class="en-av"><span>' + pc(a.pct_pop) + ' %</span><b>' + pc(a.pct_ins) + ' %</b></span>' +
         '<span class="en-at">' + esc(t('en.age.rate', { n: pc(a.taux) })) + '</span></li>';
     }).join('');
-    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.age.h')) + '</h2></div>' +
+    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.age.h')) + '</h2></div><div class="en-agegrid"><div>' +
       '<p class="en-key"><i class="pop"></i>' + esc(t('en.age.adults')) + ' <i class="ins"></i>' + esc(t('en.age.ins')) + '</p>' +
-      '<ul class="en-age">' + rows + '</ul>' +
-      '<p class="en-lead">' + esc(t('en.age.sum', { a: pc(D.jeunes.pct_pop_18_38), b: pc(D.jeunes.pct_ins_18_38) })) + '</p></div>';
+      '<ul class="en-age">' + rows + '</ul></div>' +
+      '<aside class="en-aside"><p class="en-lead">' + esc(t('en.age.sum', { a: pc(D.jeunes.pct_pop_18_38), b: pc(D.jeunes.pct_ins_18_38) })) + '</p></aside></div></div>';
   }
   function cin() {
     var o = D.oni, src = [['Les pièces requises', 'https://oni.gouv.ht/les-pieces-requises-au-moment-de-produire-la-demande-de-cin/'], ['La liste des bureaux', 'https://oni.gouv.ht/la-liste-des-bureaux/'], ['Le décret du 1er juin 2005', 'https://oni.gouv.ht/580-2/']];
-    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.cin.h')) + '</h2></div><div class="en-txt">' +
-      '<p>' + b(t('en.cin.lead1')) + ' ' + esc(t('en.cin.p1')) + '</p>' +
-      '<p>' + b(t('en.cin.lead2')) + ' ' + (o ? esc(t('en.cin.p2', { n: o.bureaux, c: o.communes, d: dFr(o.maj) })) : '') + '</p>' +
-      '<h3>' + esc(t('en.cin.req.h')) + '</h3><ul><li>' + esc(t('en.cin.r1')) + '</li><li>' + esc(t('en.cin.r2')) + '</li><li>' + esc(t('en.cin.r3')) + '</li><li>' + esc(t('en.cin.r4')) + '</li></ul>' +
-      '<p>' + b(t('en.cin.wit.lead')) + ' ' + esc(t('en.cin.wit')) + '</p>' +
-      '<p>' + b(t('en.cin.free.lead')) + ' ' + esc(t('en.cin.free')) + '</p>' +
-      '<p class="en-note">' + esc(t('en.cin.unk')) + '</p>' +
-      '<p>' + esc(t('en.cin.gap')) + '</p>' +
-      '<p>' + esc(t('en.cin.cep')) + '</p>' +
-      '<p class="srcn">' + esc(t('en.cin.src')) + ' ' + src.map(function (s) { return '<a href="' + s[1] + '" target="_blank" rel="noopener noreferrer">' + esc(s[0]) + '</a>'; }).join(' · ') + '</p>' +
-      '</div></div>';
+    function card(title, body, cls) { return '<article class="en-card' + (cls ? ' ' + cls : '') + '"><h3>' + esc(title) + '</h3>' + body + '</article>'; }
+    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.cin.h')) + '</h2></div><div class="en-cards">' +
+      card(t('en.cin.lead1'), '<p>' + esc(t('en.cin.p1')) + '</p>') +
+      card(t('en.cin.lead2'), '<p>' + (o ? esc(t('en.cin.p2', { n: o.bureaux, c: o.communes, d: dFr(o.maj) })) : '') + '</p>') +
+      card(t('en.cin.req.h'), '<ul><li>' + esc(t('en.cin.r1')) + '</li><li>' + esc(t('en.cin.r2')) + '</li><li>' + esc(t('en.cin.r3')) + '</li><li>' + esc(t('en.cin.r4')) + '</li></ul>') +
+      card(t('en.cin.wit.lead'), '<p>' + esc(t('en.cin.wit')) + '</p>') +
+      card(t('en.cin.free.lead'), '<p>' + esc(t('en.cin.free')) + '</p>') +
+      card(t('en.cin.know'), '<p>' + esc(t('en.cin.unk')) + '</p><p>' + esc(t('en.cin.gap')) + '</p><p>' + esc(t('en.cin.cep')) + '</p>', 'soft') +
+      '</div><p class="srcn">' + esc(t('en.cin.src')) + ' ' + src.map(function (x) { return '<a href="' + x[1] + '" target="_blank" rel="noopener noreferrer">' + esc(x[0]) + '</a>'; }).join(' · ') + '</p></div>';
   }
   function steps() {
     return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.steps.h')) + '</h2></div><ol class="en-steps">' +
@@ -123,22 +116,22 @@
   }
   function share() {
     var txt = shareText(), canShare = !!(A.native || navigator.share);
-    return '<div class="blk"><div class="en-share"><h2>' + esc(t('en.share.h')) + '</h2><p>' + esc(txt) + '</p><div class="en-cta">' +
+    return '<div class="blk"><div class="en-share"><div><h2>' + esc(t('en.share.h')) + '</h2><p>' + esc(txt) + '</p></div><div class="en-cta">' +
       '<a class="btn primary" href="https://wa.me/?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener noreferrer">' + esc(t('en.share.wa')) + '</a>' +
       (canShare ? '<button type="button" class="btn" data-en-share>' + esc(t('en.share.other')) + '</button>' : '') +
       '<button type="button" class="btn ghost" data-en-copy>' + esc(t('en.share.copy')) + '</button></div></div></div>';
   }
   function bottom() {
     var s = D.sources || {};
-    return '<div class="blk en-end"><div class="sec-h sm"><h2>' + esc(t('en.not.h')) + '</h2></div><ul class="en-nl"><li>' + esc(t('en.not.1')) + '</li><li>' + esc(t('en.not.2')) + '</li><li>' + esc(t('en.not.3')) + '</li></ul>' +
-      '<details class="en-src"><summary>' + esc(t('en.src.h')) + '</summary><ul>' +
+    return '<div class="blk en-end"><div class="en-endgrid"><div><div class="sec-h sm"><h2>' + esc(t('en.not.h')) + '</h2></div><ul class="en-nl"><li>' + esc(t('en.not.1')) + '</li><li>' + esc(t('en.not.2')) + '</li><li>' + esc(t('en.not.3')) + '</li></ul></div>' +
+      '<div><div class="sec-h sm"><h2>' + esc(t('en.src.h')) + '</h2></div><ul class="en-nl">' +
       '<li>' + esc(t('en.src.1', { d: D.t ? dFr(D.t) : '', a: fmt(D.inscrits_age), b: fmt(D.inscrits) })) + '</li>' +
       '<li>' + esc(t('en.src.2')) + '</li><li>' + esc(t('en.src.3')) + '</li><li>' + esc(t('en.src.4')) + '</li>' +
       '<li>' + esc(t('en.src.5')) + '</li><li>' + esc(t('en.src.6')) + '</li><li>' + esc(t('en.src.7')) + '</li></ul>' +
-      '<p class="srcn">' + esc(s.cep || '') + '</p></details></div>';
+      '<p class="srcn">' + esc(s.cep || '') + '</p></div></div></div>';
   }
   function render() {
-    root.innerHTML = hero() + '<div class="wrap">' + open() + big() + calc() + ages() + cin() + steps() + finder() + depts() + share() + bottom() + '</div>';
+    root.innerHTML = hero() + '<div class="wrap">' + open() + calc() + ages() + cin() + steps() + finder() + depts() + share() + bottom() + '</div>';
     finderBuilt = false;
     buildFinder();
   }
