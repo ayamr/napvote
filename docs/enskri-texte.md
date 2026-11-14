@@ -1,57 +1,54 @@
-# Page « Enskri » — texte (brouillon v2, à relire)
+# Page « Enskri » — texte (brouillon v3, ton direct)
 
-Remplace la page « Électeurs inscrits ». Page **militante pour la participation des jeunes** : on parle à la deuxième personne, on dit quoi faire, on garde un ton direct. Jamais un mot sur un candidat ni un parti.
+Remplace la page « Électeurs inscrits ». Page **militante pour la participation des jeunes** : on tutoie, phrases courtes, on dit quoi faire. Jamais un mot sur un candidat ni un parti.
 Tous les chiffres entre `{{ }}` viennent de `www/data/enskri.json` (fabriqué par `scripts/build_enskri.py`). Valeurs actuelles entre crochets, pour relecture seulement.
 
 ---
 
 ## 1. Haut de page
 
-**Titre** : Ton vote commence par ton inscription.
+**Titre** : Si tu ne t’inscris pas, d’autres décident à ta place.
 
-**Sous-titre** : Les 18-28 ans sont près d’un tiers des adultes du pays, mais moins d’un inscrit sur cinq. Ça peut changer, et ça dépend de toi.
-`{{jeunes.pct_pop}} % des adultes` [32 %] · `{{jeunes.pct_ins}} % des inscrits` [18,1 %]
+**Sous-titre** : Les 18-28 ans sont **`{{jeunes.pct_pop}} %`** [32 %] des adultes. Ils ne sont que **`{{jeunes.pct_ins}} %`** [18 %] des inscrits. Il te reste **`{{fermeture.jours}}` jours** [187] pour changer ça.
 
-**Boutons** : [Trouver mon centre]  [Passer le mot à un ami]
-
----
-
-## 2. Bandeau « C’est encore possible » (juste sous le titre, bien visible)
-
-> **La liste électorale n’est pas fermée.**
-> Le CEP prévoit de fermer le registre électoral le **`{{fermeture.date}}`** [20 mai 2027] : il reste environ **`{{fermeture.jours}}` jours** [187].
-> **Tu n’as pas encore ta carte d’identification nationale (CIN) ?** Tu peux encore la demander à l’**Office national d’identification (ONI)**, puis t’inscrire.
-
-*Sous le bandeau, en petit* : Date du calendrier électoral actualisé du CEP (28 octobre 2026). Le CEP peut la modifier.
-
-> Règle : si `fermeture` est vide dans le fichier (registre fermé ou date introuvable), le bandeau n’apparaît pas et on revoit le texte avant de republier. Un faux « c’est encore possible » serait pire que pas de bandeau.
+**Boutons** : [Je trouve mon centre]  [J’y emmène un ami]
 
 ---
 
-## 3. Le chiffre qui frappe
+## 2. Bandeau « La liste n’est pas fermée » (juste sous le titre)
 
-**Environ 1 jeune de 18 à 28 ans sur `{{jeunes.un_sur}}` est inscrit.** [13]
+> **LA LISTE ÉLECTORALE N’EST PAS FERMÉE.**
+> Tu peux encore t’inscrire jusqu’au **`{{fermeture.date}}`** [20 mai 2027].
+> **Pas de CIN ?** Tu peux encore la demander à l’**ONI** (Office national d’identification), gratuitement. Commence par là, puis inscris-toi.
 
-Chez les 69 ans et plus, c’est environ 1 sur 5. Les jeunes sont les plus nombreux. Ils devraient être les plus entendus.
+*Petit, dessous* : Date du calendrier électoral actualisé du CEP (28 octobre 2026). Le CEP peut la modifier.
 
-*Source (toujours visible)* : Inscrits : CEP, `{{t}}`. Population adulte : estimations de l’IHSI pour 2024. Calcul NapVote, approximatif.
+> Règle : si `fermeture` est vide dans le fichier (registre fermé ou date introuvable), le bandeau disparaît et on revoit le texte avant de republier. Un faux « c’est encore possible » est pire que pas de bandeau.
 
 ---
 
-## 4. Une voix, ça pèse : regarde 2016
+## 3. Le chiffre
 
-Mise en perspective avec la dernière présidentielle (20 novembre 2016), résultats du CEP :
+# 1 jeune sur `{{jeunes.un_sur}}`  [13]
+**C’est tout ce qui est inscrit parmi les 18-28 ans.** Chez les 69 ans et plus, c’est 1 sur 5.
 
-- **`{{pres2016.voix_gagnant}}` voix** [595 430] ont suffi pour gagner (`{{pres2016.pct_gagnant}} %` [55,7 %] des `{{pres2016.voix_total}}` [1 069 646] voix comptées).
-- Aujourd’hui, **`{{inscrits}}` personnes** [944 603] sont déjà inscrites : environ `{{pres2016.inscrits_vs_gagnant}}` fois [1,6] ce qu’il a fallu de voix pour gagner en 2016.
-- Le pays compte environ **2,3 millions de jeunes de 18 à 28 ans** : près de `{{pres2016.jeunes_vs_gagnant}}` fois [3,9] les voix du gagnant de 2016.
+Les jeunes sont les plus nombreux. Ils devraient être les plus entendus.
 
-**Phrase de conclusion** : En 2016, un peu plus de 595 000 voix ont décidé de la présidentielle. Les jeunes sont plus de 2 millions. Imagine ce que tu peux changer.
+*Source (toujours visible)* : Inscrits : CEP, `{{t}}`. Population adulte : estimations de l’IHSI pour 2024. Calcul NapVote, approximatif (« environ »).
 
-> Garde-fous de ce bloc :
-> - On ne dit pas que les jeunes voteront tous pareil, ni pour qui. On dit seulement que leur nombre pèse.
-> - « Voix comptées » = total des voix du tableau de résultats de 2016 de NapVote. Les inscrits d’aujourd’hui ne sont pas des votants : l’écran doit le dire (« inscrit ≠ votant »).
-> - Le nombre de jeunes de 18-28 ans est une estimation de l’IHSI (2024), arrondie.
+---
+
+## 4. Fais le calcul : 2016
+
+> **`{{pres2016.voix_gagnant}}` voix.** [595 430]
+> C’est ce qui a suffi pour gagner la présidentielle du 20 novembre 2016 : Jovenel Moïse, élu avec `{{pres2016.pct_gagnant}} %` [55,7 %] des `{{pres2016.voix_total}}` [1 069 646] voix comptées.
+
+> **Aujourd’hui : `{{inscrits}}` inscrits** [944 603] — environ `{{pres2016.inscrits_vs_gagnant}}` fois [1,6] ce score.
+> **Et environ 2,3 millions de jeunes de 18 à 28 ans** — près de `{{pres2016.jeunes_vs_gagnant}}` fois [3,9] ce score.
+
+**Conclusion** : Quelques centaines de milliers de voix ont décidé en 2016. Les jeunes sont plus de deux millions. **Fais le calcul.**
+
+> Garde-fous : on ne dit pas pour qui les jeunes voteraient, ni qu’ils voteraient tous pareil. On dit que leur nombre pèse. « Voix comptées » = total du tableau de résultats 2016 de NapVote. **Inscrit ≠ votant** : l’écran le dit. Les jeunes de 18-28 ans = estimation IHSI, arrondie.
 
 ---
 
@@ -68,41 +65,55 @@ Graphique : pour chaque tranche, deux barres — « part des adultes » et « pa
 | 59-68 | 7,9 % | 12,4 % | 20,7 % |
 | 69+ | 4,9 % | 8,1 % | 21,6 % |
 
-**Phrase sous le graphique** : Plus on est jeune, moins on est inscrit. Les 18-38 ans sont `{{jeunes.pct_pop_18_38}} %` [57 %] des adultes, mais `{{jeunes.pct_ins_18_38}} %` [41 %] des inscrits.
+**Sous le graphique** : Plus on est jeune, moins on est inscrit. Les 18-38 ans : `{{jeunes.pct_pop_18_38}} %` [57 %] des adultes, `{{jeunes.pct_ins_18_38}} %` [41 %] des inscrits.
 
 ---
 
-## 6. La CIN : la première étape, et elle est encore ouverte
+## 6. Pas de CIN ? Ça commence à l’ONI
 
-Pour s’inscrire, il faut la **carte d’identification nationale (CIN)**. Le CEP ne compte comme électeurs potentiels que les détenteurs de la CIN (plus de 6,5 millions de personnes d’après la presse).
+**Sans CIN, pas de vote.** L’ONI le dit lui-même : la carte d’identification nationale est obligatoire pour voter. Le CEP ne compte comme électeurs potentiels que ceux qui l’ont (plus de 6,5 millions de personnes d’après la presse).
 
-**Pas de CIN ? Ce n’est pas fini pour toi.** Tu peux encore la demander à l’**ONI**, puis t’inscrire avant la fermeture du registre. Le plus tôt est le mieux : les démarches peuvent prendre du temps.
+**Tu n’en as pas ? Va la demander. C’est gratuit.** L’ONI a **`{{oni.bureaux}}` bureaux** [155] dans **`{{oni.communes}}` communes** [144] (liste de l’ONI du `{{oni.maj}}`). Trouve celui de ta commune : [Voir les bureaux ONI].
+
+**Ce que demande l’ONI** :
+- une **pièce valide** : acte de naissance, certificat de baptême authentifié et légalisé, acte d’adoption ou extrait des archives ;
+- te **présenter toi-même** à un bureau d’enregistrement de l’ONI ;
+- **porter un vêtement à col** ;
+- on enregistre sur place tes données personnelles et biométriques (photo, signature, empreintes).
+
+**Tu n’as aucun de ces papiers ?** Le décret du 1er juin 2005 publié par l’ONI prévoit une solution : une carte d’identité fiscale, un permis de conduire ou un passeport, **ou deux témoins** qui te connaissent, habitent ta commune ou ta section communale, ont **déjà leur CIN** et jurent de ton identité. *(Demande au bureau si cette règle s’applique toujours : c’est le texte de 2005.)*
+
+*Sources : ONI, « Les pièces requises au moment de produire la demande de CIN », « La liste des bureaux » et « Décret » (oni.gouv.ht, articles 3, 5, 6, 8 à 10 du décret du 1er juin 2005), consultées le 14 novembre 2026.*
+
+**C’est gratuit : ne paie personne.** Le décret de l’ONI le dit : *« La première délivrance de la Carte d’identification nationale est gratuite »* (article 3). La carte est délivrée à tout Haïtien de 18 ans accomplis et se renouvelle tous les 10 ans. Si quelqu’un te demande de l’argent pour « aller plus vite » ou « faire ton dossier », méfie-toi : passe directement par un bureau officiel de l’ONI.
+
+> **Ce que nous ne savons pas** : le délai pour recevoir la carte et les heures d’ouverture ne sont pas publiés sur les pages de l’ONI que nous avons lues. La page dit : « Passe au bureau de ta commune et demande l’horaire sur place. » Ne rien écrire de plus sans source.
+>
+> **Limites de la gratuité** : elle vaut pour la **première** carte. Remplacement d’une carte perdue ou abîmée : ne rien affirmer sur le prix. Le décret date de 2005 ; la page « pièces requises » de l’ONI, plus récente, a la priorité en cas de différence.
 
 Une partie de l’écart entre jeunes et aînés vient peut-être du manque de CIN chez les jeunes : on ne sait pas dans quelle mesure, ce chiffre n’est pas publié.
 
-> À CONFIRMER avant publication (ne rien écrire de plus sans source officielle ONI/CEP) : où se rendre à l’ONI, pièces demandées, coût éventuel, délais.
-
-*Le CEP lui-même cible les jeunes : sa campagne pour les primo-votants a été lancée le 23 septembre au Lycée national de Pétion-Ville.*
+*Le CEP cible lui aussi les jeunes : sa campagne pour les primo-votants a été lancée le 23 septembre au Lycée national de Pétion-Ville.*
 
 ---
 
 ## 7. Trois étapes
 
-1. **Prends ta CIN** — valide, et tu as 18 ans ou plus. Pas encore de CIN : demande-la à l’ONI. *(documents exigés à confirmer)*
-2. **Trouve ton centre** — choisis ta commune, vois les centres près de chez toi. → [Trouver mon centre]
-3. **Inscris-toi sur place** — un agent du CEP t’enregistre. *(durée et heures d’ouverture à confirmer)*
+1. **Prends ta CIN.** Pas encore de CIN : demande-la à l’ONI, avec une pièce valide. C’est gratuit. Tu as 18 ans ou plus.
+2. **Trouve ton centre.** Choisis ta commune, vois les centres près de chez toi. → [Je trouve mon centre]
+3. **Inscris-toi sur place.** Un agent du CEP t’enregistre. *(durée et heures d’ouverture à confirmer auprès du CEP)*
 
-Bloc « centre » (données `civ.json`) : nom du centre, section communale, adresse, nombre de bureaux, lien d’itinéraire. Mention : « Liste du CEP du `{{civ.maj}}`. Vérifie l’adresse avant de te déplacer. » Les centres sans bureau actif sont marqués « à confirmer ».
+Bloc « centre » (données `civ.json`) : nom du centre, section communale, adresse, nombre de bureaux, lien d’itinéraire. Mention : « Liste du CEP du `{{civ.maj}}`. Vérifie l’adresse avant de te déplacer. » Centres sans bureau actif marqués « à confirmer ».
 
 ---
 
-## 8. Où en est ton département
+## 8. Où en est ton département (on le garde)
 
 Liste classée (`dept[]`) : part des adultes inscrits, de `{{dept[0].taux}} %` [Grand’Anse, 32 %] à `{{dept[-1].taux}} %` [Ouest, 6 %].
 
-**Phrase** : Dans l’Ouest et l’Artibonite, environ 6 adultes sur 100 sont inscrits. Il y a de la place.
+**Phrase** : Dans l’Ouest et l’Artibonite, environ 6 adultes sur 100 sont inscrits. **Tout reste à faire.**
 
-> Limite à afficher : populations IHSI de 2024, sans les déplacements de population : taux très approximatifs. Pas de cause affirmée (insécurité, etc.). **Section à valider par vous** (peut être mal reçue dans les départements en bas de liste).
+> Limite affichée : populations IHSI 2024, sans les déplacements de population : taux très approximatifs. Pas de cause affirmée (insécurité ou autre) : nous n’avons pas de données pour l’affirmer.
 
 ---
 
@@ -110,10 +121,10 @@ Liste classée (`dept[]`) : part des adultes inscrits, de `{{dept[0].taux}} %` [
 
 **Message prêt pour WhatsApp** (kreyòl d’abord) :
 
-> *Mwen jwenn sant enskripsyon m. Ou menm ? Enskri anvan 20 me 2027 : napvote-ht.com/enskri*
-> *J’ai trouvé mon centre d’inscription. Et toi ? Inscris-toi avant le 20 mai 2027 : napvote-ht.com/enskri*
+> *Mwen jwenn sant enskripsyon m. Ou menm ? Lis la poko fèmen, enskri anvan `{{fermeture.date}}` : napvote-ht.com/enskri*
+> *J’ai trouvé mon centre. Et toi ? La liste n’est pas fermée, inscris-toi avant le `{{fermeture.date}}` : napvote-ht.com/enskri*
 
-*(La date dans le message doit venir de `fermeture.date`, pas être écrite en dur.)*
+*(La date vient de `fermeture.date`, jamais écrite en dur.)*
 
 **Défi** : « Mennen 3 zanmi » — voir la conception de la carte à partager et du compteur anonyme par commune.
 
@@ -133,26 +144,29 @@ Liste classée (`dept[]`) : part des adultes inscrits, de `{{dept[0].taux}} %` [
 - **Population** : IHSI, Direction des statistiques démographiques et sociales, estimations 2024 (publiées le 1er juin 2024), projections à partir du recensement de 2003.
 - **Tranches d’âge** : l’IHSI publie des groupes de 5 ans, le CEP des tranches de 10 ans. NapVote répartit les groupes de façon uniforme : les pourcentages sont des **ordres de grandeur**.
 - **Présidentielle 2016** : résultats du CEP du 20 novembre 2016, tels que repris dans la section « Résultats passés » de NapVote.
-- **Date de fermeture du registre** : calendrier électoral actualisé du CEP, publié le 28 octobre 2026 ; elle peut changer.
+- **Date de fermeture du registre** : calendrier électoral actualisé du CEP (28 octobre 2026) ; elle peut changer.
+- **CIN** : Office national d’identification (oni.gouv.ht) : « Les pièces requises… », « À quoi sert la carte d’identification nationale ? », « La liste des bureaux » et le « Décret » du 1er juin 2005 (https://oni.gouv.ht/580-2/), consultés le 14 novembre 2026.
 - **Diaspora** : non comptée.
-- **Centres** : liste du CEP ; certains n’ont pas de coordonnées et ne figurent pas sur la carte.
+- **Centres d’inscription** : liste du CEP ; certains n’ont pas de coordonnées et ne figurent pas sur la carte.
 
 ---
 
 ## Brouillon kreyòl (à faire relire par un locuteur avant publication)
 
-- **Titre** : Vòt ou kòmanse ak enskripsyon w.
-- **Bandeau** : Lis elektoral la poko fèmen. Ou pa gen CIN ankò ? Ou ka toujou mande l nan ONI (Biwo Nasyonal Idantifikasyon), epi enskri.
-- **Chiffre** : Anviwon 1 jèn 18-28 an sou `{{jeunes.un_sur}}` enskri.
-- **Perspective** : An 2016, yon ti kras plis pase 595 000 vwa te ase pou genyen prezidansyèl la. Jèn yo plis pase 2 milyon.
-- **Bouton** : Jwenn sant mwen
+- **Titre** : Si ou pa enskri, lòt moun ap deside pou ou.
+- **Bandeau** : LIS ELEKTORAL LA POKO FÈMEN. Ou pa gen CIN ankò ? Ale mande l nan ONI (Biwo Nasyonal Idantifikasyon), se gratis, epi enskri.
+- **Chiffre** : 1 jèn sou `{{jeunes.un_sur}}`. Se sa ki enskri nan jèn 18-28 an yo.
+- **Calcul** : An 2016, 595 430 vwa te ase pou genyen prezidansyèl la. Jèn yo plis pase 2 milyon. Fè kalkil la.
+- **Bouton** : Mwen jwenn sant mwen
 - **Étapes** : 1. Pran CIN ou · 2. Jwenn sant ou · 3. Enskri sou plas
 
 ---
 
-## À valider par vous
+## À confirmer avant de publier
 
-1. Le ton militant (deuxième personne, « Imagine ce que tu peux changer ») : assez fort, ou plus direct encore ?
-2. Les informations ONI (où, pièces, coût, délais) : à me donner ou à confirmer auprès de l’ONI avant que je les écrive.
-3. Le classement par département (section 8) : on le garde ?
-4. Le bloc 2016 : êtes-vous à l’aise pour citer le nom du gagnant (Jovenel Moïse) dans la page ? Je l’ai mis dans les données, mais la page peut dire seulement « le gagnant ».
+1. **Témoins** (décret de 2005, articles 8 à 10) : la règle s’applique-t-elle toujours à l’ONI ? À demander à un bureau avant de la présenter comme sûre.
+2. Délai de remise de la carte et heures d’ouverture de l’ONI : inconnus, la page renvoie vers le bureau.
+3. Heures d’ouverture et durée de l’inscription dans les centres du CEP : à confirmer.
+4. Relecture du kreyòl par un locuteur.
+
+*Gratuité : confirmée par l’article 3 du décret du 1er juin 2005 sur le site de l’ONI (première délivrance gratuite).*

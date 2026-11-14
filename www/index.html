@@ -86,6 +86,12 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
             <ul id="h-results" class="results" hidden></ul>
           </div>
 
+          <div class="encta">
+            <h2 data-i18n="en.home.h">La liste électorale n’est pas fermée.</h2>
+            <p data-i18n="en.home.s">Pas de CIN ? Demande-la à l’ONI, gratuitement. Puis trouve ton centre d’inscription.</p>
+            <div class="pk-act"><button type="button" class="btn primary" data-go="elec" data-i18n="en.home.go">M’inscrire</button></div>
+          </div>
+
           <div class="pollcta" data-poll-home>
             <h2 data-i18n="poll.home">Sondage : pour qui comptez-vous voter ?</h2>
             <p data-i18n="poll.home.s">Ouvert à tous, anonyme, non scientifique.</p>
@@ -274,20 +280,9 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     </div>
   </section>
 
-  <!-- ============ ÉLECTEURS ============ -->
+  <!-- ============ ENSKRI (S'INSCRIRE) : ancienne page « Électeurs inscrits », même adresse #elec ============ -->
   <section id="p-elec" hidden>
-    <div class="wrap">
-      <div class="ph">
-        <h1 data-i18n="el.title">Électeurs inscrits</h1>
-        <p>L’inscription sur le registre électoral avance département par département. Selon le calendrier actualisé du CEP, elle se poursuit jusqu’au 20 mai 2027, date de fermeture du registre ; les listes électorales sont publiées le 19 juin 2027.</p>
-        <span class="srcn" id="e-asof"></span>
-      </div>
-      <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
-      <div id="e-kpis" class="kpis"></div>
-      <div class="sec-h"><h2 data-i18n="el.dept">Par département</h2></div>
-      <ul id="e-dept" class="vbars"></ul>
-      <p class="hint" id="e-note"></p>
-    </div>
+    <div id="en-root"></div>
   </section>
 
   <!-- ============ ACTUALITÉS ============ -->

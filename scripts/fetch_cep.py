@@ -14,6 +14,7 @@ SRC = os.path.join(D, "src")
 BASE = "https://tableau.cephaiti.ht/api/tableau/candidats"
 STATS = "https://stats.cephaiti.ht/api/{}/search"
 NOTES = "https://cephaiti.ht/notes-communiques/"
+ONI = "https://oni.gouv.ht/la-liste-des-bureaux/"  # bureaux d'enregistrement de la carte d'identification nationale (ONI)
 CIV = "https://cephaiti.ht/civ/"  # centres d'inscription et de vote : la liste complète est incluse dans le code de la page
 POSTES = ["Président", "Sénateur", "Député", "Maire", "CASEC", "ASEC"]
 PS = 10  # le CEP plafonne la taille de page à 10
@@ -116,11 +117,39 @@ def fetch_civ():
     return True
 
 
+def fetch_oni():
+    """Bureaux de l'Office national d'identification (ONI) : tableau département / commune / adresse de la page publique.
+    Écrit data/oni_bureaux.json si la liste a changé. Retourne True si le fichier a été modifié. Ne bloque jamais la collecte principale."""
+    import html as _html
+    path = os.path.join(D, "oni_bureaux.json")
+    prev = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else None
+    page_html = http(ONI).decode("utf-8", "ignore")
+    items = []
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", page_html, flags=re.S):
+        cells = [re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", "", c))).strip() for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, flags=re.S)]
+        if len(cells) >= 3 and cells[0].upper() != "DEPARTEMENT":
+            items.append({"dep": cells[0].upper(), "com": cells[1].upper(), "adr": cells[2]})
+    coms = {(x["dep"], x["com"]) for x in items}
+    if len(items) < 100 or len({x["dep"] for x in items}) != 10:
+        raise RuntimeError("liste suspecte : %d bureaux, %d départements" % (len(items), len({x["dep"] for x in items})))
+    if prev and len(items) < 0.9 * len(prev["items"]):
+        raise RuntimeError("baisse suspecte : %d -> %d bureaux ; mise à jour refusée" % (len(prev["items"]), len(items)))
+    if prev and prev["items"] == items:
+        print("bureaux ONI : aucun changement (%d)" % len(items), file=sys.stderr)
+        return False
+    json.dump({"collected": now_local().isoformat(timespec="seconds"), "source": ONI, "items": items}, open(path, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    print("bureaux ONI : %d bureaux, %d communes" % (len(items), len(coms)), file=sys.stderr)
+    return True
+
+
 def main():
     os.makedirs(SRC, exist_ok=True)
     t0 = time.time()
     if "--civ" in sys.argv:  # test : centres seulement
         fetch_civ()
+        return
+    if "--oni" in sys.argv:  # test : bureaux de l'ONI seulement
+        fetch_oni()
         return
     path = os.path.join(D, "candidats_cep.json")
     prev = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else None
@@ -202,6 +231,13 @@ def main():
     except Exception as e:  # noqa: BLE001
         print("avertissement centres CIV :", e, file=sys.stderr)
 
+    # ---- bureaux de l'ONI (non bloquant) ----
+    oni_changed = False
+    try:
+        oni_changed = fetch_oni()
+    except Exception as e:  # noqa: BLE001
+        print("avertissement bureaux ONI :", e, file=sys.stderr)
+
     # ---- veille des notes du CEP (non bloquant) ----
     notes_new = []
     try:
@@ -219,8 +255,8 @@ def main():
         open(os.path.join(D, "notes_new.txt"), "w").write("\n".join(notes_new))
         print("nouvelles pages sur le site du CEP :", *notes_new, sep="\n  ", file=sys.stderr)
 
-    json.dump({"iso": stamp.isoformat(timespec="seconds"), "date": stamp.date().isoformat(), "changed": changed or stats_changed or civ_changed}, open(os.path.join(SRC, "fetched.json"), "w"))
-    out("changed", "true" if (changed or stats_changed or civ_changed) else "false")
+    json.dump({"iso": stamp.isoformat(timespec="seconds"), "date": stamp.date().isoformat(), "changed": changed or stats_changed or civ_changed or oni_changed}, open(os.path.join(SRC, "fetched.json"), "w"))
+    out("changed", "true" if (changed or stats_changed or civ_changed or oni_changed) else "false")
     out("notes_new", str(len(notes_new)))
     print("terminé en %.0f s" % (time.time() - t0), file=sys.stderr)
 

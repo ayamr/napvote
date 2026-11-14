@@ -92,6 +92,7 @@ if os.path.exists(rp):
         problemes.append("présidentielle 2016 : le premier du classement n'est plus celui attendu")
 
 fetched = json.load(open(os.path.join(D, "src", "fetched.json"))) if os.path.exists(os.path.join(D, "src", "fetched.json")) else {}
+oni = L("oni_bureaux.json") if os.path.exists(os.path.join(D, "oni_bureaux.json")) else None
 civ = L("civ_cep.json") if os.path.exists(os.path.join(D, "civ_cep.json")) else None
 out = {
     "t": fetched.get("iso"), "ok": not problemes, "problemes": problemes,
@@ -103,6 +104,7 @@ out = {
                "pct_pop_18_38": pct(pop["18_28"] + pop["29_38"], adults), "pct_ins_18_38": pct(ins["18_28"] + ins["29_38"], tot_age)},
     "dept": dept,
     "fermeture": fermeture, "pres2016": pres16,
+    "oni": {"bureaux": len(oni["items"]), "communes": len({(x["dep"], x["com"]) for x in oni["items"]}), "maj": oni["collected"][:10], "source": oni["source"]} if oni else None,
     "civ": {"centres": len(civ["items"]), "bureaux": sum(x["bv"] for x in civ["items"]), "maj": civ["maj_cep"]} if civ else None,
     "sources": {"cep": "CEP, tableau de bord public des inscriptions (stats.cephaiti.ht)", "ihsi": ihsi["source"], "ihsi_publie": ihsi["publie"], "ihsi_url": ihsi["url"]},
     "limites": ihsi["note"],

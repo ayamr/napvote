@@ -160,6 +160,7 @@
   var hooks = [];
   API.onPage = function (fn) { hooks.push(fn); };
   function show(name, silent) {
+    if (name === 'enskri') { name = 'elec'; }  // adresse « #enskri » = page Enskri (ancienne page Électeurs)
     if (PAGES.indexOf(name) < 0) { name = 'home'; }
     PAGES.forEach(function (p) { var el = document.getElementById('p-' + p); if (el) { el.hidden = (p !== name); } });
     document.querySelectorAll('[data-go]').forEach(function (b) {
@@ -452,22 +453,6 @@
         return '<tr><td>' + c.n + '</td><td>' + esc(c.t) + '</td><td class="dt">' + (c.a ? esc(frange(c.a, c.b)) : 'Non précisées') + '</td></tr>';
       }).join('') + '</tbody></table>';
     }
-
-    var V2 = E.voters, elK = document.getElementById('e-kpis');
-    if (elK) {
-      var ref = V2.refs[0], diff = V2.total - ref.v;
-      document.getElementById('e-asof').textContent = 'Relevé du ' + fdate(E.collected) + ' · CEP';
-      elK.innerHTML =
-        '<div class="kpi"><span>Électeurs inscrits</span><b>' + fmt(V2.total) + '</b><em>+' + fmt(diff) + ' depuis le ' + fdate(ref.date, { day: 'numeric', month: 'long' }) + ' (' + fmt(ref.v) + ')</em></div>' +
-        '<div class="kpi"><span>Centres d’inscription et de vote actifs</span><b>' + fmt(V2.civActive) + '</b><em>sur ' + fmt(V2.civTotal) + ' configurés</em></div>' +
-        '<div class="kpi"><span>Opérateurs actifs</span><b>' + fmt(V2.operators) + '</b></div>';
-      var rates = V2.dept.map(function (d) { return d.v / d.cap; }), mxr = Math.max.apply(null, rates);
-      document.getElementById('e-dept').innerHTML = V2.dept.slice().sort(function (a, b) { return b.v / b.cap - a.v / a.cap; }).map(function (d) {
-        var r = d.v / d.cap;
-        return '<li class="vb"><span class="vb-l">' + esc(d.n) + '</span><span class="vb-b"><i style="width:' + Math.round(100 * r / mxr) + '%"></i></span><span class="vb-n">' + fmt(d.v) + '</span><span class="vb-r">' + (Math.round(r * 1000) / 10).toLocaleString('fr-FR') + ' %</span></li>';
-      }).join('');
-      document.getElementById('e-note').textContent = 'Taux calculé par NapVote : inscrits ÷ capacité d’inscription publiée par le CEP pour chaque département (population en âge de voter). Le CEP publie l’Ouest sous l’intitulé « Ouest 1 ». Départements classés par taux d’inscription.';
-    }
   }
 
   /* ---------- fiches candidat ---------- */
@@ -546,6 +531,7 @@
 
   API.boot = function () {
     var start = (location.hash || '').slice(1);
+    if (start === 'enskri') { start = 'elec'; }
     if (PAGES.indexOf(start) >= 0) { show(start, true); }
     else { show(cur && !start ? 'home' : 'home', true); }
     renderSaved();
