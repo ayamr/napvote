@@ -1,17 +1,20 @@
 /* Page « Enskri » : inciter les jeunes à s'inscrire sur la liste électorale.
-   Tous les chiffres viennent de data/enskri.json (fabriqué par scripts/build_enskri.py) ; la liste des centres du CEP et des bureaux de l'ONI,
-   de data/civ.json (scripts/build_civ.py). Rien n'est calculé ici, sauf la mise en page. Données chargées à la première visite de la page. */
+   Chiffres : data/enskri.json (scripts/build_enskri.py). Centres du CEP et bureaux de l'ONI : data/civ.json (scripts/build_civ.py).
+   Rien n'est calculé ici, sauf la mise en page. Données chargées à la première visite de la page.
+   Structure : un titre à gauche, le contenu à droite, séparés par des filets ; sur téléphone, tout passe en une colonne. */
 (function () {
   'use strict';
-  var A = window.VVApp, V = window.VV, root = document.getElementById('en-root');
+  var A = window.VVApp, root = document.getElementById('en-root');
   if (!A || !root) { return; }
   var esc = A.esc, fmt = A.fmt, t = window.t;
-  var D = null, C = null, state = 0, finderBuilt = false;
+  var D = null, C = null, state = 0;
 
   function getJSON(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); }); }
   function pc(x) { return Number(x).toLocaleString('fr-FR', { maximumFractionDigits: 1 }); }
-  function dFr(iso, o) { var q = String(iso).slice(0, 10).split('-'); return new Date(+q[0], +q[1] - 1, +q[2]).toLocaleDateString(window.NVLang === 'ht' ? 'fr-FR' : 'fr-FR', o || { day: 'numeric', month: 'long', year: 'numeric' }); }
-  function b(s) { return '<b>' + esc(s) + '</b>'; }
+  function dFr(iso, o) { var q = String(iso).slice(0, 10).split('-'); return new Date(+q[0], +q[1] - 1, +q[2]).toLocaleDateString('fr-FR', o || { day: 'numeric', month: 'long', year: 'numeric' }); }
+  /* texte échappé ; *mot* devient du gras (les traducteurs placent le gras où ils veulent) */
+  function em(s) { return esc(s).replace(/\*(.+?)\*/g, '<b>$1</b>'); }
+  function tt(k, v) { return em(t(k, v)); }
   /* « PÉTION-VILLE » -> « Pétion-Ville », « LA VALLÉE DE JACMEL » -> « La Vallée de Jacmel » */
   function nice(s) {
     var o = String(s).toLowerCase().replace(/(^|[\s\-'’(])([a-zà-ÿœ])/g, function (m, a, c) { return a + c.toUpperCase(); });
@@ -22,7 +25,7 @@
   function deptName(raw) { var k = String(raw).toUpperCase(); return /^GRAND/.test(k) ? 'Grand’Anse' : nice(raw); }
   /* « dans l’Ouest », « dans la Grand’Anse »… */
   var ART = { 'Artibonite': 'l’Artibonite', 'Centre': 'le Centre', 'Grand’Anse': 'la Grand’Anse', 'Nippes': 'les Nippes', 'Nord': 'le Nord', 'Nord-Est': 'le Nord-Est', 'Nord-Ouest': 'le Nord-Ouest', 'Ouest': 'l’Ouest', 'Sud': 'le Sud', 'Sud-Est': 'le Sud-Est' };
-  function withArt(raw) { var n = deptName(raw); return ART[n] || n; }
+  function withArt(raw) { var n = deptName(raw); return window.NVLang === 'ht' ? n : (ART[n] || n); }
   function siteUrl() {
     var cfg = window.NAPVOTE || {}, base = location.origin + location.pathname.replace(/index\.html$/, '');
     if (A.native && cfg.liveUrl) { try { base = new URL(cfg.liveUrl).origin + '/'; } catch (e) { /* adresse invalide */ } }
@@ -32,75 +35,76 @@
     var d = D && D.fermeture ? dFr(D.fermeture.date) : '';
     return t(d ? 'en.share.msg' : 'en.share.msg0', { d: d, u: siteUrl() });
   }
+  /* une section : titre (et petite introduction) à gauche, contenu à droite */
+  function sec(id, head, intro, body, cls) {
+    return '<section class="en-sec' + (cls ? ' ' + cls : '') + '"' + (id ? ' id="' + id + '"' : '') + '><div class="en-sh">' + head + (intro ? '<p class="en-intro">' + intro + '</p>' : '') + '</div><div class="en-sb">' + body + '</div></section>';
+  }
+  function row(label, body) { return '<div class="en-row"><h3>' + esc(label) + '</h3><div>' + body + '</div></div>'; }
+  function link(u, label) { return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '</a>'; }
 
   /* ---------- rendu ---------- */
   function hero() {
-    var j = D.jeunes, fm = D.fermeture, old = D.age[D.age.length - 1];
-    var sub = D.ok ? t(fm ? 'en.sub' : 'en.sub2', { a: pc(j.pct_pop), b: pc(j.pct_ins), j: fm ? fmt(fm.jours) : '' }) : t('en.sub0');
-    var stat = !D.ok ? '' : '<div class="en-hr"><div class="en-stat"><div class="en-n">' + esc(t('en.big.a', { n: j.un_sur })) + '</div>' +
-      '<p class="en-lead">' + esc(t('en.big.b', { m: Math.round(100 / old.taux) })) + '</p>' +
-      '<p>' + esc(t('en.big.c')) + '</p>' +
-      '<p class="en-small">' + esc(t('en.big.src', { d: D.t ? dFr(D.t) : '' })) + '</p></div></div>';
-    return '<div class="en-hero"><div class="wrap en-hg"><div class="en-hl">' +
-      '<h1>' + esc(t('en.h1')) + '</h1>' +
-      '<p class="en-sub">' + esc(sub) + '</p>' +
-      '<div class="en-cta"><button type="button" class="btn primary" data-en-go="en-find">' + esc(t('en.cta.find')) + '</button>' +
-      '<button type="button" class="btn ghost" data-en-share>' + esc(t('en.cta.share')) + '</button></div></div>' + stat + '</div></div>';
-  }
-  function open() {
     var fm = D.fermeture;
-    if (!fm) { return ''; }
-    return '<div class="en-open" role="note"><div class="en-o1"><h2>' + esc(t('en.open.t')) + '</h2>' +
-      '<p>' + esc(t('en.open.p', { d: dFr(fm.date) })) + '</p></div>' +
-      '<div class="en-o2"><p>' + esc(t('en.open.cin')) + '</p>' +
-      '<p class="en-small">' + esc(t('en.open.src')) + '</p></div></div>';
+    var panel = !fm ? '' : '<aside class="en-panel"><h2>' + esc(t('en.open.t')) + '</h2>' +
+      '<p>' + tt('en.open.p', { d: dFr(fm.date), j: fmt(fm.jours) }) + '</p>' +
+      '<p>' + tt('en.open.cin') + '</p>' +
+      '<p class="en-small">' + esc(t('en.open.note')) + '</p></aside>';
+    return '<div class="en-hero"><div class="wrap en-hg"><div class="en-hl">' +
+      '<h1>' + esc(t(D.ok ? 'en.h1' : 'en.h1b')) + '</h1>' +
+      '<p class="en-sub">' + esc(t('en.sub')) + '</p>' +
+      '<div class="en-cta"><button type="button" class="btn primary" data-en-go="en-find">' + esc(t('en.cta.find')) + '</button>' +
+      '<button type="button" class="btn ghost" data-en-share>' + esc(t('en.cta.share')) + '</button></div></div>' + panel + '</div></div>';
   }
-  function calc() {
-    var p = D.pres2016;
-    if (!D.ok || !p) { return ''; }
-    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.calc.h')) + '</h2></div>' +
-      '<div class="en-calc">' +
-      '<div class="en-c"><b>' + esc(t('en.calc.1', { n: fmt(p.voix_gagnant) })) + '</b><span>' + esc(t('en.calc.1b', { w: p.gagnant, p: pc(p.pct_gagnant), tot: fmt(p.voix_total) })) + '</span></div>' +
-      '<div class="en-c"><b>' + esc(t('en.calc.2', { n: fmt(D.inscrits) })) + '</b><span>' + esc(t('en.calc.2b', { x: pc(p.inscrits_vs_gagnant) })) + '</span></div>' +
-      '<div class="en-c"><b>' + esc(t('en.calc.3', { n: pc(D.age[0].pop / 1e6) })) + '</b><span>' + esc(t('en.calc.3b', { x: pc(p.jeunes_vs_gagnant) })) + '</span></div>' +
-      '</div><p class="en-lead en-wide">' + esc(t('en.calc.end', { n: pc(D.age[0].pop / 1e6) })) + '</p>' +
-      '<p class="srcn">' + esc(t('en.calc.note')) + '</p></div>';
-  }
-  function ages() {
+  /* le constat : une phrase, puis le graphique par âge */
+  function figure() {
     if (!D.ok) { return ''; }
-    var mx = 0; D.age.forEach(function (a) { mx = Math.max(mx, a.pct_pop, a.pct_ins); });
+    var j = D.jeunes, old = D.age[D.age.length - 1], mx = 0;
+    D.age.forEach(function (a) { mx = Math.max(mx, a.pct_pop, a.pct_ins); });
     var rows = D.age.map(function (a) {
-      return '<li class="en-ar"><span class="en-al">' + esc(a.k.replace('+', '+ ')) + '</span><span class="en-ab">' +
+      return '<li class="en-ar"><span class="en-al">' + esc(a.k.replace('+', ' +')) + '</span><span class="en-ab">' +
         '<i class="pop" style="width:' + Math.round(100 * a.pct_pop / mx) + '%"></i><i class="ins" style="width:' + Math.round(100 * a.pct_ins / mx) + '%"></i></span>' +
         '<span class="en-av"><span>' + pc(a.pct_pop) + ' %</span><b>' + pc(a.pct_ins) + ' %</b></span>' +
         '<span class="en-at">' + esc(t('en.age.rate', { n: pc(a.taux) })) + '</span></li>';
     }).join('');
-    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.age.h')) + '</h2></div><div class="en-agegrid"><div>' +
-      '<p class="en-key"><i class="pop"></i>' + esc(t('en.age.adults')) + ' <i class="ins"></i>' + esc(t('en.age.ins')) + '</p>' +
-      '<ul class="en-age">' + rows + '</ul></div>' +
-      '<aside class="en-aside"><p class="en-lead">' + esc(t('en.age.sum', { a: pc(D.jeunes.pct_pop_18_38), b: pc(D.jeunes.pct_ins_18_38) })) + '</p></aside></div></div>';
+    var head = '<h2 class="en-claim">' + tt('en.claim', { n: j.un_sur }) + '</h2>';
+    var intro = '<span class="en-p">' + esc(t('en.claim.1', { m: Math.round(100 / old.taux) })) + '</span><span class="en-p">' + esc(t('en.claim.2', { a: pc(j.pct_pop), b: pc(j.pct_ins) })) + '</span>';
+    var body = '<p class="en-key"><span><i class="pop"></i>' + esc(t('en.age.adults')) + '</span><span><i class="ins"></i>' + esc(t('en.age.ins')) + '</span></p>' +
+      '<ul class="en-age">' + rows + '</ul>';
+    return sec('', head, intro, body, 'en-fig');
+  }
+  /* 2016 : ce que pèse une voix */
+  function weight() {
+    var p = D.pres2016;
+    if (!D.ok || !p) { return ''; }
+    var body = '<dl class="en-vs">' +
+      '<div class="en-row"><dt>' + esc(t('en.w1', { n: fmt(p.voix_gagnant) })) + '</dt><dd>' + esc(t('en.w1b', { w: p.gagnant, p: pc(p.pct_gagnant) })) + '</dd></div>' +
+      '<div class="en-row"><dt>' + esc(t('en.w2', { n: fmt(D.inscrits) })) + '</dt><dd>' + esc(t('en.w2b', { x: pc(p.inscrits_vs_gagnant) })) + '</dd></div>' +
+      '<div class="en-row"><dt>' + esc(t('en.w3', { n: pc(D.age[0].pop / 1e6) })) + '</dt><dd>' + esc(t('en.w3b', { x: pc(p.jeunes_vs_gagnant) })) + '</dd></div></dl>' +
+      '<p class="en-end">' + esc(t('en.w.end')) + '</p>';
+    return sec('', '<h2>' + esc(t('en.w.h')) + '</h2>', '', body);
   }
   function cin() {
-    var o = D.oni, src = [['Les pièces requises', 'https://oni.gouv.ht/les-pieces-requises-au-moment-de-produire-la-demande-de-cin/'], ['La liste des bureaux', 'https://oni.gouv.ht/la-liste-des-bureaux/'], ['Le décret du 1er juin 2005', 'https://oni.gouv.ht/580-2/']];
-    function card(title, body, cls) { return '<article class="en-card' + (cls ? ' ' + cls : '') + '"><h3>' + esc(title) + '</h3>' + body + '</article>'; }
-    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.cin.h')) + '</h2></div><div class="en-cards">' +
-      card(t('en.cin.lead1'), '<p>' + esc(t('en.cin.p1')) + '</p>') +
-      card(t('en.cin.lead2'), '<p>' + (o ? esc(t('en.cin.p2', { n: o.bureaux, c: o.communes, d: dFr(o.maj) })) : '') + '</p>') +
-      card(t('en.cin.req.h'), '<ul><li>' + esc(t('en.cin.r1')) + '</li><li>' + esc(t('en.cin.r2')) + '</li><li>' + esc(t('en.cin.r3')) + '</li><li>' + esc(t('en.cin.r4')) + '</li></ul>') +
-      card(t('en.cin.wit.lead'), '<p>' + esc(t('en.cin.wit')) + '</p>') +
-      card(t('en.cin.free.lead'), '<p>' + esc(t('en.cin.free')) + '</p>') +
-      card(t('en.cin.know'), '<p>' + esc(t('en.cin.unk')) + '</p><p>' + esc(t('en.cin.gap')) + '</p><p>' + esc(t('en.cin.cep')) + '</p>', 'soft') +
-      '</div><p class="srcn">' + esc(t('en.cin.src')) + ' ' + src.map(function (x) { return '<a href="' + x[1] + '" target="_blank" rel="noopener noreferrer">' + esc(x[0]) + '</a>'; }).join(' · ') + '</p></div>';
+    var o = D.oni;
+    var body = '<div class="en-rows">' +
+      row(t('en.cin.why'), '<p>' + esc(t('en.cin.why.p')) + '</p>') +
+      row(t('en.cin.where'), '<p>' + esc(o ? t('en.cin.where.p', { n: o.bureaux, c: o.communes }) : t('en.cin.where.p0')) + ' ' + link('https://oni.gouv.ht/la-liste-des-bureaux/', t('en.cin.where.l')) + '</p>') +
+      row(t('en.cin.need'), '<ul><li>' + esc(t('en.cin.r1')) + '</li><li>' + esc(t('en.cin.r2')) + '</li><li>' + esc(t('en.cin.r3')) + '</li><li>' + esc(t('en.cin.r4')) + '</li></ul>' +
+        '<p>' + link('https://oni.gouv.ht/les-pieces-requises-au-moment-de-produire-la-demande-de-cin/', t('en.cin.need.l')) + '</p>') +
+      row(t('en.cin.free'), '<p>' + esc(t('en.cin.free.p')) + ' ' + link('https://oni.gouv.ht/580-2/', t('en.cin.free.l')) + '</p>') +
+      '</div>' +
+      '<details class="en-more"><summary>' + esc(t('en.cin.nopaper')) + '</summary><p>' + esc(t('en.cin.nopaper.p')) + '</p></details>' +
+      '<details class="en-more"><summary>' + esc(t('en.cin.wait')) + '</summary><p>' + esc(t('en.cin.wait.p')) + '</p><p>' + esc(t('en.cin.gap')) + '</p></details>';
+    return sec('', '<h2>' + esc(t('en.cin.h')) + '</h2>', '', body);
   }
   function steps() {
-    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.steps.h')) + '</h2></div><ol class="en-steps">' +
-      [1, 2, 3].map(function (n) { return '<li><b>' + esc(t('en.s' + n)) + '</b><span>' + esc(t('en.s' + n + 'p')) + '</span></li>'; }).join('') + '</ol></div>';
+    var body = '<ol class="en-steps">' + [1, 2, 3].map(function (n) { return '<li><b>' + esc(t('en.s' + n)) + '</b><span>' + esc(t('en.s' + n + 'p')) + '</span></li>'; }).join('') + '</ol>';
+    return sec('', '<h2>' + esc(t('en.steps.h')) + '</h2>', '', body);
   }
   function finder() {
-    return '<div class="blk" id="en-find"><div class="sec-h"><h2>' + esc(t('en.find.h')) + '</h2></div>' +
-      '<div class="en-sel"><label class="field"><span>' + esc(t('en.find.dep')) + '</span><select id="en-dep"></select></label>' +
+    var body = '<div class="en-sel"><label class="field"><span>' + esc(t('en.find.dep')) + '</span><select id="en-dep"></select></label>' +
       '<label class="field"><span>' + esc(t('en.find.com')) + '</span><select id="en-com" disabled></select></label></div>' +
-      '<div id="en-res" aria-live="polite"></div></div>';
+      '<div id="en-res" aria-live="polite"></div>';
+    return sec('en-find', '<h2>' + esc(t('en.find.h')) + '</h2>', esc(t('en.find.intro')), body);
   }
   function depts() {
     if (!D.ok || !D.dept || !D.dept.length) { return ''; }
@@ -109,30 +113,20 @@
     var rows = D.dept.map(function (d) {
       return '<li class="vb"><span class="vb-l">' + esc(deptName(d.n)) + '</span><span class="vb-b"><i style="width:' + Math.round(100 * d.taux / mx) + '%"></i></span><span class="vb-n">' + fmt(d.ins) + '</span><span class="vb-r">' + pc(d.taux) + ' %</span></li>';
     }).join('');
-    return '<div class="blk"><div class="sec-h"><h2>' + esc(t('en.dept.h')) + '</h2></div>' +
-      '<p class="en-small">' + esc(t('en.dept.p')) + '</p><ul class="vbars">' + rows + '</ul>' +
-      '<p class="en-lead">' + esc(t('en.dept.last', { a: withArt(low[0].n), b: withArt(low[1].n), n: Math.round((low[0].taux + low[1].taux) / 2) })) + '</p>' +
-      '<p class="srcn">' + esc(t('en.dept.note')) + '</p></div>';
+    var body = '<ul class="vbars">' + rows + '</ul>' +
+      '<p class="en-end">' + esc(t('en.dept.last', { a: withArt(low[0].n), b: withArt(low[1].n), n: Math.round((low[0].taux + low[1].taux) / 2) })) + '</p>';
+    return sec('', '<h2>' + esc(t('en.dept.h')) + '</h2>', esc(t('en.dept.p')), body);
   }
   function share() {
     var txt = shareText(), canShare = !!(A.native || navigator.share);
-    return '<div class="blk"><div class="en-share"><div><h2>' + esc(t('en.share.h')) + '</h2><p>' + esc(txt) + '</p></div><div class="en-cta">' +
+    var body = '<p class="en-msg">' + esc(txt) + '</p><div class="en-cta">' +
       '<a class="btn primary" href="https://wa.me/?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener noreferrer">' + esc(t('en.share.wa')) + '</a>' +
       (canShare ? '<button type="button" class="btn" data-en-share>' + esc(t('en.share.other')) + '</button>' : '') +
-      '<button type="button" class="btn ghost" data-en-copy>' + esc(t('en.share.copy')) + '</button></div></div></div>';
-  }
-  function bottom() {
-    var s = D.sources || {};
-    return '<div class="blk en-end"><div class="en-endgrid"><div><div class="sec-h sm"><h2>' + esc(t('en.not.h')) + '</h2></div><ul class="en-nl"><li>' + esc(t('en.not.1')) + '</li><li>' + esc(t('en.not.2')) + '</li><li>' + esc(t('en.not.3')) + '</li></ul></div>' +
-      '<div><div class="sec-h sm"><h2>' + esc(t('en.src.h')) + '</h2></div><ul class="en-nl">' +
-      '<li>' + esc(t('en.src.1', { d: D.t ? dFr(D.t) : '', a: fmt(D.inscrits_age), b: fmt(D.inscrits) })) + '</li>' +
-      '<li>' + esc(t('en.src.2')) + '</li><li>' + esc(t('en.src.3')) + '</li><li>' + esc(t('en.src.4')) + '</li>' +
-      '<li>' + esc(t('en.src.5')) + '</li><li>' + esc(t('en.src.6')) + '</li><li>' + esc(t('en.src.7')) + '</li></ul>' +
-      '<p class="srcn">' + esc(s.cep || '') + '</p></div></div></div>';
+      '<button type="button" class="btn ghost" data-en-copy>' + esc(t('en.share.copy')) + '</button></div>';
+    return sec('', '<h2>' + esc(t('en.share.h')) + '</h2>', '', body, 'en-last');
   }
   function render() {
-    root.innerHTML = hero() + '<div class="wrap">' + open() + calc() + ages() + cin() + steps() + finder() + depts() + share() + bottom() + '</div>';
-    finderBuilt = false;
+    root.innerHTML = hero() + '<div class="wrap">' + figure() + weight() + cin() + steps() + finder() + depts() + share() + '</div>';
     buildFinder();
   }
 
@@ -179,7 +173,7 @@
         var near = (C.o || []).filter(function (r) { return r[0] === di; });
         h += '<p class="en-note">' + esc(t('en.find.nooni')) + '</p>' + (near.length ? '<ul class="en-list">' + near.map(function (r) { return '<li><div><b>' + esc(nice(r[1])) + '</b><span>' + esc(r[2]) + '</span></div></li>'; }).join('') + '</ul>' : '');
       }
-      h += '<p class="srcn">' + esc(t('en.find.src', { d: C.maj ? dFr(C.maj) : '', e: C.oni && C.oni.t ? dFr(C.oni.t) : '' })) + '</p>';
+      h += '<p class="en-small">' + esc(t('en.find.fresh', { d: C.maj ? dFr(C.maj) : '' })) + '</p>';
       out.innerHTML = h;
     }
     dep.addEventListener('change', fillCom);
@@ -189,13 +183,12 @@
       dep.value = String(last[0]); fillCom();
       if (communes(last[0]).indexOf(last[1]) >= 0) { com.value = last[1]; show(); }
     }
-    finderBuilt = true;
   }
 
   /* ---------- actions ---------- */
   function doShare() {
     var txt = shareText();
-    if (navigator.share) { navigator.share({ title: t('en.h1'), text: txt }).catch(function () { /* annulé */ }); return; }
+    if (navigator.share) { navigator.share({ title: t('en.h1b'), text: txt }).catch(function () { /* annulé */ }); return; }
     window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank', 'noopener');
   }
   function doCopy() {
@@ -218,7 +211,7 @@
       D = r[0]; C = r[1]; state = 2; render();
     }, function () {
       state = 0;
-      root.innerHTML = '<div class="wrap"><div class="ph"><h1>' + esc(t('en.h1')) + '</h1></div><p class="empty">' + esc(t('en.err')) + '</p></div>';
+      root.innerHTML = '<div class="wrap"><div class="ph"><h1>' + esc(t('en.h1b')) + '</h1></div><p class="empty">' + esc(t('en.err')) + '</p></div>';
     });
   }
   A.onPage(function (p) { if (p === 'elec') { load(); } });
