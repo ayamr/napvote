@@ -21,6 +21,16 @@
     return SITE + (q.length ? '?' + q.join('&') : '') + '#sres';
   }
 
+  /* le graphique garde toute la période ; le tableau ne donne que les 5 derniers jours (le dernier jour enregistré et les 4 précédents) */
+  var EVO_DAYS = 5;
+  function recent(tr) {
+    if (!tr || !tr.days || !tr.days.length) { return tr; }
+    var lim = new Date(tr.days[tr.days.length - 1].d + 'T12:00:00');
+    lim.setDate(lim.getDate() - (EVO_DAYS - 1));
+    var from = lim.getFullYear() + '-' + ('0' + (lim.getMonth() + 1)).slice(-2) + '-' + ('0' + lim.getDate()).slice(-2);
+    return { scope: tr.scope, days: tr.days.filter(function (d) { return d.d >= from; }) };
+  }
+
   /* graphique des parts, un trait par candidat (couleur et tirets différents) ; le tableau dessous donne les mêmes valeurs */
   function chart(sc, tr) {
     var days = tr.days, last = days[days.length - 1], names = Object.keys(last.c).sort(function (a, b) { return last.c[b] - last.c[a]; }).slice(0, 4);
@@ -38,7 +48,7 @@
     svg += '</svg>';
     var leg = '<ul class="sres-leg">' + names.map(function (c, k) { return '<li><i style="background:' + COLORS[k] + '"></i>' + esc(A.pollNameOf(sc, c)) + '</li>'; }).join('') + '</ul>';
     var tab = '<div class="tw"><table class="ctab2"><thead><tr><th>' + esc(t('sres.day')) + '</th>' + names.map(function (c) { return '<th>' + esc(A.pollNameOf(sc, c)) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      days.slice().reverse().map(function (d) { return '<tr><td>' + esc(dayLabel(d.d)) + '</td>' + names.map(function (c) { return '<td class="mono">' + pct(d.c[c] || 0, d.t) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+      recent(tr).days.slice().reverse().map(function (d) { return '<tr><td>' + esc(dayLabel(d.d)) + '</td>' + names.map(function (c) { return '<td class="mono">' + pct(d.c[c] || 0, d.t) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
     return svg + leg + '<p class="note-s">' + esc(t('sres.evoNote')) + '</p>' + tab;
   }
   function evoHtml(sc) {
