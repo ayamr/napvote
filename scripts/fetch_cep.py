@@ -21,12 +21,20 @@ PS = 10  # le CEP plafonne la taille de page à 10
 UA = {"User-Agent": "NapVote/1.0 (citizen election tracker)"}
 
 
-def http(url, data=None, tries=8):
+START = time.time()
+OPTIONAL_BUDGET = 540  # s : au-delà, les étapes facultatives sont sautées pour que la publication du site ne dépasse jamais la limite de 15 minutes du robot
+
+
+def late():
+    return time.time() - START > OPTIONAL_BUDGET
+
+
+def http(url, data=None, tries=8, timeout=40):
     last = None
     for a in range(tries):
         try:
             req = urllib.request.Request(url, data=data, headers=dict(UA, **({"Content-Type": "application/json"} if data else {})))
-            with urllib.request.urlopen(req, timeout=40) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read()
         except urllib.error.HTTPError as e:  # 429 : le CEP limite le débit, on patiente
             last = e
@@ -84,7 +92,7 @@ def fetch_civ():
     Écrit data/civ_cep.json si la liste a changé. Retourne True si le fichier a été modifié. Ne bloque jamais la collecte principale."""
     path = os.path.join(D, "civ_cep.json")
     prev = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else None
-    html = http(CIV).decode("utf-8", "ignore")
+    html = http(CIV, tries=2, timeout=25).decode("utf-8", "ignore")
     i = html.find("const CENTRES = ")
     if i < 0:
         raise RuntimeError("tableau CENTRES introuvable (page modifiée ?)")
@@ -123,7 +131,7 @@ def fetch_oni():
     import html as _html
     path = os.path.join(D, "oni_bureaux.json")
     prev = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else None
-    page_html = http(ONI).decode("utf-8", "ignore")
+    page_html = http(ONI, tries=2, timeout=25).decode("utf-8", "ignore")
     items = []
     for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", page_html, flags=re.S):
         cells = [re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", "", c))).strip() for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, flags=re.S)]
@@ -213,35 +221,43 @@ def main():
 
     # ---- statistiques d'inscription (non bloquant) ----
     stats_changed = False
+    fails = 0
     for name, fn in [("stats-summary", "api_stats-summary.json"), ("stats-geography", "api_stats-geography.json"), ("stats-timeline", "api_stats-timeline.json"), ("stats-demographic", "api_stats-demographic.json"), ("geography", "api_geography.json")]:
+        if fails >= 2 or late():  # le service des statistiques ne répond pas : on garde les derniers fichiers, sans retarder la publication
+            print("statistiques %s : ignoré (service lent ou délai dépassé)" % name, file=sys.stderr)
+            continue
         try:
-            raw = http(STATS.format(name), data=b"{}")
+            raw = http(STATS.format(name), data=b"{}", tries=2, timeout=20)
             json.loads(raw)
+            fails = 0
             p = os.path.join(SRC, fn)
             if not os.path.exists(p) or open(p, "rb").read() != raw:
                 open(p, "wb").write(raw)
                 stats_changed = True
         except Exception as e:  # noqa: BLE001
+            fails += 1
             print("avertissement statistiques %s : %s" % (name, e), file=sys.stderr)
 
     # ---- centres d'inscription et de vote (non bloquant) ----
     civ_changed = False
     try:
-        civ_changed = fetch_civ()
+        civ_changed = False if late() else fetch_civ()
     except Exception as e:  # noqa: BLE001
         print("avertissement centres CIV :", e, file=sys.stderr)
 
     # ---- bureaux de l'ONI (non bloquant) ----
     oni_changed = False
     try:
-        oni_changed = fetch_oni()
+        oni_changed = False if late() else fetch_oni()
     except Exception as e:  # noqa: BLE001
         print("avertissement bureaux ONI :", e, file=sys.stderr)
 
     # ---- veille des notes du CEP (non bloquant) ----
     notes_new = []
     try:
-        html = http(NOTES).decode("utf-8", "ignore")
+        if late():
+            raise RuntimeError("délai dépassé, étape sautée")
+        html = http(NOTES, tries=2, timeout=25).decode("utf-8", "ignore")
         links = sorted({m for m in re.findall(r'href="(https://cephaiti\.ht/[a-z0-9][^"#?]*?/)"', html)
                         if "/wp-" not in m and "/category/" not in m and "/page/" not in m and "/tag/" not in m})
         sp = os.path.join(D, "notes_state.json")
