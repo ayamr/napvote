@@ -60,7 +60,11 @@
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
     return [r(Math.min(s.width || 0, s.height || 0)), r(Math.max(s.width || 0, s.height || 0)), Math.round((window.devicePixelRatio || 1) * 10) / 10, tz.slice(0, 30), (navigator.language || '').slice(0, 5)].join('|').replace(/[^\w\/|.+ -]/g, '').slice(0, 80);
   }
-  var lastCut = null, view = '', token = '', tokenAt = 0, onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '', hwHex = '';
+  var lastCut = null, view = '', token = '', tokenAt = 0, onToken = function () {}, tsId = null, chal = null, chalFail = false, tick = null, justVoted = false, fpHex = '', hwHex = '', sending = false;
+  /* Un jeton Turnstile vaut 5 minutes et ne sert qu'une fois : on le renouvelle au bout de 2 min 30, pas au dernier moment */
+  var TOKEN_MAX = 150000;
+  function tokenOk() { return !!token && Date.now() - tokenAt < TOKEN_MAX; }
+  function renewToken() { token = ''; tokenAt = 0; if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } } onToken(); }
 
   /* ---- scrutins proposés selon la commune enregistrée ---- */
   function cOpt(c) { return { c: norm(c.nom + ' ' + c.pre), n: c.pre + ' ' + c.nom, s: V.parties[c.pa] }; }
@@ -137,7 +141,7 @@
       boxes.forEach(function (b) { if (!b.getAttribute('data-fixed')) { b.disabled = !b.checked && n >= max; } });
       var c = fs.querySelector('.poll-cnt'); if (c) { c.textContent = n + ' / ' + max; }
     }
-    function upd() { btn.disabled = !f.querySelector('input:checked') || (!!CFG.turnstileKey && !token) || !chalReady(); }
+    function upd() { btn.disabled = sending || !f.querySelector('input:checked') || (!!CFG.turnstileKey && !tokenOk()) || !chalReady(); }
     f.addEventListener('change', function (e) {
       var fs = e.target.closest('fieldset[data-max]');
       if (fs) {
@@ -150,7 +154,7 @@
     });
     f.querySelectorAll('fieldset[data-max]').forEach(limit); upd();
     onToken = upd;
-    sgc.formAt = Date.now(); sgc.first = 0; loadCut(); ensureChallenge(); clearInterval(tick); tick = setInterval(function () { if (!document.getElementById('poll-send')) { clearInterval(tick); return; } upd(); }, 700);
+    sgc.formAt = Date.now(); sgc.first = 0; loadCut(); ensureChallenge(); clearInterval(tick); tick = setInterval(function () { if (!document.getElementById('poll-send')) { clearInterval(tick); return; } if (CFG.turnstileKey && token && !sending && !tokenOk()) { renewToken(); } upd(); }, 700);
     if (CFG.turnstileKey) { token = ''; mountTurnstile(); }
   }
   function mountTurnstile() {
@@ -164,8 +168,10 @@
   function setMsg(el, text, help) { el.textContent = text; if (help) { el.insertAdjacentHTML('beforeend', contactHtml()); } }
   function post(path, body) {
     /* text/plain : requête « simple » pour CORS, donc sans pré-vérification (OPTIONS) du navigateur ; le serveur lit le corps comme du JSON dans tous les cas */
-    return fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body) })
-      .then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || 'erreur'); e.status = r.status; throw e; } return j; }); });
+    /* 30 s au plus : sur un réseau qui décroche, l'envoi échoue au lieu de laisser le bouton bloqué */
+    var ac = window.AbortController ? new AbortController() : null, to = ac ? setTimeout(function () { ac.abort(); }, 30000) : 0;
+    return fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body), signal: ac ? ac.signal : undefined })
+      .then(function (r) { clearTimeout(to); return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || 'erreur'); e.status = r.status; throw e; } return j; }); }, function (er) { clearTimeout(to); throw er; });
   }
 
   /* ---- signaux de comportement : ce que fait la personne avant d'envoyer (comptés, jamais le contenu des saisies) ----
@@ -319,6 +325,7 @@
   /* ---- événements ---- */
   root.addEventListener('submit', function (e) {
     e.preventDefault();
+    if (sending) { return; }  // un envoi est déjà en cours : un second appui ne doit pas renvoyer le même jeton anti-robot (refusé comme « déjà utilisé »)
     var f = e.target, btn = document.getElementById('poll-send'), msg = document.getElementById('poll-msg'), votes = [];
     f.querySelectorAll('fieldset[data-scope]').forEach(function (fs) {
       var chs = [].slice.call(fs.querySelectorAll('input:checked')).map(function (i) { return i.value; });
@@ -326,20 +333,29 @@
     });
     if (!votes.length) { msg.textContent = t('poll.nosel'); return; }
     var dept = document.getElementById('poll-dept').value;
-    btn.disabled = true; msg.textContent = '';
-    function resetWidget() { token = ''; tokenAt = 0; if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } } }
-    function ready() { return (!CFG.turnstileKey || (token && Date.now() - tokenAt < 4 * 60000)) && chalReady(); }
-    /* attend un jeton anti-robot et un défi frais (20 s au plus) avant de continuer ; sinon continue quand même, le service décidera */
-    function whenReady(go) { var t0 = Date.now(); (function w() { if (ready() || Date.now() - t0 > 20000) { go(); } else { setTimeout(w, 400); } })(); }
+    sending = true; btn.disabled = true; msg.textContent = '';
+    function resetWidget() { renewToken(); }
+    function ready() { return (!CFG.turnstileKey || tokenOk()) && chalReady(); }
+    /* attend un jeton anti-robot et un défi frais (45 s au plus ; au bout de 15 s sans jeton, la case est redessinée). Sans jeton valide on n'envoie pas : le service refuserait l'envoi (« robot:absent ») et la tentative serait perdue */
+    function whenReady(go) {
+      var t0 = Date.now(), redrawn = false;
+      (function w() {
+        if (ready()) { go(); return; }
+        var waited = Date.now() - t0;
+        if (waited > 45000) { var e = new Error('robot'); e.status = 403; fail(e); return; }
+        if (waited > 15000 && !redrawn && CFG.turnstileKey && !token && window.turnstile && tsId !== null) { redrawn = true; try { window.turnstile.remove(tsId); } catch (x) { /* ignore */ } tsId = null; mountTurnstile(); }
+        setTimeout(w, 400);
+      })();
+    }
     function fail(er) {
-      btn.disabled = true;
+      sending = false; btn.disabled = true;
       var wait = er.message === 'defi' || er.message === 'defi_tot';
       setMsg(msg, wait ? t('poll.wait') : (er.message === 'empreinte' ? t('poll.fp') : (er.status === 429 ? t('poll.limit') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err')))), !wait);
     }
     function send(again) {
       post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined, hw: hwHex || undefined, sg: signals() }).then(function () {
         votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices, at: Date.now() }; });
-        mine.dept = dept; mine.n = (mine.n || 0) + 1; A.store.set('poll', mine); token = ''; chal = null; justVoted = true;
+        mine.dept = dept; mine.n = (mine.n || 0) + 1; A.store.set('poll', mine); token = ''; chal = null; justVoted = true; sending = false;
         A.toast(t('poll.thanks')); showResults('', true);
       }, function (er) {
         resetWidget(); ensureChallenge(true);
@@ -349,7 +365,7 @@
         fail(er);
       });
     }
-    if (ready()) { send(true); } else { if (CFG.turnstileKey && Date.now() - tokenAt >= 4 * 60000) { resetWidget(); } msg.textContent = t('poll.retry'); whenReady(function () { msg.textContent = ''; send(true); }); }
+    if (ready()) { send(true); } else { if (CFG.turnstileKey && token && !tokenOk()) { resetWidget(); } msg.textContent = t('poll.retry'); whenReady(function () { msg.textContent = ''; send(true); }); }
   });
   root.addEventListener('click', function (e) {
     if (e.target.closest('[data-pedit]')) { view = 'form'; renderForm(); return; }
