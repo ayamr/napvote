@@ -201,5 +201,115 @@
   "license": "",
   "page": "",
   "verified": "Photo fournie par NapVote (dossier Photos_Candidats) ; provenance et droits à confirmer"
+ },
+ {
+  "nom": "ADRIEN",
+  "pre": "DANIEST",
+  "po": 0,
+  "slug": "adrien-daniest",
+  "file": "daniest_adrien.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "SALOMON",
+  "pre": "JEAN-MARIE JUNIOR",
+  "po": 0,
+  "slug": "salomon-jean-marie-junior",
+  "file": "jean_mary_salomon.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "TARDIEU",
+  "pre": "PHILIPPE GERARD JERRY",
+  "po": 0,
+  "slug": "tardieu-philippe-gerard-jerry",
+  "file": "jerry_tardieu.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "BASTIEN",
+  "pre": "KELY C.",
+  "po": 0,
+  "slug": "bastien-kely-c",
+  "file": "kelly_bastien.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "DELILLE",
+  "pre": "LUCMANNE",
+  "po": 0,
+  "slug": "delille-lucmanne",
+  "file": "lucmane_delille.png",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "DROUILLARD",
+  "pre": "MARC ARTHUR",
+  "po": 0,
+  "slug": "drouillard-marc-arthur",
+  "file": "marc_arthur_drouillard.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "JOSEPH",
+  "pre": "MAXO",
+  "po": 0,
+  "slug": "joseph-maxo",
+  "file": "maxo_joseph.webp",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "NESTOR",
+  "pre": "MICHELET",
+  "po": 0,
+  "slug": "nestor-michelet",
+  "file": "michelet_nestor.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "SAVARY",
+  "pre": "MARIE ANNE SAVANNAH HADID",
+  "po": 0,
+  "slug": "savary-marie-anne-savannah-hadid",
+  "file": "savannah_savary.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "SANON",
+  "pre": "WALSONN",
+  "po": 0,
+  "slug": "sanon-walsonn",
+  "file": "walsonn_sanon.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
+ },
+ {
+  "nom": "MOISE",
+  "pre": "MARIE ETIENNE MARTINE JOSEPH",
+  "po": 0,
+  "slug": "moise-marie-etienne-martine-joseph",
+  "file": "martine_moise.jpg",
+  "author": "",
+  "license": "",
+  "page": ""
  }
 ]
