@@ -121,7 +121,7 @@
       h += '<fieldset class="poll-f" data-scope="' + esc(sc.scope) + '"' + (sc.multi ? ' data-max="' + sc.multi + '"' : '') + '><legend>' + esc(sc.title) + '</legend>' +
         (sc.multi ? '<p class="note-s poll-max">' + esc(t('poll.multi', { n: sc.multi })) + ' <b class="poll-cnt"></b></p>' : '') + '<ul class="rows poll-l">' +
         shuffled(sc).concat(FIXED.map(function (f) { return { c: f.c, n: f.n, s: '', fixed: true }; })).map(function (x) {
-          return '<li><label class="poll-o' + (x.fixed ? ' fx' : '') + '"><input type="' + type + '" name="r' + i + '" value="' + esc(x.c) + '"' + (x.fixed ? ' data-fixed="1"' : '') + (cur.indexOf(x.c) >= 0 ? ' checked' : '') + '>' + (sc.scope === 'pres' && x.cand ? A.avatar(x.cand) : '') + '<span class="poll-t"><b>' + esc(x.n) + '</b>' + (x.s ? '<span>' + esc(x.s) + '</span>' : '') + '</span></label></li>';
+          return '<li><label class="poll-o' + (x.fixed ? ' fx' : '') + '"><input type="' + type + '" name="r' + i + '" value="' + esc(x.c) + '"' + (x.fixed ? ' data-fixed="1"' : '') + (cur.indexOf(x.c) >= 0 ? ' checked' : '') + '>' + (x.cand ? A.avatar(x.cand) : '') + '<span class="poll-t"><b>' + esc(x.n) + '</b>' + (x.s ? '<span>' + esc(x.s) + '</span>' : '') + '</span></label></li>';
         }).join('') + '</ul>' + (sc.scope === 'pres' ? '<p class="note-s poll-ph">' + esc(t('poll.photoAsk', { m: MAIL })).replace(esc(MAIL), '<a href="mailto:' + esc(MAIL) + '">' + esc(MAIL) + '</a>') + '</p>' : '') + '</fieldset>';
     });
     if (S.needSec) {
@@ -275,6 +275,8 @@
   A.pollRows = rowsOf;
   function subOf(sc, c) { var o = null; sc.opts.forEach(function (x) { if (x.c === c) { o = x; } }); return o && o.s ? o.s : ''; }  // parti du candidat, ou titulaire de la liste (maire, CASEC, ASEC)
   A.pollSubOf = subOf;
+  function avOf(sc, c) { var o = null; sc.opts.forEach(function (x) { if (x.c === c) { o = x; } }); return o && o.cand ? A.avatar(o.cand) : ''; }  // photo ou initiales du candidat (pas pour les listes de maire, CASEC, ASEC)
+  A.pollAvOf = avOf;
   A.pollSummary = function () { // choix de l'électeur, du président jusqu'au maire, pour la carte de partage
     var S = scopes(), items = [];
     S.list.forEach(function (sc) {
@@ -302,7 +304,8 @@
       else {
         h += '<ul class="rank">' + rows.map(function (r) {
           var pc = Math.round(100 * r.n / d.total);
-          return '<li' + (r.c.charAt(0) === '~' ? '' : (['may', 'cas', 'asec'].indexOf(sc.scope.split('|')[0]) >= 0 ? ' class="upn"' : ' class="ups"')) + '><div class="rk hist-r"><span class="rk-l">' + esc(nameOf(sc, r.c)) + (subOf(sc, r.c) ? '<small class="rk-s">' + esc(subOf(sc, r.c)) + '</small>' : '') + (mineC.indexOf(r.c) >= 0 ? ' <span class="poll-me">✓ ' + esc(t('poll.mine')) + '</span>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pc.toLocaleString('fr-FR') + ' %</span></div></li>';
+          var av = avOf(sc, r.c);
+          return '<li' + (r.c.charAt(0) === '~' ? '' : (['may', 'cas', 'asec'].indexOf(sc.scope.split('|')[0]) >= 0 ? ' class="upn"' : ' class="ups"')) + '><div class="rk hist-r"><span class="rk-l' + (av ? ' rk-w' : '') + '">' + av + '<span class="rk-t">' + esc(nameOf(sc, r.c)) + (subOf(sc, r.c) ? '<small class="rk-s">' + esc(subOf(sc, r.c)) + '</small>' : '') + (mineC.indexOf(r.c) >= 0 ? ' <span class="poll-me">✓ ' + esc(t('poll.mine')) + '</span>' : '') + '</span></span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pc.toLocaleString('fr-FR') + ' %</span></div></li>';
         }).join('') + '</ul>';
       }
       h += '</section>';

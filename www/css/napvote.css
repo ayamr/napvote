@@ -419,6 +419,15 @@ details.sec[open] > summary::before{ content:"▾ "; }
 .rk{ display:grid; grid-template-columns:minmax(110px,1.3fr) 1fr 120px; gap:14px; align-items:center; width:100%; min-height:48px; padding:8px 0; border:none; border-bottom:1px solid var(--line); background:none; text-align:left; font-size:.9375rem; color:var(--ink); }
 button.rk{ cursor:pointer; } button.rk:hover{ background:var(--surface); }
 .rk-l{ font-weight:600; }
+.rk-w{ display:flex; align-items:center; gap:10px; min-width:0; }
+.rk-w .av{ width:36px; height:36px; font-size:.8125rem; }
+.rk-t{ min-width:0; }
+@media (max-width:640px){
+  .rk:has(.rk-w){ grid-template-columns:1fr auto; row-gap:6px; }
+  .rk:has(.rk-w) .rk-l{ grid-column:1; grid-row:1; }
+  .rk:has(.rk-w) .rk-n{ grid-column:2; grid-row:1; }
+  .rk:has(.rk-w) .rk-b{ grid-column:1 / -1; grid-row:2; }
+}
 .rk-b{ height:12px; background:var(--surface-2); border-radius:1px; overflow:hidden; }
 .rk-b i{ display:block; height:100%; background:var(--brand); }
 .rk.win .rk-b i{ background:var(--band); }

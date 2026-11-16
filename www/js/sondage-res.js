@@ -70,7 +70,8 @@
     if (!tot) { return h + '<p class="empty">' + esc(t('poll.none')) + '</p></section>'; }
     function row(r, i) {
       var fixed = r.c.charAt(0) === '~';
-      return '<li' + (fixed ? '' : (['may', 'cas', 'asec'].indexOf(sc.scope.split('|')[0]) >= 0 ? ' class="upn"' : ' class="ups"')) + '><div class="rk hist-r' + (i === 0 && !fixed ? ' win' : '') + '"><span class="rk-l">' + esc(A.pollNameOf(sc, r.c)) + (A.pollSubOf(sc, r.c) ? '<small class="rk-s">' + esc(A.pollSubOf(sc, r.c)) + '</small>' : '') + '</span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pct(r.n, tot) + ' <small>' + esc(t('sres.n', { n: fmt(r.n) })) + '</small></span></div></li>';
+      var av = A.pollAvOf ? A.pollAvOf(sc, r.c) : '';
+      return '<li' + (fixed ? '' : (['may', 'cas', 'asec'].indexOf(sc.scope.split('|')[0]) >= 0 ? ' class="upn"' : ' class="ups"')) + '><div class="rk hist-r' + (i === 0 && !fixed ? ' win' : '') + '"><span class="rk-l' + (av ? ' rk-w' : '') + '">' + av + '<span class="rk-t">' + esc(A.pollNameOf(sc, r.c)) + (A.pollSubOf(sc, r.c) ? '<small class="rk-s">' + esc(A.pollSubOf(sc, r.c)) + '</small>' : '') + '</span></span><span class="rk-b"><i style="width:' + Math.round(100 * r.n / mx) + '%"></i></span><span class="rk-n">' + pct(r.n, tot) + ' <small>' + esc(t('sres.n', { n: fmt(r.n) })) + '</small></span></div></li>';
     }
     h += '<ol class="rank sres-rank">' + rows.slice(0, TOP).map(row).join('') + '</ol>';
     if (rows.length > TOP) { h += '<details class="sec"><summary><span>' + esc(t('sres.more', { n: rows.length - TOP })) + '</span></summary><ol class="rank sres-rank" start="' + (TOP + 1) + '">' + rows.slice(TOP).map(function (r, i) { return row(r, TOP + i); }).join('') + '</ol></details>'; }
