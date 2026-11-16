@@ -663,6 +663,8 @@ img.av:not(.big){ border-radius:50%; }
 
 .poll-f{ margin-top:28px; }
 .poll-o.fx{ color:var(--ink-2); }
+.poll-ph{ margin:10px 0 0; }
+.poll-ph a{ color:var(--brand); }
 .poll-o.fx .poll-t b{ font-weight:600; }
 .poll-rt{ font-size:1.5rem; margin-top:28px; }
 .poll-r{ margin-top:28px; }

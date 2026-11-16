@@ -67,7 +67,7 @@
   function renewToken() { token = ''; tokenAt = 0; if (window.turnstile && tsId !== null) { try { window.turnstile.reset(tsId); } catch (x) { /* ignore */ } } onToken(); }
 
   /* ---- scrutins proposés selon la commune enregistrée ---- */
-  function cOpt(c) { return { c: norm(c.nom + ' ' + c.pre), n: c.pre + ' ' + c.nom, s: V.parties[c.pa] }; }
+  function cOpt(c) { return { c: norm(c.nom + ' ' + c.pre), n: c.pre + ' ' + c.nom, s: V.parties[c.pa], cand: c }; }
   function listOpts(list) {
     return A.partyGroups(list).map(function (g) {
       var tit = g.cs.filter(function (c) { return c.ps === 0; })[0] || g.cs[0];
@@ -121,8 +121,8 @@
       h += '<fieldset class="poll-f" data-scope="' + esc(sc.scope) + '"' + (sc.multi ? ' data-max="' + sc.multi + '"' : '') + '><legend>' + esc(sc.title) + '</legend>' +
         (sc.multi ? '<p class="note-s poll-max">' + esc(t('poll.multi', { n: sc.multi })) + ' <b class="poll-cnt"></b></p>' : '') + '<ul class="rows poll-l">' +
         shuffled(sc).concat(FIXED.map(function (f) { return { c: f.c, n: f.n, s: '', fixed: true }; })).map(function (x) {
-          return '<li><label class="poll-o' + (x.fixed ? ' fx' : '') + '"><input type="' + type + '" name="r' + i + '" value="' + esc(x.c) + '"' + (x.fixed ? ' data-fixed="1"' : '') + (cur.indexOf(x.c) >= 0 ? ' checked' : '') + '><span class="poll-t"><b>' + esc(x.n) + '</b>' + (x.s ? '<span>' + esc(x.s) + '</span>' : '') + '</span></label></li>';
-        }).join('') + '</ul></fieldset>';
+          return '<li><label class="poll-o' + (x.fixed ? ' fx' : '') + '"><input type="' + type + '" name="r' + i + '" value="' + esc(x.c) + '"' + (x.fixed ? ' data-fixed="1"' : '') + (cur.indexOf(x.c) >= 0 ? ' checked' : '') + '>' + (sc.scope === 'pres' && x.cand ? A.avatar(x.cand) : '') + '<span class="poll-t"><b>' + esc(x.n) + '</b>' + (x.s ? '<span>' + esc(x.s) + '</span>' : '') + '</span></label></li>';
+        }).join('') + '</ul>' + (sc.scope === 'pres' ? '<p class="note-s poll-ph">' + esc(t('poll.photoAsk', { m: MAIL })).replace(esc(MAIL), '<a href="mailto:' + esc(MAIL) + '">' + esc(MAIL) + '</a>') + '</p>' : '') + '</fieldset>';
     });
     if (S.needSec) {
       h += '<div class="sec-pick poll-sec"><label><span>' + esc(t('poll.needSection')) + '</span><select id="poll-sec"><option value="-1">' + esc(t('b.sec.choose')) + '</option>' +
