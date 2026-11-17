@@ -15,6 +15,8 @@
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="css/napvote.css">
+<link rel="stylesheet" href="css/bilan.css">
+<link rel="stylesheet" href="css/enskri.css">
 </head>
 <body>
 <!--
@@ -50,15 +52,14 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 <div class="mainnav"><div class="wrap">
   <nav class="dnav" aria-label="Sections">
     <button type="button" data-go="home" data-i18n="nav.home">Accueil</button>
-    <button type="button" data-go="bulletin" data-i18n="nav.bulletin">Mon bulletin</button>
     <button type="button" data-go="poll" class="nav-hl" data-i18n="nav.poll">Sondage</button>
     <button type="button" data-go="sres" class="nav-hl" data-i18n="nav.sres">Résultats du sondage</button>
+    <button type="button" data-go="elec" class="nav-hl" data-i18n="nav.elec">S’inscrire</button>
     <button type="button" data-go="carte" data-i18n="nav.map">Carte</button>
+    <button type="button" data-go="bulletin" data-i18n="nav.bulletin">Mon bulletin</button>
     <button type="button" data-go="cand" data-i18n="nav.cand">Candidats</button>
     <button type="button" data-go="res" data-i18n="nav.res">Résultats passés</button>
     <button type="button" data-go="cal" data-i18n="nav.cal">Calendrier</button>
-    <button type="button" data-go="elec" data-i18n="nav.elec">Électeurs</button>
-    <button type="button" data-go="news" data-i18n="nav.news">Actualités</button>
     <button type="button" data-go="about" data-i18n="nav.about">À propos</button>
   </nav>
 </div></div>
@@ -241,22 +242,141 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <p data-i18n="poll.sub">Répondez en dix secondes, sans compte.</p>
       </div>
       <p class="ctc"><span data-i18n="ctc.poll"></span> <a class="cmail"></a></p>
+      <p class="note-s poll-ph" id="poll-photo"></p>
       <div class="label picker" data-picker="bulletin" id="poll-picker"></div>
       <div id="poll-out" aria-live="polite"></div>
       <p class="note-s"><button type="button" class="btn sm ghost" data-go="sres" data-i18n="sres.go"></button></p>
     </div>
   </section>
 
-  <!-- ============ RÉSULTATS DU SONDAGE ============ -->
+  <!-- ============ RÉSULTATS DU SONDAGE : bilan figé de l'édition 1 (js/bilan.js) + résultats en direct de l'édition 2 ============ -->
   <section id="p-sres" hidden>
-    <div class="wrap">
-      <div class="ph">
-        <h1 data-i18n="sres.title">Résultats du sondage</h1>
-        <p data-i18n="sres.sub"></p>
+    <div class="wrap bl-tabwrap">
+      <div class="bl-tabs" role="tablist" data-i18n-aria="bl.tabs">
+        <button type="button" role="tab" id="bl-tab-b" aria-selected="true" aria-controls="bl-root" data-bl-tab="b" data-i18n="bl.tab.b">Bilan au 17 novembre</button>
+        <button type="button" role="tab" id="bl-tab-l" aria-selected="false" aria-controls="sres-live" data-bl-tab="l" tabindex="-1" data-i18n="bl.tab.l">Résultats du sondage relancé</button>
       </div>
-      <div class="pk-act sres-top"><button type="button" class="btn primary" data-go="poll" data-i18n="sres.vote">Répondre au sondage</button></div>
-      <div class="label picker" data-picker="bulletin" id="sres-picker"></div>
-      <div id="sres-out" aria-live="polite"></div>
+    </div>
+    <div id="bl-root" role="tabpanel" aria-labelledby="bl-tab-b">
+      <div class="bl-prog" aria-hidden="true"><i></i></div>
+
+      <section class="bl-hero" aria-labelledby="bl-h1">
+        <div class="wrap bl-hero-in">
+          <h1 id="bl-h1" class="bl-h1" data-i18n="bl.loading">Chargement du bilan…</h1>
+          <p id="bl-key" class="bl-key"></p>
+          <p class="bl-key2"><span id="bl-key2"></span> <button type="button" class="lnk inl" data-bl-jump="bl-notes" data-i18n="bl.notes.go">Notes de lecture</button></p>
+          <div class="bl-cta">
+            <button type="button" class="btn primary" data-bl-jump="bl-commune" data-i18n="bl.cta.commune">Voir les résultats de ma commune</button>
+            <button type="button" class="btn ghost" data-go="poll" data-i18n="bl.cta.vote">Répondre au sondage relancé</button>
+          </div>
+        </div>
+      </section>
+
+      <p class="wrap bl-err" id="bl-err" hidden></p>
+
+      <section class="bl-ch" aria-labelledby="bl-h-s1">
+        <div class="wrap bl-grid">
+          <div class="bl-side">
+            <h2 id="bl-h-s1" data-i18n="bl.s1.h">Un départ en flèche, puis le calme</h2>
+            <p id="bl-s1-p"></p>
+            <p class="note-s" id="bl-s1-adj"></p>
+          </div>
+          <div class="bl-main">
+            <figure class="bl-fig"><div id="bl-daily"></div><figcaption data-i18n="bl.s1.note"></figcaption></figure>
+            <h3 class="bl-h3" data-i18n="bl.s1.cnt">Personnes ayant répondu, scrutin par scrutin</h3>
+            <p class="note-s" data-i18n="bl.s1.cnt2"></p>
+            <ul class="bl-cnt" id="bl-cnt"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="bl-ch" aria-labelledby="bl-h-s2">
+        <div class="wrap bl-grid">
+          <div class="bl-side">
+            <h2 id="bl-h-s2" data-i18n="bl.s2.h">Les réponses ne ressemblent pas au pays</h2>
+            <p id="bl-s2-p"></p>
+            <p class="note-s" data-i18n="bl.s2.leg"></p>
+          </div>
+          <div class="bl-main"><ul class="bl-dp" id="bl-depts"></ul></div>
+        </div>
+      </section>
+
+      <section class="bl-ch" aria-labelledby="bl-h-s3">
+        <div class="wrap bl-grid">
+          <div class="bl-side">
+            <h2 id="bl-h-s3" data-i18n="bl.s3.h">La présidentielle</h2>
+            <p id="bl-s3-p"></p>
+            <p class="note-s" id="bl-s3-fx"></p>
+          </div>
+          <div class="bl-main">
+            <ol class="bl-rk" id="bl-pres"></ol>
+            <details class="sec bl-more" id="bl-pres-more" hidden><summary><span id="bl-pres-more-t"></span></summary><ol class="bl-rk" id="bl-pres-rest" start="11"></ol></details>
+            <h3 class="bl-h3" data-i18n="bl.s3.dept.h">Département par département</h3>
+            <p class="note-s" data-i18n="bl.s3.dept.p"></p>
+            <ul class="bl-ld" id="bl-presdept"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="bl-ch" aria-labelledby="bl-h-s4">
+        <div class="wrap bl-grid">
+          <div class="bl-side">
+            <h2 id="bl-h-s4" data-i18n="bl.s4.h">Si les premiers gagnaient partout</h2>
+            <p data-i18n="bl.s4.p"></p>
+            <p class="note-s" id="bl-s4-n"></p>
+          </div>
+          <div class="bl-main">
+            <figure class="bl-fig bl-hm"><h3 class="bl-h3" data-i18n="bl.s4.dep">Chambre des députés</h3><div id="bl-hemi-dep"></div><p class="bl-maj" id="bl-maj-dep"></p></figure>
+            <figure class="bl-fig bl-hm"><h3 class="bl-h3" data-i18n="bl.s4.sen">Sénat</h3><div id="bl-hemi-sen"></div><p class="bl-maj" id="bl-maj-sen"></p></figure>
+            <ul class="bl-leg" id="bl-leg"></ul>
+            <details class="sec"><summary><span data-i18n="bl.s4.tab">Tableau des sièges par parti</span></summary><div class="tw"><table class="ctab2" id="bl-seat-tab"></table></div></details>
+          </div>
+        </div>
+      </section>
+
+      <section class="bl-ch" id="bl-commune" aria-labelledby="bl-h-s5">
+        <div class="wrap bl-grid">
+          <div class="bl-side">
+            <h2 id="bl-h-s5" data-i18n="bl.s5.h">Et chez vous ?</h2>
+            <p data-i18n="bl.s5.p"></p>
+            <div class="label picker" data-picker="bulletin" id="bl-picker"></div>
+          </div>
+          <div class="bl-main" id="bl-commune-out" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="bl-end" aria-labelledby="bl-h-s6">
+        <div class="wrap bl-end-in">
+          <h2 id="bl-h-s6" data-i18n="bl.s6.h">Le sondage repart de zéro</h2>
+          <p id="bl-s6-p1"></p>
+          <p class="bl-go" data-i18n="bl.s6.go">Participez et partagez.</p>
+          <p data-i18n="bl.s6.p2"></p>
+          <div class="bl-cta">
+            <button type="button" class="btn primary" data-go="poll" data-i18n="bl.s6.vote">Répondre au sondage</button>
+            <button type="button" class="btn ghost" data-bl-share="all" data-i18n="bl.share">Partager</button>
+            <button type="button" class="btn ghost" data-bl-tab="l" data-i18n="bl.s6.live">Voir les résultats en direct</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="bl-notes" id="bl-notes" aria-labelledby="bl-h-notes">
+        <div class="wrap">
+          <details class="sec bl-notes-d"><summary><h2 id="bl-h-notes" data-i18n="bl.notes.h">Notes de lecture</h2></summary>
+            <ol class="bl-nt" id="bl-nt"></ol>
+          </details>
+        </div>
+      </section>
+    </div>
+    <div id="sres-live" role="tabpanel" aria-labelledby="bl-tab-l" hidden>
+      <div class="wrap">
+        <div class="ph">
+          <h1 data-i18n="sres.title">Résultats du sondage</h1>
+          <p data-i18n="sres.sub"></p>
+        </div>
+        <div class="pk-act sres-top"><button type="button" class="btn primary" data-go="poll" data-i18n="sres.vote">Répondre au sondage</button></div>
+        <div class="label picker" data-picker="bulletin" id="sres-picker"></div>
+        <div id="sres-out" aria-live="polite"></div>
+      </div>
     </div>
   </section>
 
@@ -294,6 +414,7 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
         <h1 data-i18n="news.title">Actualités et communiqués</h1>
         <p data-i18n="news.sub">Communiqués du CEP et titres de la presse. Les articles s’ouvrent sur le site du média.</p>
       </div>
+      <div class="notice" data-i18n="news.arch">Archive : cette page n’est plus dans le menu et n’est plus mise à jour.</div>
       <p class="ctc"><span data-i18n="ctc.page"></span> <a class="cmail"></a></p>
       <div id="n-feed" class="feed"></div>
     </div>
@@ -366,12 +487,13 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
     <button type="button" class="f-x" aria-label="Fermer">✕</button>
     <h2 class="menu-t" data-i18n="menu">Menu</h2>
     <ul class="menu-l">
+      <li><button type="button" data-go="bulletin"><b data-i18n="nav.bulletin">Mon bulletin</b><span data-i18n="menu.bulletin.s">Qui est sur votre bulletin</span></button></li>
+      <li><button type="button" data-go="cand"><b data-i18n="nav.cand">Candidats</b><span data-i18n="menu.cand.s">Liste, filtres et fiches</span></button></li>
       <li><button type="button" data-go="res"><b data-i18n="nav.res">Résultats passés</b><span data-i18n="menu.res.s">Présidentielle 2016, Sénat et députés 2015-2017</span></button></li>
       <li><button type="button" data-go="poll"><b data-i18n="menu.poll">Sondage</b><span data-i18n="menu.poll.s">Pour qui comptez-vous voter ?</span></button></li>
       <li><button type="button" data-go="sres"><b data-i18n="menu.sres">Résultats du sondage</b><span data-i18n="menu.sres.s">Classement par scrutin, à partager</span></button></li>
       <li><button type="button" data-go="cal"><b data-i18n="menu.cal">Calendrier</b><span data-i18n="menu.cal.s">Les dates du processus</span></button></li>
       <li><button type="button" data-go="elec"><b data-i18n="menu.elec">Électeurs inscrits</b><span data-i18n="menu.elec.s">Inscription par département</span></button></li>
-      <li><button type="button" data-go="news"><b data-i18n="menu.news">Actualités</b><span data-i18n="menu.news.s">CEP et presse</span></button></li>
       <li><button type="button" data-go="about"><b data-i18n="menu.about">À propos, sources, installer l’appli</b><span data-i18n="menu.about.s">Données, limites, apparence</span></button></li>
     </ul>
   </div>
@@ -381,9 +503,9 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 <nav class="bnav" aria-label="Navigation principale">
   <button type="button" data-go="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span data-i18n="nav.home">Accueil</span></button>
-  <button type="button" data-go="bulletin"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 12l2 2 4-4M9 7h6M9 17h6"/></svg><span data-i18n="nav.bulletin">Mon bulletin</span></button>
-  <button type="button" data-go="cand"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16.5 4.8a3.2 3.2 0 0 1 0 6.2M18.5 14.4c2 .8 3 2.6 3 5.6"/></svg><span data-i18n="nav.cand">Candidats</span></button>
+  <button type="button" data-go="poll"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h16v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M12 3v8M8.5 7.5L12 11l3.5-3.5"/></svg><span data-i18n="nav.poll">Sondage</span></button>
   <button type="button" data-go="sres"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20v-7h3.5v7M10.25 20V5h3.5v15M14.5 20V9H18v11"/></svg><span data-i18n="nav.sresb">Résultats</span></button>
+  <button type="button" data-go="elec"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2M14 10h4M14 14h3"/></svg><span data-i18n="nav.elec">S’inscrire</span></button>
   <button type="button" data-go="carte"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg><span data-i18n="nav.map">Carte</span></button>
 </nav>
 

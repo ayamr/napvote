@@ -98,3 +98,22 @@ Pour retirer une vague après examen : `INSERT INTO excluded_windows(scope, from
 - La tâche horaire écrit, après chaque publication, l'état des résultats publiés dans `tally_day` (une ligne par jour d'Haïti, scrutin et choix ; `choice = '*'` = participants). La présidentielle y subit le même retrait des surplus que l'affichage.
 - `POST /trend {scope}` renvoie les jours enregistrés avec les 8 premiers choix (cache mémoire 10 min). L'historique commence au déploiement de la v23 : il n'est pas reconstitué pour les jours passés, ce qui évite d'afficher des chiffres bruts différents des chiffres publiés.
 - Côté site : `www/js/sondage-res.js` (page `#sres`), lien partageable `?c=<commune>~<département>#sres`.
+
+## Remise à zéro : édition 2 (17 novembre 2026)
+
+Le sondage de la présidentielle, du Sénat et des députés repart de zéro avec la liste actuelle du CEP. Maires, CASEC et ASEC continuent sans remise à zéro. La première édition est figée dans le « bilan » (`www/data/bilan.json`, page Résultats du sondage) et gardée dans la base (tables `*_ed1`).
+
+Ce qui change dans le service (v30) :
+- `POST /results` et `POST /vote` renvoient `ed` (numéro d'édition, `pub_meta.edition`, 1 par défaut). La page compare avec celui de l'appareil : quand il passe à 2, les réponses de l'appareil pour la présidentielle, le Sénat et les députés sont rangées et le formulaire est reproposé (maires, CASEC, ASEC gardés).
+- `pub_meta.maintenance = '1'` suspend les envois (503 « maintenance ») ; les résultats restent lisibles.
+- Un appareil connu de l'archive `ballots_ed1` n'est plus compté comme « nouvel appareil » : la vague de nouveaux envois ne déclenche ni le plafond par réseau, ni les alertes.
+
+Ordre des opérations (chaque commande à la main, depuis `poll/`) :
+1. Noter le point de restauration : `npx wrangler d1 time-travel info napvote-poll` (garder la ligne « bookmark »).
+2. Déployer le service : `npx wrangler deploy`.
+3. Dernier instantané du bilan : `python3 scripts/build_bilan.py 2026-11-17`, puis publier le site (le bilan montre ce qui était public à cet instant).
+4. Suspendre les envois : `npx wrangler d1 execute napvote-poll --remote --command "INSERT INTO pub_meta(k,v) VALUES('maintenance','1') ON CONFLICT(k) DO UPDATE SET v=excluded.v"`, puis attendre une dizaine de secondes.
+5. Remise à zéro : `npx wrangler d1 execute napvote-poll --remote --file reset-edition-2.sql` (rouvre les envois à la dernière ligne).
+6. Contrôle : `curl -s -X POST https://poll.napvote-ht.com/results -H 'content-type: application/json' -H 'origin: https://napvote-ht.com' -d '{"scopes":["pres"],"dept":"","t":0}'` doit renvoyer `"ed":2` et un total de 0 pour `pres`.
+
+Retour en arrière : `reset-edition-2.sql` ne détruit rien. Pour revenir à la première édition, renommer `ballots` en `ballots_ed2` et `ballots_ed1` en `ballots`, recopier `tally_ed1`, `tally_tot_ed1`, `tally_day_ed1` dans `tally`, `tally_tot`, `tally_day` (et `tally_pub_ed1`, `tally_tot_pub_ed1` dans leurs tables publiées), remettre `pub_meta.edition` à 1. Pour tout annuler d'un coup (en perdant les envois des maires, CASEC, ASEC reçus depuis) : `npx wrangler d1 time-travel restore napvote-poll --bookmark <le bookmark noté>`.

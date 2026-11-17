@@ -111,9 +111,24 @@
   var warn = '<div class="notice"><b>' + esc(t('poll.warn.t')) + '</b> ' + esc(t('poll.warn')) + '</div>';
   function answered() { return Object.keys(mine.answers).length; }
 
+  /* ---- édition du sondage ----
+     Le service annonce son numéro d'édition (ed, dans /results et /vote). Le 17 novembre 2026 il passe à 2 : les compteurs de la présidentielle, du Sénat et des députés repartent de zéro.
+     Les réponses gardées sur cet appareil pour ces trois scrutins ne comptent plus : on les range (mine.old1) et on repropose le formulaire. Maires, CASEC et ASEC ne bougent pas. */
+  function checkEd(d) {
+    var ed = Number(d && d.ed) || 1;
+    if ((mine.ed || 1) >= ed) { return false; }
+    var old = mine.old1 || {}, moved = false;
+    Object.keys(mine.answers).forEach(function (sc) {
+      var k = sc.split('|')[0];
+      if (k === 'pres' || k === 'sen' || k === 'dep') { old[sc] = mine.answers[sc]; delete mine.answers[sc]; moved = true; }
+    });
+    mine.old1 = old; mine.ed = ed; mine.edNote = moved; A.store.set('poll', mine);
+    return moved;
+  }
+
   /* ---- formulaire ---- */
   function renderForm(err) {
-    var S = scopes(), h = warn + '<div id="poll-cut"></div><p class="lead">' + esc(t('poll.intro')) + '</p>';
+    var S = scopes(), h = warn + (mine.edNote ? '<div class="notice"><b>' + esc(t('poll.ed2')) + '</b></div>' : '') + '<div id="poll-cut"></div><p class="lead">' + esc(t('poll.intro')) + '</p>';
     if (!S.loc) { h += '<p class="note-s">' + esc(t('poll.needCommune')) + '</p>'; }
     h += '<form id="poll-form">';
     S.list.forEach(function (sc, i) {
@@ -122,7 +137,7 @@
         (sc.multi ? '<p class="note-s poll-max">' + esc(t('poll.multi', { n: sc.multi })) + ' <b class="poll-cnt"></b></p>' : '') + '<ul class="rows poll-l">' +
         shuffled(sc).concat(FIXED.map(function (f) { return { c: f.c, n: f.n, s: '', fixed: true }; })).map(function (x) {
           return '<li><label class="poll-o' + (x.fixed ? ' fx' : '') + '"><input type="' + type + '" name="r' + i + '" value="' + esc(x.c) + '"' + (x.fixed ? ' data-fixed="1"' : '') + (cur.indexOf(x.c) >= 0 ? ' checked' : '') + '>' + (x.cand ? A.avatar(x.cand) : '') + '<span class="poll-t"><b>' + esc(x.n) + '</b>' + (x.s ? '<span>' + esc(x.s) + '</span>' : '') + '</span></label></li>';
-        }).join('') + '</ul>' + (sc.scope === 'pres' ? '<p class="note-s poll-ph">' + esc(t('poll.photoAsk', { m: MAIL })).replace(esc(MAIL), '<a href="mailto:' + esc(MAIL) + '">' + esc(MAIL) + '</a>') + '</p>' : '') + '</fieldset>';
+        }).join('') + '</ul></fieldset>';
     });
     if (S.needSec) {
       h += '<div class="sec-pick poll-sec"><label><span>' + esc(t('poll.needSection')) + '</span><select id="poll-sec"><option value="-1">' + esc(t('b.sec.choose')) + '</option>' +
@@ -164,6 +179,8 @@
   }
   /* Adresse de contact assemblée ici (Cloudflare remplace sinon les adresses écrites dans le HTML) ; ajoutée aux messages d'erreur du sondage */
   var MAIL = 'contact' + String.fromCharCode(64) + 'napvote-ht.com';
+  /* mention aux candidats, en haut de la page : visible dans le formulaire comme dans les résultats */
+  (function () { var el = document.getElementById('poll-photo'); if (el) { el.innerHTML = esc(t('poll.photoAsk', { m: MAIL })).replace(esc(MAIL), '<a href="mailto:' + esc(MAIL) + '">' + esc(MAIL) + '</a>'); } })();
   function contactHtml() { return ' ' + esc(t('poll.contact')) + ' <a href="mailto:' + MAIL + '">' + MAIL + '</a>'; }
   function setMsg(el, text, help) { el.textContent = text; if (help) { el.insertAdjacentHTML('beforeend', contactHtml()); } }
   function post(path, body) {
@@ -318,11 +335,11 @@
     var S = scopes(); view = 'results';
     root.innerHTML = warn + '<p class="empty">…</p>';
     var ids = S.list.slice(0, MAXS).map(function (s) { return s.scope; });
-    post('/results', { scopes: ids, dept: dept || '', t: fresh ? Date.now() : 0 }).then(function (d) { if (view === 'results') { renderResults(S, d, dept || '', false); } }, function () { renderResults(S, null, dept || '', true); });
+    post('/results', { scopes: ids, dept: dept || '', t: fresh ? Date.now() : 0 }).then(function (d) { if (view === 'results') { if (checkEd(d)) { view = 'form'; renderForm(); return; } renderResults(S, d, dept || '', false); } }, function () { renderResults(S, null, dept || '', true); });
   }
   function show() {
     if (!base) { root.innerHTML = '<p class="empty">' + esc(t('poll.soon')) + '</p>'; return; }
-    if (view === 'form' || (!view && !answered())) { view = 'form'; renderForm(); } else { showResults(''); }
+    if (view === 'form' || (!view && (!answered() || mine.edNote))) { view = 'form'; renderForm(); } else { showResults(''); }
   }
 
   /* ---- événements ---- */
@@ -353,12 +370,12 @@
     function fail(er) {
       sending = false; btn.disabled = true;
       var wait = er.message === 'defi' || er.message === 'defi_tot';
-      setMsg(msg, wait ? t('poll.wait') : (er.message === 'empreinte' ? t('poll.fp') : (er.status === 429 ? t('poll.limit') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err')))), !wait);
+      setMsg(msg, wait ? t('poll.wait') : (er.message === 'empreinte' ? t('poll.fp') : (er.status === 429 ? t('poll.limit') : (er.message === 'maintenance' ? t('poll.maint') : (er.status === 403 ? t(er.message === 'reseau' ? 'poll.net' : 'poll.bot') : t('poll.err'))))), !wait);
     }
     function send(again) {
-      post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined, hw: hwHex || undefined, sg: signals() }).then(function () {
+      post('/vote', { device: mine.device, dept: dept, votes: votes, token: token, sig: techSig(), ch: chal ? { t: chal.t, n: chal.n, s: chal.s } : undefined, fp: fpHex || undefined, hw: hwHex || undefined, sg: signals() }).then(function (r) {
         votes.forEach(function (v) { mine.answers[v.scope] = { c: v.choices, at: Date.now() }; });
-        mine.dept = dept; mine.n = (mine.n || 0) + 1; A.store.set('poll', mine); token = ''; chal = null; justVoted = true; sending = false;
+        mine.dept = dept; mine.n = (mine.n || 0) + 1; mine.ed = Number(r && r.ed) || mine.ed || 1; mine.edNote = false; A.store.set('poll', mine); token = ''; chal = null; justVoted = true; sending = false;
         A.toast(t('poll.thanks')); showResults('', true);
       }, function (er) {
         resetWidget(); ensureChallenge(true);

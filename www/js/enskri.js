@@ -6,7 +6,8 @@
   'use strict';
   var A = window.VVApp, root = document.getElementById('en-root');
   if (!A || !root) { return; }
-  var esc = A.esc, fmt = A.fmt, t = window.t;
+  var esc = A.esc, t = window.t;
+  function fmt(n) { return A.fmt(n).replace(/\u202f/g, '\u00a0'); }  // espace insécable ordinaire : l'espace fine colle les chiffres
   var D = null, C = null, state = 0;
 
   function getJSON(u) { return fetch(u, { cache: 'no-cache' }).then(function (r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); }); }
@@ -37,7 +38,15 @@
   }
   /* une section : titre (et petite introduction) à gauche, contenu à droite */
   function sec(id, head, intro, body, cls) {
-    return '<section class="en-sec' + (cls ? ' ' + cls : '') + '"' + (id ? ' id="' + id + '"' : '') + '><div class="en-sh">' + head + (intro ? '<p class="en-intro">' + intro + '</p>' : '') + '</div><div class="en-sb">' + body + '</div></section>';
+    return '<section class="en-ch' + (cls ? ' ' + cls : '') + '"' + (id ? ' id="' + id + '"' : '') + '><div class="wrap en-grid"><div class="en-sh">' + head + (intro ? '<p class="en-intro">' + intro + '</p>' : '') + '</div><div class="en-sb">' + body + '</div></div></section>';
+  }
+  /* un nombre qui monte jusqu'à sa valeur quand il apparaît (js/bilan.js) : « § » marque sa place dans la phrase traduite */
+  function num(key, vars, name, value) {
+    var v = {}; Object.keys(vars || {}).forEach(function (k) { v[k] = vars[k]; }); v[name] = '§';
+    return em(t(key, v)).replace('§', '<span class="en-num" data-to="' + (+value || 0) + '"></span>');
+  }
+  function runNums() {
+    root.querySelectorAll('.en-num').forEach(function (el) { var n = +el.getAttribute('data-to'); if (A.countUp) { A.countUp(el, n); } else { el.textContent = fmt(n); } });
   }
   function row(label, body) { return '<div class="en-row"><h3>' + esc(label) + '</h3><div>' + body + '</div></div>'; }
   function link(u, label) { return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + esc(label) + '</a>'; }
@@ -46,7 +55,7 @@
   function hero() {
     var fm = D.fermeture;
     var panel = !fm ? '' : '<aside class="en-panel"><h2>' + esc(t('en.open.t')) + '</h2>' +
-      '<p>' + tt('en.open.p', { d: dFr(fm.date), j: fmt(fm.jours) }) + '</p>' +
+      '<p>' + num('en.open.p', { d: dFr(fm.date) }, 'j', fm.jours) + '</p>' +
       '<p>' + tt('en.open.cin') + '</p>' +
       '<p class="en-small">' + esc(t('en.open.note')) + '</p></aside>';
     return '<div class="en-hero"><div class="wrap en-hg"><div class="en-hl">' +
@@ -62,7 +71,7 @@
     D.age.forEach(function (a) { mx = Math.max(mx, a.pct_pop, a.pct_ins); });
     var rows = D.age.map(function (a) {
       return '<li class="en-ar"><span class="en-al">' + esc(a.k.replace('+', ' +')) + '</span><span class="en-ab">' +
-        '<i class="pop" style="width:' + Math.round(100 * a.pct_pop / mx) + '%"></i><i class="ins" style="width:' + Math.round(100 * a.pct_ins / mx) + '%"></i></span>' +
+        '<i class="pop" style="--w:' + (a.pct_pop / mx).toFixed(4) + '"></i><i class="ins" style="--w:' + (a.pct_ins / mx).toFixed(4) + '"></i></span>' +
         '<span class="en-av"><span>' + pc(a.pct_pop) + ' %</span><b>' + pc(a.pct_ins) + ' %</b></span>' +
         '<span class="en-at">' + esc(t('en.age.rate', { n: pc(a.taux) })) + '</span></li>';
     }).join('');
@@ -77,8 +86,8 @@
     var p = D.pres2016;
     if (!D.ok || !p) { return ''; }
     var body = '<dl class="en-vs">' +
-      '<div class="en-row"><dt>' + esc(t('en.w1', { n: fmt(p.voix_gagnant) })) + '</dt><dd>' + esc(t('en.w1b', { w: p.gagnant, p: pc(p.pct_gagnant) })) + '</dd></div>' +
-      '<div class="en-row"><dt>' + esc(t('en.w2', { n: fmt(D.inscrits) })) + '</dt><dd>' + esc(t('en.w2b', { x: pc(p.inscrits_vs_gagnant) })) + '</dd></div>' +
+      '<div class="en-row"><dt>' + num('en.w1', {}, 'n', p.voix_gagnant) + '</dt><dd>' + esc(t('en.w1b', { w: p.gagnant, p: pc(p.pct_gagnant) })) + '</dd></div>' +
+      '<div class="en-row"><dt>' + num('en.w2', {}, 'n', D.inscrits) + '</dt><dd>' + esc(t('en.w2b', { x: pc(p.inscrits_vs_gagnant) })) + '</dd></div>' +
       '<div class="en-row"><dt>' + esc(t('en.w3', { n: pc(D.age[0].pop / 1e6) })) + '</dt><dd>' + esc(t('en.w3b', { x: pc(p.jeunes_vs_gagnant) })) + '</dd></div></dl>' +
       '<p class="en-end">' + esc(t('en.w.end')) + '</p>';
     return sec('', '<h2>' + esc(t('en.w.h')) + '</h2>', '', body);
@@ -111,11 +120,11 @@
     var mx = Math.max.apply(null, D.dept.map(function (d) { return d.taux; }));
     var low = D.dept.slice(-2).reverse();
     var rows = D.dept.map(function (d) {
-      return '<li class="vb"><span class="vb-l">' + esc(deptName(d.n)) + '</span><span class="vb-b"><i style="width:' + Math.round(100 * d.taux / mx) + '%"></i></span><span class="vb-n">' + fmt(d.ins) + '</span><span class="vb-r">' + pc(d.taux) + ' %</span></li>';
+      return '<li><button type="button" class="vb" data-en-dep="' + esc(deptName(d.n)) + '" aria-label="' + esc(t('en.dept.go', { d: deptName(d.n) })) + '"><span class="vb-l">' + esc(deptName(d.n)) + '</span><span class="vb-b"><i style="--w:' + (d.taux / mx).toFixed(4) + '"></i></span><span class="vb-n">' + fmt(d.ins) + '</span><span class="vb-r">' + pc(d.taux) + ' %</span></button></li>';
     }).join('');
     var body = '<ul class="vbars">' + rows + '</ul>' +
       '<p class="en-end">' + esc(t('en.dept.last', { a: withArt(low[0].n), b: withArt(low[1].n), n: Math.round((low[0].taux + low[1].taux) / 2) })) + '</p>';
-    return sec('', '<h2>' + esc(t('en.dept.h')) + '</h2>', esc(t('en.dept.p')), body);
+    return sec('', '<h2>' + esc(t('en.dept.h')) + '</h2>', esc(t('en.dept.p')) + ' <b>' + esc(t('en.dept.tip')) + '</b>', body);
   }
   function share() {
     var txt = shareText(), canShare = !!(A.native || navigator.share);
@@ -126,8 +135,9 @@
     return sec('', '<h2>' + esc(t('en.share.h')) + '</h2>', '', body, 'en-last');
   }
   function render() {
-    root.innerHTML = hero() + '<div class="wrap">' + figure() + weight() + cin() + steps() + finder() + depts() + share() + '</div>';
+    root.innerHTML = '<div class="bl-prog" aria-hidden="true"><i></i></div>' + hero() + figure() + weight() + cin() + steps() + finder() + depts() + share();
     buildFinder();
+    runNums();
   }
 
   /* ---------- chercheur : département -> commune -> centres du CEP et bureaux de l'ONI ---------- */
@@ -199,6 +209,16 @@
   root.addEventListener('click', function (e) {
     var g = e.target.closest ? e.target.closest('[data-en-go]') : null;
     if (g) { var el = document.getElementById(g.getAttribute('data-en-go')); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+    var dp = e.target.closest ? e.target.closest('[data-en-dep]') : null;
+    if (dp) {
+      var sel = document.getElementById('en-dep'), want = dp.getAttribute('data-en-dep');
+      if (sel && C) {
+        for (var i = 0; i < C.d.length; i++) { if (deptName(C.d[i]) === want) { sel.value = String(i); sel.dispatchEvent(new Event('change')); break; } }
+        var f = document.getElementById('en-find'); if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        var cm = document.getElementById('en-com'); if (cm && !cm.disabled) { setTimeout(function () { cm.focus({ preventScroll: true }); }, 500); }
+      }
+      return;
+    }
     if (e.target.closest('[data-en-share]')) { doShare(); return; }
     if (e.target.closest('[data-en-copy]')) { doCopy(); }
   });

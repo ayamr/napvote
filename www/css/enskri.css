@@ -1,0 +1,67 @@
+/* Page « S'inscrire » : même langage que le bilan du sondage (css/bilan.css) — chapitres pleins, titre collé à gauche,
+   marques de données dessinées au défilement. Surcharge les règles .en-* de napvote.css ; sans animation-timeline la page est complète et immobile. */
+
+/* ---- ouverture ---- */
+.en-hero{ padding:clamp(44px,8vw,96px) 0 clamp(40px,7vw,80px); }
+.en-hero h1{ font-size:clamp(2rem,5.4vw,3.75rem); line-height:1.08; letter-spacing:-.02em; max-width:17em; text-wrap:balance; }
+.en-sub{ margin-top:clamp(16px,2.4vw,26px); font-size:clamp(1.125rem,2vw,1.375rem); max-width:36em; line-height:1.5; }
+.en-cta{ margin-top:clamp(22px,3vw,32px); }
+.en-panel{ border-top:0; border-radius:var(--r); padding:clamp(20px,3vw,30px); }
+.en-panel h2{ font-size:1.5rem; }
+.en-panel p{ font-size:1.0625rem; }
+.en-num{ display:inline-block; text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
+.en-panel .en-num{ color:var(--brand); font-size:1.5rem; font-family:'Source Serif 4',Georgia,serif; }
+
+/* ---- chapitres ---- */
+.en-ch{ padding:clamp(40px,7vw,80px) 0; }
+.en-ch:nth-of-type(even){ background:var(--surface); }
+.en-grid{ display:grid; gap:28px 64px; align-items:start; }
+@media (min-width:960px){ .en-grid{ grid-template-columns:minmax(260px,5fr) minmax(0,7fr); } .en-ch .en-sh{ position:sticky; top:24px; } }
+.en-ch .en-sh h2{ font-size:clamp(1.625rem,3.6vw,2.5rem); line-height:1.12; letter-spacing:-.015em; text-wrap:balance; }
+.en-ch .en-sh .en-claim{ font-size:clamp(1.75rem,4vw,2.75rem); line-height:1.1; }
+.en-ch .en-intro{ font-size:1.0625rem; line-height:1.55; max-width:34em; }
+.en-ch .en-intro b{ color:var(--brand); }
+.en-ch .en-p{ font-size:1.0625rem; line-height:1.55; }
+.en-ch .en-row{ border-bottom-color:var(--line); }
+.en-ch .en-vs .en-row dt{ font-size:clamp(1.5rem,2.6vw,2.125rem); }
+.en-ch .en-note{ background:var(--bg); }
+.en-ch:nth-of-type(even) .en-note{ background:var(--bg); }
+.en-ch .en-more:last-of-type{ border-bottom:0; }
+
+/* ---- barres d'âge et de départements ---- */
+.en-ab i{ width:100%; transform-origin:0 50%; transform:scaleX(var(--w)); animation:none; height:12px; }
+.en-ar{ padding:14px 0; }
+.en-av b{ font-size:1.0625rem; }
+.vbars{ margin:0; }
+.vb{ width:100%; background:none; border:0; border-bottom:1px solid var(--line); color:inherit; font:inherit; font-size:.9375rem; text-align:left; cursor:pointer; padding:14px 6px; margin:0; }
+.vb:hover{ background:color-mix(in srgb, var(--brand) 9%, transparent); }
+.vb:hover .vb-l{ color:var(--brand); }
+.vb-b{ height:14px; }
+.vb-b i{ width:100%; transform-origin:0 50%; transform:scaleX(var(--w)); }
+.vb-n{ font-variant-numeric:tabular-nums; } .vb-r{ font-variant-numeric:tabular-nums; font-weight:700; color:var(--ink); }
+
+/* ---- étapes : le numéro s'allume en passant ---- */
+.en-steps li{ padding:20px 0; grid-template-columns:56px minmax(0,1fr); }
+.en-steps li::before{ font-size:2.5rem; }
+.en-steps b{ font-size:1.25rem; } .en-steps span{ font-size:1.0625rem; }
+
+/* ---- chercheur ---- */
+.en-sel .field select{ min-height:52px; font-size:1.0625rem; }
+.en-list li{ padding:14px 0; }
+
+/* ---- fin : partage ---- */
+.en-ch.en-last, .en-ch.en-last:nth-of-type(even){ background:var(--band); color:var(--on-band); }
+.en-last .en-sh h2{ max-width:14em; }
+.en-last .en-msg{ color:var(--on-band); font-size:1.125rem; line-height:1.55; max-width:36em; }
+.en-last .btn.primary{ background:#fff; border-color:#fff; color:#0B2447; }
+.en-last .btn:not(.primary){ background:transparent; border-color:#fff; color:#fff; }
+.en-last .btn:not(.primary):hover{ background:rgba(255,255,255,.12); }
+
+/* ---- défilement ---- */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion:no-preference) {
+    @keyframes en-lit{ from{ opacity:.35; } to{ opacity:1; } }
+    .en-ab i, .vb-b i{ transform:scaleX(0); animation:bl-grow linear both; animation-timeline:view(); animation-range:entry 0% entry 85%; }
+    .en-steps li{ animation:en-lit linear both; animation-timeline:view(); animation-range:entry 5% entry 65%; }
+  }
+}

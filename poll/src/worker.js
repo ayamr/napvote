@@ -119,6 +119,7 @@ async function vote(req, env) {
 }
 async function voteInner(req, env, ctx) {
   if (!env.SALT) throw new HttpError(500, "service mal configuré");
+  if (await maintenance(env)) throw new HttpError(503, "maintenance");
   let b;
   try { b = await req.json(); } catch (e) { throw new HttpError(400, "requête invalide"); }
   const device = String(b.device || ""), dept = String(b.dept || "");
@@ -186,7 +187,11 @@ async function voteInner(req, env, ctx) {
   // anciens choix de cet appareil (quelques lignes) : on les retire des totaux avant d'ajouter les nouveaux
   const prev = (await env.DB.prepare("SELECT scope, choice, dept FROM ballots WHERE device=? AND scope IN (" + scopesArr.map(() => "?").join(",") + ")").bind(dh, ...scopesArr).all()).results || [];
   let isNew = false;
-  if (!prev.length) isNew = !(await env.DB.prepare("SELECT 1 AS x FROM ballots WHERE device=? LIMIT 1").bind(dh).first());
+  if (!prev.length) {
+    isNew = !(await env.DB.prepare("SELECT 1 AS x FROM ballots WHERE device=? LIMIT 1").bind(dh).first());
+    // Après la remise à zéro du 17 novembre 2026, un appareil qui revote n'est pas un « nouvel appareil » : il figure dans l'archive de la première édition (ballots_ed1).
+    if (isNew) { try { isNew = !(await env.DB.prepare("SELECT 1 AS x FROM ballots_ed1 WHERE device=? LIMIT 1").bind(dh).first()); } catch (e) { /* pas d'archive : rien à vérifier */ } }
+  }
   if (isNew) {
     const rn = await env.DB.prepare("INSERT INTO rl(k,n,day) VALUES(?,1,?) ON CONFLICT(k) DO UPDATE SET n=n+1 RETURNING n").bind(rk + "|n", day).first();
     if (rn && rn.n > limit) throw new HttpError(429, "trop de votes depuis ce réseau aujourd'hui");
@@ -265,7 +270,7 @@ async function voteInner(req, env, ctx) {
   await env.DB.batch(stmts);
   for (const k of [...memo.keys()]) if (seen.has(k.split("\u0001")[0])) memo.delete(k);
   deptsMemo = { at: 0, v: null };
-  return { ok: true, saved: seen.size };
+  return { ok: true, saved: seen.size, ed: await edition(env) };
 }
 
 // Instantané publié : les résultats affichés ne bougent qu'une fois par heure (tâche planifiée), pour ne pas offrir de retour immédiat à qui tenterait de les influencer.
@@ -275,6 +280,24 @@ async function publishedAt(env) {
   let v = null;
   try { const r = await env.DB.prepare("SELECT v FROM pub_meta WHERE k='snap_at'").first(); v = r ? r.v : null; } catch (e) { /* table absente : résultats en direct */ }
   pubMemo = { at: Date.now(), v };
+  return v;
+}
+// Édition du sondage : 1 au départ ; la remise à zéro du 17 novembre 2026 (poll/reset-edition-2.sql) la passe à 2. La page s'en sert pour faire revoter les appareils qui ont répondu avant.
+let edMemo = { at: 0, v: 1 };
+async function edition(env) {
+  if (Date.now() - edMemo.at < 30000) return edMemo.v;
+  let v = 1;
+  try { const r = await env.DB.prepare("SELECT v FROM pub_meta WHERE k='edition'").first(); v = r ? Number(r.v) || 1 : 1; } catch (e) { /* table absente */ }
+  edMemo = { at: Date.now(), v };
+  return v;
+}
+// Maintenance : pub_meta.maintenance = '1' suspend les envois (réponse 503 « maintenance ») pendant une opération sur la base, par exemple la remise à zéro. Les résultats restent lisibles.
+let mtMemo = { at: 0, v: false };
+async function maintenance(env) {
+  if (Date.now() - mtMemo.at < 4000) return mtMemo.v;
+  let v = false;
+  try { const r = await env.DB.prepare("SELECT v FROM pub_meta WHERE k='maintenance'").first(); v = !!r && r.v === "1"; } catch (e) { /* table absente */ }
+  mtMemo = { at: Date.now(), v };
   return v;
 }
 let riskMemo = { at: 0, v: 0 };
@@ -405,7 +428,7 @@ async function results(req, env) {
   for (const s of scopes) if (s !== "pres" && out[s] && loc[s] > 0) out[s] = { ...out[s], adj: loc[s] };
   if (scopes.includes("pres") && out.pres) { const rk = await riskRemoved(env); if (rk > 0) out.pres = { ...out.pres, adj: (out.pres.adj || 0) + rk }; }
   const cut = scopes.includes("pres") ? await publishedCut(env) : null;
-  return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept, asof: snap || null, ...(cut ? { cut } : {}) };
+  return { scopes: Object.fromEntries(scopes.map((s) => [s, out[s]])), depts, dept, asof: snap || null, ed: await edition(env), ...(cut ? { cut } : {}) };
 }
 
 // Recalage horaire : recompte exact à partir des bulletins (corrige les écarts dus à des envois simultanés). Même requêtes que recount.sql.
@@ -720,7 +743,7 @@ export default {
       if (url.pathname === "/trend" && req.method === "POST") return json(await trend(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 29 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 30 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);
