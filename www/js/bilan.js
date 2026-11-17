@@ -240,14 +240,52 @@
   document.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-bl-share]') : null;
     if (!b || !D) { return; }
-    var r = D.pres.rows, text;
-    if (b.getAttribute('data-bl-share') === 'c' && A.loc()) {
-      var dn = V.deptNames[V.places[A.loc().pi].d], x = D.pres.depts[dn];
-      text = x && x.rows[0] ? tt('bl.share.c', { d: dn, w: whoT(x.rows[0]), p: pc(x.rows[0][3], x.total) }) : '';
-    }
-    if (!text) { text = tt('bl.share.a', { n: fmt((D.people && D.people.all) || D.pres.total), w: whoT(r[0]) }); }
-    A.share({ title: tt('bl.share.t'), text: text, url: SITE });
+    /* une image créée sur l'appareil, avec un QR code vers la page (même fabrique que les résultats du sondage : js/partage-res.js) */
+    var rows = D.pres.rows, tot = D.pres.total;
+    if (b.getAttribute('data-bl-share') === 'c' && A.loc() && A.shareCard) { communeCard(A.loc()); return; }
+    A.shareCard ? A.shareCard({ scope: 'pres', title: tt('bl.card.t'), place: tt('bl.card.p', { n: fmt((D.people && D.people.all) || tot) }), total: tot, adj: 0, asof: D.asof, multi: 0, link: SITE,
+      rows: rows.map(function (r) { return { name: who(r), sub: party(r), n: r[3], pc: pc(r[3], tot), fixed: false }; }) })
+      : A.share({ title: tt('bl.share.t'), text: tt('bl.share.a', { n: fmt((D.people && D.people.all) || tot), w: whoT(rows[0]) }), url: SITE });
   });
+
+  /* carte « ma commune » : présidentielle et Sénat du département, députés de la circonscription, maire de la commune, chacun avec la photo ou les initiales */
+  function communeCard(loc) {
+    var dn = V.deptNames[V.places[loc.pi].d], cm = V.places[loc.pi].n, secs = [];
+    function ini(r) { return (r[0].charAt(0) + r[1].charAt(0)).toUpperCase(); }
+    function srow(r, po, tag, tot) {
+      var ph = po === 0 ? A.photoOf({ nom: r[1], pre: r[0], po: 0 }) : null;
+      return { name: who(r), sub: party(r), tag: tag ? tt(tag) : '', n: r[3], pc: pc(r[3], tot), ini: ini(r), photo: ph ? ph.f : '' };
+    }
+    function add(title, u, po, tag, all, n) {
+      if (u && u.total && u.rows.length) { secs.push({ title: title, total: u.total, rows: u.rows.slice(0, n || 2).map(function (r, i) { return srow(r, po, tag && (all || i === 0) ? tag : '', u.total); }) }); }
+    }
+    add(tt('bl.s5.pres', { d: dn }), D.pres.depts[dn], 0, '');
+    add(tt('bl.card.sen', { d: dn }), D.sen[dn], 1, 'bl.s5.winS', true, 3);  // trois sièges de sénateur par département
+    var seen = {};
+    A.byPlace[loc.pi].forEach(function (c) { if (c.po === 2 && c.lo >= 0 && !seen[c.lo]) { seen[c.lo] = V.locs[c.lo].l; } });
+    Object.keys(seen).map(Number).sort(function (a, b) { return seen[a].localeCompare(seen[b], 'fr'); }).slice(0, 2).forEach(function (lo) { add(tt('bl.s5.dep', { c: seen[lo] }), D.dep[norm(seen[lo])], 2, 'bl.s5.win'); });
+    /* le maire n'est pas dans le bilan figé (les scrutins locaux n'ont pas été remis à zéro) : résultats en cours, si le service répond */
+    var mayor = Promise.resolve(null);
+    if (A.pollScopes && A.pollPost) {
+      var S = A.pollScopes(loc), sc = S.list.filter(function (x) { return x.scope.indexOf('may|') === 0; })[0];
+      if (sc) {
+        mayor = A.pollPost('/results', { scopes: [sc.scope], dept: '', t: 0 }).then(function (d) {
+          var u = d.scopes[sc.scope] || { total: 0, choices: {} }, rr = A.pollRows(sc, u).filter(function (r) { return r.n > 0 && r.c.charAt(0) !== '~'; }).slice(0, 2);
+          if (!u.total || !rr.length) { return null; }
+          return { title: tt('bl.card.may', { c: cm }), total: u.total, rows: rr.map(function (r) {
+            var nm = A.pollNameOf(sc, r.c).toLocaleUpperCase('fr');
+            return { name: nm, sub: A.pollSubOf(sc, r.c), tag: '', n: r.n, pc: pc(r.n, u.total), ini: nm.slice(0, 2), photo: '' };
+          }) };
+        }).catch(function () { return null; });
+      }
+    }
+    mayor.then(function (m) {
+      if (m) { secs.push(m); }
+      var x = D.pres.depts[dn], lead = x && x.rows[0];
+      A.shareCard({ scope: 'commune', title: cm, place: dn + ' · ' + tt('sres.sh.asof', { d: dayLong(D.day) }), sections: secs, link: SITE,
+        text: lead ? tt('bl.share.c', { d: dn, w: whoT(lead), p: pc(lead[3], x.total) }) : tt('bl.share.t') });
+    });
+  }
 
   /* ---------- chargement ---------- */
   function ensure() {
