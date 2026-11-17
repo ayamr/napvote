@@ -93,16 +93,13 @@
     });
     return { list: out, loc: loc, needSec: needSec, secs: A.secsOf[loc.pi] };
   }
-  function shuffled(sc) { // ordre aléatoire, stable pendant la visite : personne n'est systématiquement en tête
-    var st; try { st = JSON.parse(sessionStorage.getItem('vv.pollorder')) || {}; } catch (e) { st = {}; }
-    var keys = sc.opts.map(function (o) { return o.c; }), cur = st[sc.scope];
-    if (!cur || cur.length !== keys.length || keys.some(function (k) { return cur.indexOf(k) < 0; })) {
-      cur = keys.slice();
-      for (var i = cur.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = cur[i]; cur[i] = cur[j]; cur[j] = x; }
-      st[sc.scope] = cur; try { sessionStorage.setItem('vv.pollorder', JSON.stringify(st)); } catch (e) { /* ignore */ }
-    }
-    var by = {}; sc.opts.forEach(function (o) { by[o.c] = o; });
-    return cur.map(function (k) { return by[k]; });
+  /* Ordre alphabétique sur le nom de famille (puis le prénom), le même pour tous. Les listes (maire, CASEC, ASEC) n'ont pas de nom de famille : on les classe par nom de parti. */
+  function shuffled(sc) {
+    var cmp = function (a, b) { return a.localeCompare(b, 'fr', { sensitivity: 'base' }); };
+    return sc.opts.slice().sort(function (x, y) {
+      if (x.cand && y.cand) { return cmp(x.cand.nom, y.cand.nom) || cmp(x.cand.pre, y.cand.pre); }
+      return cmp(x.n, y.n);
+    });
   }
   function myDept(S) { return mine.dept || (S.loc ? V.deptNames[V.places[S.loc.pi].d] : ''); }
   function deptOptions(sel, all) {
