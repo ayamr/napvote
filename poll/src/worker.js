@@ -599,6 +599,52 @@ async function autoBlocks(env) {
   for (let i = 0; i < flagged.length; i += 40) await env.DB.batch(flagged.slice(i, i + 40).map(([dh, why]) => env.DB.prepare(ins).bind(dh, why, day)));
   return flagged.length;
 }
+// Retrait automatique « au rythme » (présidentielle) : complète autoBlocks(), que les votants honnêtes d'un même réseau peuvent diluer sous BLOCK_SHARE.
+// Ici la fenêtre est courte (RHYTHM_WIN secondes, glissante), donc rien à diluer ; le candidat n'est jamais regardé qu'APRÈS le déclenchement, pour tous pareil.
+//  1. rafale : au moins RHYTHM_BURST_MIN appareils d'une même adresse (net) dans la fenêtre, dont RHYTHM_SHARE pour le même candidat ;
+//  2. même navigateur : au moins RHYTHM_FP_MIN appareils d'une même adresse ET de la même empreinte (fp) dans la fenêtre, dont RHYTHM_SHARE pour le même candidat
+//     (un seul navigateur qui efface ses données et revote en boucle ; plusieurs candidats mélangés = lieu partagé, jamais retiré).
+// Fonction pure : rows = [{dh, net, fp, pres, t}] (une ligne par appareil, la plus récente). Retourne [[dh, motif], ...].
+function rhythmFlags(rows, cfg) {
+  const out = new Map();
+  const scan = (list, need, label) => {
+    list.sort((a, b) => a.t - b.t);
+    for (let i = 0; i < list.length; i++) {
+      let k = i; while (k < list.length && list[k].t - list[i].t <= cfg.win) k++;
+      const n = k - i; if (n < need) continue;
+      const cnt = {}; for (let m = i; m < k; m++) cnt[list[m].pres] = (cnt[list[m].pres] || 0) + 1;
+      const [top, c] = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+      if (c / n < cfg.share) continue;
+      const why = label + " : " + n + " appareils en " + Math.round(cfg.win / 60) + " min, " + Math.round(100 * c / n) + " % pour le même candidat (automatique)";
+      for (let m = i; m < k; m++) if (list[m].pres === top && !out.has(list[m].dh)) out.set(list[m].dh, why);
+    }
+  };
+  const byNet = new Map(), byFp = new Map();
+  for (const r of rows) {
+    if (!byNet.has(r.net)) byNet.set(r.net, []); byNet.get(r.net).push(r);
+    if (r.fp) { const k = r.net + "|" + r.fp; if (!byFp.has(k)) byFp.set(k, []); byFp.get(k).push(r); }
+  }
+  for (const l of byNet.values()) if (l.length >= cfg.burst) scan(l, cfg.burst, "rafale");
+  for (const l of byFp.values()) if (l.length >= cfg.fp) scan(l, cfg.fp, "même navigateur");
+  return [...out.entries()];
+}
+async function rhythmBlocks(env) {
+  if ((env.AUTO_RHYTHM || "1") !== "1") return 0;
+  const cfg = { win: parseInt(env.RHYTHM_WIN || "3600", 10), burst: parseInt(env.RHYTHM_BURST_MIN || "20", 10), fp: parseInt(env.RHYTHM_FP_MIN || "10", 10), share: parseFloat(env.RHYTHM_SHARE || "0.9") };
+  const since = Math.floor(Date.now() / 1000) - parseInt(env.RHYTHM_LOOKBACK_H || "6", 10) * 3600;
+  const rows = (await env.DB.prepare("SELECT dh, net, fp, pres, asn, t FROM evidence WHERE t >= ? AND pres <> '' AND net <> ''").bind(since).all()).results || [];
+  const last = new Map();
+  for (const r of rows) { const o = last.get(r.dh); if (!o || r.t > o.t) last.set(r.dh, r); }
+  const cells = (await env.DB.prepare("SELECT asn, hour_from, hour_to FROM excluded_cells").all()).results || [];
+  const hourOf = (t) => new Date(t * 1000).toISOString().slice(0, 13);
+  const inCell = (r) => cells.some((c) => c.asn === r.asn && c.hour_from <= hourOf(r.t) && hourOf(r.t) <= c.hour_to);
+  const keep = new Set(((await env.DB.prepare("SELECT dh FROM ballot_risk WHERE scope = 'pres' AND status = 'garde'").all()).results || []).map((x) => x.dh));
+  const flagged = rhythmFlags([...last.values()], cfg).filter(([dh]) => !keep.has(dh) && !inCell(last.get(dh))), day = new Date().toISOString().slice(0, 10);
+  // un appareil déjà retiré garde son motif d'origine, un appareil confirmé honnête (garde) n'est jamais touché ; un simple « suspect » passe à retiré
+  const ins = "INSERT INTO ballot_risk(dh,scope,score,reasons,status,decided) VALUES(?,'pres',100,?,'retire',?) ON CONFLICT(dh,scope) DO UPDATE SET score = MAX(ballot_risk.score, 100), reasons = excluded.reasons, status = 'retire', decided = excluded.decided WHERE ballot_risk.status NOT IN ('garde','retire')";
+  for (let i = 0; i < flagged.length; i += 40) await env.DB.batch(flagged.slice(i, i + 40).map(([dh, why]) => env.DB.prepare(ins).bind(dh, why, day)));
+  return flagged.length;
+}
 // ---- Scrutins locaux (sénateur, député, maire, CASEC, ASEC) : mêmes règles pour tous les candidats d'un scrutin ----
 // Les croisements « opérateur + heure » de la présidentielle ne s'appliquent pas ici (trop peu de réponses par cellule). Deux contrôles, tous deux calculés à partir du dossier de preuves (14 jours) :
 //  1. réseau en bloc : au moins BLOCK_MIN_LOCAL appareils d'un même réseau votent dans les BLOCK_HOURS dernières heures, dont BLOCK_SHARE pour le même candidat du même scrutin.
@@ -726,6 +772,7 @@ async function cron(env) {
   if (env.RECOUNT_EVERY === "1" || new Date().getUTCHours() === 5) await step(env, "recount", () => recount(env), 3);
   await step(env, "local", async () => { await ensureTables(env); await autoBlocksLocal(env); await waveFlags(env); }, 2);  // suivi des scrutins locaux : jamais bloquant
   await step(env, "autoblocks", () => autoBlocks(env), 3);  // tables absentes : pas de retrait automatique
+  await step(env, "rhythm", () => rhythmBlocks(env), 3);  // rafales et navigateur répété : après autoblocks, avant la publication de la même heure
   await step(env, "propose", () => propose(env), 2);
   await step(env, "publish", () => publish(env), 4);  // en cas d'échec : résultats précédents conservés, erreur visible dans pub_meta
   await step(env, "excl", () => storeExcl(env), 3);  // retrait des cellules calculé une fois par publication (lecture seule ensuite)
@@ -743,7 +790,7 @@ export default {
       if (url.pathname === "/trend" && req.method === "POST") return json(await trend(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 30 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 31 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

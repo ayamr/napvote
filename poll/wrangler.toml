@@ -45,6 +45,15 @@ AUTO_CELLS_MAX = "5"
 BLOCK_MIN = "30"
 BLOCK_SHARE = "0.9"
 BLOCK_HOURS = "6"
+# retrait « au rythme » (présidentielle), en plus des réseaux en bloc : "0" pour désactiver
+# fenêtre glissante de RHYTHM_WIN secondes ; rafale = RHYTHM_BURST_MIN appareils d'une même adresse ; même navigateur = RHYTHM_FP_MIN appareils de même adresse ET même empreinte ;
+# dans les deux cas au moins RHYTHM_SHARE pour le même candidat
+AUTO_RHYTHM = "1"
+RHYTHM_WIN = "3600"
+RHYTHM_BURST_MIN = "20"
+RHYTHM_FP_MIN = "10"
+RHYTHM_SHARE = "0.9"
+RHYTHM_LOOKBACK_H = "6"
 # scrutins locaux : "0" désactivé, "2" observation (inscrit dans review_flags sans rien retirer), "1" retrait des réseaux en bloc de l'instantané publié
 AUTO_BLOCKS_LOCAL = "2"
 BLOCK_MIN_LOCAL = "20"
