@@ -645,6 +645,44 @@ async function rhythmBlocks(env) {
   for (let i = 0; i < flagged.length; i += 40) await env.DB.batch(flagged.slice(i, i + 40).map(([dh, why]) => env.DB.prepare(ins).bind(dh, why, day)));
   return flagged.length;
 }
+// Retrait automatique « au goutte-à-goutte » (présidentielle) : une vague étalée sur des jours, sous les seuils par adresse et par heure des règles précédentes.
+// Même opérateur (asn) ET même profil de navigateur (uah) : au moins DRIP_MIN NOUVEAUX appareils dans une fenêtre glissante de DRIP_HOURS heures, dont DRIP_SHARE pour le même candidat.
+// Un profil courant ne déclenche rien tant que ses votes restent dispersés entre candidats ; seule la concentration compte, et le candidat n'est regardé qu'après le déclenchement, pour tous pareil.
+// Ne vaut QUE pour l'avenir : seuls les appareils créés à partir de DRIP_FROM (date ISO) sont comptés et retirés ; les bulletins plus anciens et les renvois restent comme ils sont.
+// Fonction pure : rows = [{dh, asn, uah, pres, t}] (une ligne par nouvel appareil). Retourne [[dh, motif], ...].
+function dripFlags(rows, cfg) {
+  const out = new Map(), groups = new Map();
+  for (const r of rows) { const k = r.asn + "|" + r.uah; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+  for (const list of groups.values()) {
+    if (list.length < cfg.min) continue;
+    list.sort((a, b) => a.t - b.t);
+    for (let i = 0; i < list.length; i++) {
+      let k = i; while (k < list.length && list[k].t - list[i].t <= cfg.win) k++;
+      const n = k - i; if (n < cfg.min) continue;
+      const cnt = {}; for (let m = i; m < k; m++) cnt[list[m].pres] = (cnt[list[m].pres] || 0) + 1;
+      const [top, c] = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+      if (c / n < cfg.share) continue;
+      const why = "même opérateur et même profil : " + n + " nouveaux appareils en " + Math.round(cfg.win / 3600) + " h, " + Math.round(100 * c / n) + " % pour le même candidat (automatique)";
+      for (let m = i; m < k; m++) if (list[m].pres === top && !out.has(list[m].dh)) out.set(list[m].dh, why);
+    }
+  }
+  return [...out.entries()];
+}
+async function dripBlocks(env) {
+  if ((env.AUTO_DRIP || "1") !== "1") return 0;
+  const from = Math.floor(Date.parse(env.DRIP_FROM || "") / 1000);
+  if (!Number.isFinite(from)) return 0;  // sans date de départ, la règle ne fait rien
+  const cfg = { win: parseInt(env.DRIP_HOURS || "48", 10) * 3600, min: parseInt(env.DRIP_MIN || "50", 10), share: parseFloat(env.DRIP_SHARE || "0.9") };
+  const since = Math.max(from, Math.floor(Date.now() / 1000) - cfg.win);
+  const rows = (await env.DB.prepare("SELECT dh, asn, uah, pres, t FROM evidence WHERE t >= ? AND isnew = 1 AND pres <> '' AND uah <> '' ORDER BY t").bind(since).all()).results || [];
+  const first = new Map();
+  for (const r of rows) if (!first.has(r.dh)) first.set(r.dh, r);
+  const keep = new Set(((await env.DB.prepare("SELECT dh FROM ballot_risk WHERE scope = 'pres' AND status = 'garde'").all()).results || []).map((x) => x.dh));
+  const flagged = dripFlags([...first.values()], cfg).filter(([dh]) => !keep.has(dh)), day = new Date().toISOString().slice(0, 10);
+  const ins = "INSERT INTO ballot_risk(dh,scope,score,reasons,status,decided) VALUES(?,'pres',100,?,'retire',?) ON CONFLICT(dh,scope) DO UPDATE SET score = MAX(ballot_risk.score, 100), reasons = excluded.reasons, status = 'retire', decided = excluded.decided WHERE ballot_risk.status NOT IN ('garde','retire')";
+  for (let i = 0; i < flagged.length; i += 40) await env.DB.batch(flagged.slice(i, i + 40).map(([dh, why]) => env.DB.prepare(ins).bind(dh, why, day)));
+  return flagged.length;
+}
 // ---- Scrutins locaux (sénateur, député, maire, CASEC, ASEC) : mêmes règles pour tous les candidats d'un scrutin ----
 // Les croisements « opérateur + heure » de la présidentielle ne s'appliquent pas ici (trop peu de réponses par cellule). Deux contrôles, tous deux calculés à partir du dossier de preuves (14 jours) :
 //  1. réseau en bloc : au moins BLOCK_MIN_LOCAL appareils d'un même réseau votent dans les BLOCK_HOURS dernières heures, dont BLOCK_SHARE pour le même candidat du même scrutin.
@@ -773,6 +811,7 @@ async function cron(env) {
   await step(env, "local", async () => { await ensureTables(env); await autoBlocksLocal(env); await waveFlags(env); }, 2);  // suivi des scrutins locaux : jamais bloquant
   await step(env, "autoblocks", () => autoBlocks(env), 3);  // tables absentes : pas de retrait automatique
   await step(env, "rhythm", () => rhythmBlocks(env), 3);  // rafales et navigateur répété : après autoblocks, avant la publication de la même heure
+  await step(env, "drip", () => dripBlocks(env), 3);  // goutte-à-goutte (même opérateur + même profil), pour les nouveaux appareils seulement
   await step(env, "propose", () => propose(env), 2);
   await step(env, "publish", () => publish(env), 4);  // en cas d'échec : résultats précédents conservés, erreur visible dans pub_meta
   await step(env, "excl", () => storeExcl(env), 3);  // retrait des cellules calculé une fois par publication (lecture seule ensuite)
@@ -790,7 +829,7 @@ export default {
       if (url.pathname === "/trend" && req.method === "POST") return json(await trend(req, env), cors);
       if (url.pathname === "/challenge" && req.method === "POST") return json(await challenge(req, env), cors);
       if (url.pathname === "/vote" && req.method === "POST") return json(await vote(req, env), cors);
-      if (url.pathname === "/health") return json({ ok: true, v: 31 }, cors);
+      if (url.pathname === "/health") return json({ ok: true, v: 32 }, cors);
       return json({ error: "introuvable" }, cors, 404);
     } catch (e) {
       return json({ error: e.message || "erreur" }, cors, e.status || 500);

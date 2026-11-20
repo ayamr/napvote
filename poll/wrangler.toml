@@ -56,6 +56,13 @@ RHYTHM_BURST_MIN = "20"
 RHYTHM_FP_MIN = "10"
 RHYTHM_SHARE = "0.9"
 RHYTHM_LOOKBACK_H = "6"
+# retrait « au goutte-à-goutte » (présidentielle) : même opérateur ET même profil de navigateur, au moins DRIP_MIN NOUVEAUX appareils en DRIP_HOURS heures, dont DRIP_SHARE pour le même candidat.
+# Pour l'avenir seulement : les appareils créés avant DRIP_FROM ne sont ni comptés ni retirés. Sans date valide, la règle ne fait rien. "0" pour désactiver.
+AUTO_DRIP = "1"
+DRIP_FROM = "2026-11-20T05:00:00Z"
+DRIP_MIN = "50"
+DRIP_HOURS = "48"
+DRIP_SHARE = "0.9"
 # scrutins locaux : "0" désactivé, "2" observation (inscrit dans review_flags sans rien retirer), "1" retrait des réseaux en bloc de l'instantané publié
 AUTO_BLOCKS_LOCAL = "2"
 BLOCK_MIN_LOCAL = "20"
