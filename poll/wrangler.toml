@@ -38,7 +38,9 @@ PROPOSE_MIN = "40"
 # retrait automatique chaque heure des réseaux « en bloc » (présidentielle) : "0" pour désactiver
 AUTO_BLOCKS = "1"
 # validation automatique des cellules « opérateur + heures » (heures terminées, excès >= AUTO_CELLS_MIN, au plus AUTO_CELLS_MAX par passe) : "0" pour désactiver
-AUTO_CELLS = "1"
+# Désactivée pour l'édition 2 (20 nov. 2026) : le retrait par appareil (autoBlocks + rhythmBlocks) retire déjà ces vagues, la cellule les retirait une seconde fois
+# (total publié inférieur à la somme des choix). Voir poll/disable-cells-ed2.sql.
+AUTO_CELLS = "0"
 AUTO_CELLS_MIN = "55"
 AUTO_CELLS_MAX = "5"
 # au moins ce nombre d'appareils sur un réseau, dans les dernières heures, dont cette part pour le même candidat
