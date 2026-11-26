@@ -1,8 +1,10 @@
 """Collecte automatique des données du CEP (candidats, statistiques d'inscription) avec contrôles.
 
 Usage : python3 scripts/fetch_cep.py            (écrit dans data/)
-Codes de sortie : 0 = ok (données modifiées ou non), 2 = données suspectes ou API en panne (rien n'est écrit).
-Sorties pour GitHub Actions ($GITHUB_OUTPUT) : changed=true|false, notes_new=<n>.
+Codes de sortie : 0 = ok (données modifiées ou non), 2 = données suspectes (rien n'est écrit).
+Si l'API des candidats est inaccessible ou protégée par un défi anti-robot (HTTP 403 « cf-mitigated: challenge »), les derniers candidats sont gardés,
+le reste de la collecte continue et la sortie vaut 0 : la reconstruction et la publication du site ne sont plus bloquées (cep_blocked=true, ticket GitHub ouvert par le workflow).
+Sorties pour GitHub Actions ($GITHUB_OUTPUT) : changed=true|false, notes_new=<n>, cep_blocked=true|false.
 """
 import csv, datetime, hashlib, json, os, re, sys, time
 import urllib.error, urllib.request, urllib.parse
@@ -29,6 +31,14 @@ def late():
     return time.time() - START > OPTIONAL_BUDGET
 
 
+class Unreachable(RuntimeError):
+    """Service du CEP inaccessible après plusieurs essais (réseau, délai, erreur serveur)."""
+
+
+class Blocked(Unreachable):
+    """Le CEP répond par un défi anti-robot Cloudflare : réessayer ne sert à rien, et nous ne cherchons pas à le contourner."""
+
+
 def http(url, data=None, tries=8, timeout=40):
     last = None
     for a in range(tries):
@@ -38,12 +48,14 @@ def http(url, data=None, tries=8, timeout=40):
                 return r.read()
         except urllib.error.HTTPError as e:  # 429 : le CEP limite le débit, on patiente
             last = e
+            if e.code == 403 and (e.headers.get("cf-mitigated") or "").lower() == "challenge":
+                raise Blocked("défi anti-robot du CEP (HTTP 403) : %s" % url) from e
             wait = int(e.headers.get("Retry-After", "0") or 0) if e.code == 429 else 0
             time.sleep(max(wait, 4 * (a + 1)) if e.code == 429 else 1.5 * (a + 1))
         except Exception as e:  # noqa: BLE001
             last = e
             time.sleep(1.5 * (a + 1))
-    raise RuntimeError("échec %s : %s" % (url, last))
+    raise Unreachable("échec %s : %s" % (url, last))
 
 
 def page(poste, n):
@@ -164,60 +176,72 @@ def main():
 
     # ---- candidats ----
     items = []
+    blocked = False
     try:
         for p in POSTES:
             got = fetch_poste(p)
             print("%-10s %4d" % (p, len(got)), file=sys.stderr)
             items += got
+    except Unreachable as e:
+        if not prev:  # rien à garder : on ne peut pas construire le site
+            print("ERREUR collecte :", e, file=sys.stderr)
+            out("changed", "false")
+            sys.exit(2)
+        # API des candidats inaccessible ou bloquée : on garde les derniers candidats connus (candidats_cep.json) et on continue le reste de la collecte
+        blocked = True
+        print("AVERTISSEMENT : candidats non mis à jour, derniers candidats conservés (collectés le %s) : %s" % (prev["collected"], e), file=sys.stderr)
     except Exception as e:  # noqa: BLE001
         print("ERREUR collecte :", e, file=sys.stderr)
         out("changed", "false")
         sys.exit(2)
 
-    counts = {p: sum(1 for i in items if i["poste"] == p) for p in POSTES}
-    if prev:
-        pc = {p: sum(1 for i in prev["items"] if i["poste"] == p) for p in POSTES}
-        if len(items) < 0.9 * len(prev["items"]) or any(counts[p] < 0.8 * pc[p] for p in POSTES):
-            print("ERREUR : baisse suspecte %s -> %s ; mise à jour refusée" % (pc, counts), file=sys.stderr)
+    changed = False
+    stamp = now_local()
+
+    if not blocked:
+        counts = {p: sum(1 for i in items if i["poste"] == p) for p in POSTES}
+        if prev:
+            pc = {p: sum(1 for i in prev["items"] if i["poste"] == p) for p in POSTES}
+            if len(items) < 0.9 * len(prev["items"]) or any(counts[p] < 0.8 * pc[p] for p in POSTES):
+                print("ERREUR : baisse suspecte %s -> %s ; mise à jour refusée" % (pc, counts), file=sys.stderr)
+                out("changed", "false")
+                sys.exit(2)
+        if any(counts[p] == 0 for p in POSTES):
+            print("ERREUR : un poste est vide", counts, file=sys.stderr)
             out("changed", "false")
             sys.exit(2)
-    if any(counts[p] == 0 for p in POSTES):
-        print("ERREUR : un poste est vide", counts, file=sys.stderr)
-        out("changed", "false")
-        sys.exit(2)
 
-    new_keys = {key(i): i for i in items}
-    old_keys = {key(i): i for i in prev["items"]} if prev else {}
-    added = [new_keys[k] for k in new_keys if k not in old_keys]
-    removed = [old_keys[k] for k in old_keys if k not in new_keys]
-    stamp = now_local()
-    changed = bool(added or removed) or not prev
+        new_keys = {key(i): i for i in items}
+        old_keys = {key(i): i for i in prev["items"]} if prev else {}
+        added = [new_keys[k] for k in new_keys if k not in old_keys]
+        removed = [old_keys[k] for k in old_keys if k not in new_keys]
+        changed = bool(added or removed) or not prev
 
-    if changed:
-        items.sort(key=key)
-        json.dump({"collected": stamp.isoformat(timespec="seconds"), "items": items}, open(path, "w", encoding="utf-8"), ensure_ascii=False)
-        with open(os.path.join(D, "candidats_cep.csv"), "w", newline="", encoding="utf-8-sig") as f:
-            w = csv.writer(f, delimiter=";", quoting=csv.QUOTE_ALL)
-            w.writerow(["Nom", "Prénom", "Sexe", "Poste", "Position", "Département", "Commune", "Section", "Parti politique"])
-            for c in items:
-                l = c.get("localite") or []
-                w.writerow([c["nom"], c["prenom"], c["sexe"], c["poste"], c["position"], l[0] if l else "", l[1] if len(l) > 1 else "", l[2] if len(l) > 2 else "", c["structure"]])
-        def brief(i):
-            l = i.get("localite") or []
-            return {"po": i["poste"], "nom": i["nom"], "pre": i["prenom"], "d": l[0] if l else "", "c": l[1] if len(l) > 1 else ""}
-        by = {p: {"added": sum(1 for i in added if i["poste"] == p), "removed": sum(1 for i in removed if i["poste"] == p)} for p in POSTES}
-        ch = {"t": stamp.isoformat(timespec="seconds"), "prev_t": prev["collected"] if prev else None,
-              "total": len(items), "prev_total": len(prev["items"]) if prev else None,
-              "by": {p: v for p, v in by.items() if v["added"] or v["removed"]},
-              "added": [brief(i) for i in added[:400]], "removed": [brief(i) for i in removed[:100]]}
-        json.dump(ch, open(os.path.join(D, "changes.json"), "w", encoding="utf-8"), ensure_ascii=False)
-        hp = os.path.join(D, "history.json")
-        hist = json.load(open(hp)) if os.path.exists(hp) else []
-        hist.append({"t": stamp.isoformat(timespec="minutes"), "total": len(items), **counts})
-        json.dump(hist[-600:], open(hp, "w"))
-        print("candidats : +%d / -%d (total %d)" % (len(added), len(removed), len(items)), file=sys.stderr)
-    else:
-        print("candidats : aucun changement (%d)" % len(items), file=sys.stderr)
+        if changed:
+            items.sort(key=key)
+            json.dump({"collected": stamp.isoformat(timespec="seconds"), "items": items}, open(path, "w", encoding="utf-8"), ensure_ascii=False)
+            with open(os.path.join(D, "candidats_cep.csv"), "w", newline="", encoding="utf-8-sig") as f:
+                w = csv.writer(f, delimiter=";", quoting=csv.QUOTE_ALL)
+                w.writerow(["Nom", "Prénom", "Sexe", "Poste", "Position", "Département", "Commune", "Section", "Parti politique"])
+                for c in items:
+                    l = c.get("localite") or []
+                    w.writerow([c["nom"], c["prenom"], c["sexe"], c["poste"], c["position"], l[0] if l else "", l[1] if len(l) > 1 else "", l[2] if len(l) > 2 else "", c["structure"]])
+            def brief(i):
+                l = i.get("localite") or []
+                return {"po": i["poste"], "nom": i["nom"], "pre": i["prenom"], "d": l[0] if l else "", "c": l[1] if len(l) > 1 else ""}
+            by = {p: {"added": sum(1 for i in added if i["poste"] == p), "removed": sum(1 for i in removed if i["poste"] == p)} for p in POSTES}
+            ch = {"t": stamp.isoformat(timespec="seconds"), "prev_t": prev["collected"] if prev else None,
+                  "total": len(items), "prev_total": len(prev["items"]) if prev else None,
+                  "by": {p: v for p, v in by.items() if v["added"] or v["removed"]},
+                  "added": [brief(i) for i in added[:400]], "removed": [brief(i) for i in removed[:100]]}
+            json.dump(ch, open(os.path.join(D, "changes.json"), "w", encoding="utf-8"), ensure_ascii=False)
+            hp = os.path.join(D, "history.json")
+            hist = json.load(open(hp)) if os.path.exists(hp) else []
+            hist.append({"t": stamp.isoformat(timespec="minutes"), "total": len(items), **counts})
+            json.dump(hist[-600:], open(hp, "w"))
+            print("candidats : +%d / -%d (total %d)" % (len(added), len(removed), len(items)), file=sys.stderr)
+        else:
+            print("candidats : aucun changement (%d)" % len(items), file=sys.stderr)
 
     # ---- statistiques d'inscription (non bloquant) ----
     stats_changed = False
@@ -274,6 +298,7 @@ def main():
     json.dump({"iso": stamp.isoformat(timespec="seconds"), "date": stamp.date().isoformat(), "changed": changed or stats_changed or civ_changed or oni_changed}, open(os.path.join(SRC, "fetched.json"), "w"))
     out("changed", "true" if (changed or stats_changed or civ_changed or oni_changed) else "false")
     out("notes_new", str(len(notes_new)))
+    out("cep_blocked", "true" if blocked else "false")
     print("terminé en %.0f s" % (time.time() - t0), file=sys.stderr)
 
 

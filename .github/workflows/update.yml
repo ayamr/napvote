@@ -69,6 +69,22 @@ jobs:
             --body "Le site du CEP a publié de nouvelles pages (note, calendrier, communiqué). À lire avant de mettre à jour le calendrier et les actualités de NapVote :"$'\n\n'"$(cat data/notes_new.txt)" || true
           rm -f data/notes_new.txt
 
+      - name: Ticket si l'API des candidats du CEP est bloquée (fermé quand elle répond de nouveau)
+        if: steps.upd.outputs.cep_blocked != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BLOCKED: ${{ steps.upd.outputs.cep_blocked }}
+        run: |
+          T="API des candidats du CEP inaccessible"
+          N=$(gh issue list --state open --search "$T in:title" --json number --jq '.[0].number // empty' || true)
+          if [ "$BLOCKED" = "true" ]; then
+            if [ -z "$N" ]; then
+              gh issue create --title "$T" --body "L'API des candidats du CEP (tableau.cephaiti.ht) refuse nos requêtes automatiques (défi anti-robot Cloudflare, HTTP 403). Les derniers candidats connus sont conservés et le site continue d'être reconstruit et publié, mais les candidatures ne sont plus mises à jour. À faire : demander au CEP une exemption ou un export officiel. Ce ticket se ferme tout seul quand l'API répond de nouveau." || true
+            fi
+          elif [ -n "$N" ]; then
+            gh issue close "$N" --comment "L'API des candidats répond de nouveau : collecte rétablie." || true
+          fi
+
       - name: Faut-il publier ?
         id: decide
         run: |
