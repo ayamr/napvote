@@ -1,6 +1,7 @@
 """Collecte automatique des données du CEP (candidats, statistiques d'inscription) avec contrôles.
 
 Usage : python3 scripts/fetch_cep.py            (écrit dans data/)
+        python3 scripts/fetch_cep.py --from-file A.csv B.csv   (collecte manuelle des candidats : lit des CSV/JSON au lieu d'appeler l'API, mêmes contrôles, ne touche à rien d'autre)
 Codes de sortie : 0 = ok (données modifiées ou non), 2 = données suspectes (rien n'est écrit).
 Si l'API des candidats est inaccessible ou protégée par un défi anti-robot (HTTP 403 « cf-mitigated: challenge »), les derniers candidats sont gardés,
 le reste de la collecte continue et la sortie vaut 0 : la reconstruction et la publication du site ne sont plus bloquées (cep_blocked=true, ticket GitHub ouvert par le workflow).
@@ -76,6 +77,64 @@ def fetch_poste(poste):
     if abs(len(items) - total) > 3:
         raise RuntimeError("%s : %d reçus pour %d annoncés" % (poste, len(items), total))
     return items
+
+
+def load_csv(path):
+    """CSV exporté du site du CEP (séparateur « ; », colonnes Nom, Prénom, Sexe, Poste, Position, Département, Commune, [Section communale], Parti politique).
+    Un export sans colonne de section ne peut pas situer les CASEC et ASEC : ces deux postes sont alors ignorés (le fichier avec sections les fournit)."""
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        rows = list(csv.reader(f, delimiter=";"))
+    head = [h.strip() for h in rows[0]]
+    col = {"nom": "Nom", "prenom": "Prénom", "sexe": "Sexe", "poste": "Poste", "position": "Position", "dep": "Département", "com": "Commune", "structure": "Parti politique"}
+    miss = [v for v in col.values() if v not in head]
+    if miss:
+        raise RuntimeError("CSV refusé : colonnes manquantes %s (en-tête : %s)" % (miss, head))
+    sec = next((h for h in head if h.lower().startswith("section")), None)
+    ix = {k: head.index(v) for k, v in col.items()}
+    got, skipped = [], 0
+    for r in rows[1:]:
+        if not any(c.strip() for c in r):
+            continue
+        if len(r) != len(head):
+            raise RuntimeError("CSV refusé : une ligne a %d colonnes au lieu de %d : %s" % (len(r), len(head), r))
+        g = lambda k: r[ix[k]].strip()
+        if g("poste") in ("CASEC", "ASEC") and not sec:
+            skipped += 1
+            continue
+        loc = [g("dep"), g("com")] + ([r[head.index(sec)].strip()] if sec else [])
+        got.append({"nom": g("nom"), "prenom": g("prenom"), "sexe": g("sexe"), "poste": g("poste"), "position": g("position"), "structure": g("structure"),
+                    "localite": [l for l in loc if l]})
+    if skipped:
+        print("%s : %d CASEC/ASEC ignorés (pas de colonne de section ; à fournir par un fichier avec sections)" % (path, skipped), file=sys.stderr)
+    return got
+
+
+def load_file(paths):
+    """Candidats lus dans un ou plusieurs fichiers enregistrés à la main : CSV du CEP, ou JSON (liste de candidats, {"items": [...]}, liste de pages de l'API).
+    Les doublons sont retirés ; chaque candidat doit avoir les champs que le reste de la chaîne utilise."""
+    got = []
+    for path in paths:
+        path = os.path.expanduser(path)
+        if path.lower().endswith(".csv"):
+            part = load_csv(path)
+        else:
+            raw = json.load(open(path, encoding="utf-8"))
+            if isinstance(raw, dict):
+                raw = raw.get("items", [raw])
+            part = []
+            for x in raw:
+                part += x.get("items", []) if isinstance(x, dict) and "items" in x else [x]
+        print("fichier %s : %d candidats" % (path, len(part)), file=sys.stderr)
+        got += part
+    need = ("poste", "nom", "prenom", "sexe", "position", "structure")
+    bad = [x for x in got if not isinstance(x, dict) or any(k not in x for k in need)]
+    if bad:
+        raise RuntimeError("fichier refusé : %d candidats sans les champs %s (exemple : %s)" % (len(bad), "/".join(need), json.dumps(bad[0], ensure_ascii=False)[:200]))
+    if any(x["poste"] not in POSTES for x in got):
+        raise RuntimeError("fichier refusé : poste inconnu %s" % sorted({x["poste"] for x in got} - set(POSTES)))
+    uniq = {key(x): x for x in got}
+    print("%d candidats lus, %d après retrait des doublons" % (len(got), len(uniq)), file=sys.stderr)
+    return list(uniq.values())
 
 
 def key(i):
@@ -177,11 +236,21 @@ def main():
     # ---- candidats ----
     items = []
     blocked = False
+    from_file = None
+    if "--from-file" in sys.argv:  # un ou plusieurs fichiers : tout ce qui suit l'option, jusqu'à la prochaine option
+        from_file = []
+        for a in sys.argv[sys.argv.index("--from-file") + 1:]:
+            if a.startswith("--"):
+                break
+            from_file.append(a)
     try:
-        for p in POSTES:
-            got = fetch_poste(p)
-            print("%-10s %4d" % (p, len(got)), file=sys.stderr)
-            items += got
+        if from_file:
+            items = load_file(from_file)
+        else:
+            for p in POSTES:
+                got = fetch_poste(p)
+                print("%-10s %4d" % (p, len(got)), file=sys.stderr)
+                items += got
     except Unreachable as e:
         if not prev:  # rien à garder : on ne peut pas construire le site
             print("ERREUR collecte :", e, file=sys.stderr)
@@ -242,6 +311,10 @@ def main():
             print("candidats : +%d / -%d (total %d)" % (len(added), len(removed), len(items)), file=sys.stderr)
         else:
             print("candidats : aucun changement (%d)" % len(items), file=sys.stderr)
+
+    if from_file:  # collecte manuelle : seuls les candidats sont mis à jour ; update.py reconstruira le site ensuite
+        print("candidats mis à jour à partir de %s (collecte du %s)" % (", ".join(from_file), stamp.isoformat(timespec="minutes")), file=sys.stderr)
+        return
 
     # ---- statistiques d'inscription (non bloquant) ----
     stats_changed = False
