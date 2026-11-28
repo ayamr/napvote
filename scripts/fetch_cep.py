@@ -20,7 +20,7 @@ ONI = "https://oni.gouv.ht/la-liste-des-bureaux/"  # bureaux d'enregistrement de
 CIV = "https://cephaiti.ht/civ/"  # centres d'inscription et de vote : la liste complète est incluse dans le code de la page
 POSTES = ["Président", "Sénateur", "Député", "Maire", "CASEC", "ASEC"]
 PS = 10  # le CEP plafonne la taille de page à 10
-UA = {"User-Agent": "NapVote/1.0 (citizen election tracker)"}
+UA = {"User-Agent": "NapVote/1.0 (citizen election tracker; +https://napvote-ht.com; contact: contact@napvote-ht.com)"}
 
 
 START = time.time()
